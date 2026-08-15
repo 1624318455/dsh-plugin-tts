@@ -71,6 +71,40 @@ from infer.lib.infer_pack.models import (
     SynthesizerTrnMs768NSFsid_nono,
 )
 
+# --- Index cache -----------------------------------------------------------
+# The RVC pipeline calls faiss.read_index() + index.reconstruct_n() on EVERY
+# convert, re-reading a ~400MB index file from disk each time. For chunked
+# progressive playback that cost is paid per chunk, so we cache the loaded
+# faiss Index objects by path (read_index is the dominant disk cost). The
+# cache is cleared on every /load (the index may have changed).
+try:
+    import faiss as _faiss
+
+    _orig_faiss_read = _faiss.read_index
+    _faiss_index_cache = {}
+    _faiss_lock = threading.Lock()
+
+    def _cached_faiss_read(path, *args, **kwargs):
+        key = os.path.abspath(str(path))
+        with _faiss_lock:
+            idx = _faiss_index_cache.get(key)
+            if idx is None:
+                idx = _orig_faiss_read(path, *args, **kwargs)
+                _faiss_index_cache[key] = idx
+            return idx
+
+    _faiss.read_index = _cached_faiss_read
+
+    def _clear_index_cache():
+        with _faiss_lock:
+            _faiss_index_cache.clear()
+
+    INDEX_CACHE = True
+except Exception as _ie:  # pragma: no cover - faiss always present in RVC env
+    _clear_index_cache = lambda: None
+    INDEX_CACHE = False
+    print("faiss index cache disabled: %s" % _ie, file=sys.stderr)
+
 
 def resolve_device(dev):
     if dev and dev != "auto":
@@ -186,6 +220,15 @@ def unb64(s):
 
 @app.get("/health")
 def health():
+    gpu_name = None
+    vram_gb = None
+    if config.device.startswith("cuda") and torch.cuda.is_available():
+        try:
+            dev_idx = int(config.device.split(":")[-1])
+            gpu_name = torch.cuda.get_device_name(dev_idx)
+            vram_gb = round(torch.cuda.get_device_properties(dev_idx).total_memory / (1024 ** 3), 1)
+        except Exception:
+            pass
     return {
         "ok": True,
         "model_loaded": _state["model"] is not None,
@@ -194,6 +237,10 @@ def health():
         "device": config.device,
         "is_half": config.is_half,
         "cuda_available": torch.cuda.is_available(),
+        "gpu_name": gpu_name,
+        "vram_gb": vram_gb,
+        "index_cache": INDEX_CACHE,
+        "index_cache_entries": len(_faiss_index_cache) if INDEX_CACHE else 0,
     }
 
 
@@ -239,6 +286,7 @@ def files(kind: str = "pth"):
 def load(payload: dict):
     with _lock:
         load_model(payload.get("model"), payload.get("index"))
+        _clear_index_cache()  # index may have changed; drop cached faiss objects
     return {"ok": True, "model": _state["model"], "index": _state["index"]}
 
 

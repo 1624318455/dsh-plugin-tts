@@ -182,6 +182,41 @@ if (speakRoute && audioRoute) {
     const upParsed = JSON.parse(upRes.body);
     check('rvc upload-base speak returns 200 + url', upRes.head.code === 200 && typeof upParsed.url === 'string', upParsed.url ?? upRes.body);
 
+    // ---- adaptive chunked progressive playback (long RVC text) ----
+    const longText = '这是一段用于验证自适应分块渐进播放的长文本朗读测试。'.repeat(12); // ~264 chars -> several chunks
+    const longRes = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+      text: longText,
+      voice: 'zh-CN-XiaoxuanNeural',
+      provider: 'rvc',
+      custom: { baseUrl: `http://127.0.0.1:${mock.port}`, model: 'mock.pth', index: '' }
+    })), mockRes());
+    const longParsed = JSON.parse(longRes.body);
+    check('rvc long speak returns jobId + prewarmed chunks', longRes.head.code === 200
+      && typeof longParsed.jobId === 'string'
+      && Array.isArray(longParsed.chunks) && longParsed.chunks.length >= 2
+      && typeof longParsed.total === 'number' && longParsed.total > longParsed.chunks.length,
+      `jobId=${longParsed.jobId} chunks=${longParsed.chunks && longParsed.chunks.length} total=${longParsed.total}`);
+    if (typeof longParsed.jobId === 'string') {
+      const nextRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-next');
+      check('plugin registers rvc-next route', nextRoute !== undefined);
+      let fetched = longParsed.chunks.length;
+      let more = true;
+      let drained = 0;
+      while (more && drained < 100) {
+        const nr = await call(nextRoute, mockReq(`/dsh-tts-api/rvc-next?job=${longParsed.jobId}`), mockRes());
+        const np = JSON.parse(nr.body);
+        if (np && np.url) fetched++;
+        more = !!(np && np.more);
+        drained++;
+      }
+      check('rvc-next drains to total chunks', fetched === longParsed.total && more === false, `fetched=${fetched} total=${longParsed.total}`);
+      check('rvc-next done for unknown job', (await call(nextRoute, mockReq('/dsh-tts-api/rvc-next?job=unknown'), mockRes())).body === JSON.stringify({ done: true, gone: true }));
+      // a prewarmed chunk url must serve wav through the audio route
+      const cRes = await call(audioRoute, mockReq(longParsed.chunks[0]), mockRes());
+      const cBytes = Buffer.isBuffer(cRes.body) ? cRes.body : Buffer.from(cRes.body ?? '');
+      check('chunk audio route serves wav (RIFF)', cRes.head.code === 200 && cBytes.length > 44 && cBytes.slice(0, 4).toString() === 'RIFF', `code=${cRes.head.code} bytes=${cBytes.length}`);
+    }
+
     // file-discovery proxy route
     const filesRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-files');
     const fr = await call(filesRoute, mockReq(`/dsh-tts-api/rvc-files?baseUrl=http://127.0.0.1:${mock.port}&kind=pth`), mockRes());

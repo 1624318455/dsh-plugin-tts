@@ -73,4 +73,44 @@ const ares = mockRes();
 await audioRoute.handler(mockReq(parsed.url), ares);
 const bytes = Buffer.isBuffer(ares.body) ? ares.body : Buffer.from(ares.body ?? '');
 console.log(`audio -> ${ares.head.c} ${bytes.length} bytes, head=${bytes.slice(0, 4).toString()}`);
-process.exit(bytes.length > 1000 && bytes.slice(0, 4).toString() === 'RIFF' ? 0 : 1);
+if (!(bytes.length > 1000 && bytes.slice(0, 4).toString() === 'RIFF')) process.exit(1);
+
+// ---- adaptive chunked progressive playback (long text) ----
+const nextRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-next');
+if (!nextRoute) {
+  console.error('rvc-next route missing');
+  process.exit(1);
+}
+const longText = '这是一段用来验证自适应分块渐进播放的长文本，每一块都会先由 Edge 合成，再交给本地 RVC 服务转换，播放的同时后台继续合成后面的段落，从而做到长文朗读不卡顿。'.repeat(3);
+const t1 = Date.now();
+const longRes = mockRes();
+await speakRoute.handler(
+  mockReq('/dsh-tts-api/speak', JSON.stringify({ text: longText, provider: 'rvc', custom })),
+  longRes
+);
+const longParsed = JSON.parse(longRes.body);
+console.log(`long speak -> ${longRes.head.c} jobId=${longParsed.jobId ?? ''} chunks=${longParsed.chunks?.length ?? 0} total=${longParsed.total ?? 0} ratio=${longParsed.ratio ?? 'n/a'} chunkSec=${longParsed.chunkSec ?? 'n/a'} (${((Date.now() - t1) / 1000).toFixed(1)}s)`);
+if (!longParsed.jobId || !Array.isArray(longParsed.chunks) || longParsed.chunks.length < 2) process.exit(1);
+let fetched = longParsed.chunks.length;
+let more = true;
+const chunkStarts = [];
+while (more) {
+  const nr = mockRes();
+  await nextRoute.handler(mockReq(`/dsh-tts-api/rvc-next?job=${longParsed.jobId}`), nr);
+  const np = JSON.parse(nr.body);
+  if (np && np.url) {
+    fetched++;
+    chunkStarts.push(np.url);
+  }
+  more = !!(np && np.more);
+}
+console.log(`rvc-next drained: fetched=${fetched} total=${longParsed.total} (${((Date.now() - t1) / 1000).toFixed(1)}s)`);
+if (fetched !== longParsed.total) process.exit(1);
+// verify one late chunk serves wav
+const lastRes = mockRes();
+await audioRoute.handler(mockReq(chunkStarts[chunkStarts.length - 1]), lastRes);
+const lastBytes = Buffer.isBuffer(lastRes.body) ? lastRes.body : Buffer.from(lastRes.body ?? '');
+console.log(`late chunk audio -> ${lastRes.head.c} ${lastBytes.length} bytes, head=${lastBytes.slice(0, 4).toString()}`);
+if (!(lastBytes.length > 1000 && lastBytes.slice(0, 4).toString() === 'RIFF')) process.exit(1);
+
+process.exit(0);

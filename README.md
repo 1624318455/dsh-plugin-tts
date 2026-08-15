@@ -8,7 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
   <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="Awesome"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-22%2B-blue" alt="node"></a>
-  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-4%20passed-success" alt="tests"></a>
+  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-14%20passed-success" alt="tests"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts"><img src="https://img.shields.io/github/stars/1624318455/dsh-plugin-tts" alt="stars"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts/commits/main"><img src="https://img.shields.io/github/last-commit/1624318455/dsh-plugin-tts" alt="last commit"></a>
 </p>
@@ -100,8 +100,26 @@ E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe rvc-server.py \
     --port 4892
 ```
 
-`rvc-server.py` 提供 `GET /health`、`POST /load {model,index}`、`POST /convert {audio_base64,params}`（JSON+base64，
-无额外依赖）；自动使用环境内的 `ffmpeg.exe` 解码 mp3 底噪。设备自动选 `cuda:0`（NVIDIA）或 `cpu`，可 `--device` 指定。
+`rvc-server.py` 提供 `GET /health`（含 `gpu_name` / `vram_gb`）、`POST /load {model,index}`、
+`POST /convert {audio_base64,params}`（JSON+base64，无额外依赖）、`GET /files?kind=pth|index`（本机模型/索引发现）；
+自动使用环境内的 `ffmpeg.exe` 解码 mp3 底噪。设备自动选 `cuda:0`（NVIDIA）或 `cpu`，可 `--device` 指定。
+转换时**缓存 faiss 索引对象**（按路径），分块模式下每块不再重复读取 ~400MB 索引文件；`/load` 时自动清空缓存。
+
+### 长文本渐进播放（自适应分块）
+
+RVC 是变声：输入音频长度 = 输出音频长度，长文本必须先合成整段底噪再转换。
+旧链路"全部转换完再播放"会让长回复等待几十秒。本插件改为**自适应分块渐进播放**：
+
+1. 首次使用长文本 RVC 时，Host 做一次 **5 秒探测**（转换固定短音频，测
+   `速度比 = 转换耗时 / 音频时长`），按分档表选定**块大小**与**预热块数**；
+2. 文本按句切块（每块 ≈ 6-20 秒音频，落在语义边界）；
+3. 先转换预热块（GPU 2 块 / CPU 最多 4 块）立即开播，其余块由前端在播放期间
+   通过 `GET /dsh-tts-api/rvc-next` 逐块拉取——**转换与播放重叠，长文无缝**；
+4. 分档表：`ratio ≤ 0.4 → 20s/预热2`，`0.4-0.6 → 15s/2`，`0.6-0.9 → 10s/3`，
+   `> 0.9（CPU）→ 6s/4`，探测失败兜底 `10s/3`；
+5. 短文本（≤12 秒）与上传底噪模式**不切块**，仍走单 URL 链路，零额外开销。
+
+> 完整设计见 [`docs/adaptive-chunked-playback.md`](docs/adaptive-chunked-playback.md)。
 
 ### 设置面板 RVC 配置
 
@@ -270,10 +288,33 @@ E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe rvc-server.py \
     --port 4892
 ```
 
-`rvc-server.py` exposes `GET /health`, `POST /load {model,index}` and
-`POST /convert {audio_base64,params}` (JSON + base64, no extra deps); mp3 base
-audio is decoded with the env's bundled `ffmpeg.exe`. Device auto-selects
-`cuda:0` (NVIDIA) or `cpu`; override with `--device`.
+`rvc-server.py` exposes `GET /health` (includes `gpu_name` / `vram_gb`),
+`POST /load {model,index}`, `POST /convert {audio_base64,params}` (JSON + base64,
+no extra deps) and `GET /files?kind=pth|index` (local model/index discovery);
+mp3 base audio is decoded with the env's bundled `ffmpeg.exe`. Device
+auto-selects `cuda:0` (NVIDIA) or `cpu`; override with `--device`. Loaded faiss
+index objects are **cached by path** (cleared on `/load`), so chunked conversion
+no longer re-reads the ~400MB index file per chunk.
+
+### Adaptive chunked progressive playback (long RVC reads)
+
+RVC is voice conversion (input length == output length), so long text must be
+fully synthesized as base audio before conversion. Instead of converting
+everything before playing (a long silent wait), the plugin:
+
+1. Probes the machine once (converts a ~3.6s clip; measures
+   `ratio = convert_time / audio_seconds`) and picks **chunk size (6-20s)** and
+   **prewarm count (2-4)** from a ratio tier table;
+2. Splits the text into sentence-aligned chunks;
+3. Converts the prewarm chunks, starts playback immediately, and the client
+   pulls further chunks via `GET /dsh-tts-api/rvc-next` while playing —
+   **conversion overlaps playback, so long reads stream seamlessly**;
+4. Tiers: `ratio ≤ 0.4 → 20s/prewarm 2`, `0.4-0.6 → 15s/2`, `0.6-0.9 → 10s/3`,
+   `> 0.9 (CPU) → 6s/4`, probe failure falls back to `10s/3`;
+5. Short text (≤12s) and upload-base mode stay on the single-URL path (zero
+   extra overhead).
+
+> Full design: [`docs/adaptive-chunked-playback.md`](docs/adaptive-chunked-playback.md).
 
 ### Settings-panel RVC config
 
