@@ -279,4 +279,5 @@ node tests/e2e-real-rvc.mjs       # 真实 RVC 端到端（需 4892 服务）
 node tests/e2e-compact-index.mjs  # 紧凑索引端到端（需 4892 服务）
 ```
 
-详细架构与设计见 [`README.md`](../README.md) 与 [`adaptive-chunked-playback.md`](adaptive-chunked-playback.md)。
+详细架构与设计见 [`README.md`](../README.md)（或[中文版](../README.zh.md)）、
+[`RVC 指南`](RVC-GUIDE.md) 与 [`adaptive-chunked-playback.md`](adaptive-chunked-playback.md)。
