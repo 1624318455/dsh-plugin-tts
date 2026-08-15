@@ -101,7 +101,8 @@ E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe rvc-server.py \
 ```
 
 `rvc-server.py` 提供 `GET /health`（含 `gpu_name` / `vram_gb`）、`POST /load {model,index}`、
-`POST /convert {audio_base64,params}`（JSON+base64，无额外依赖）、`GET /files?kind=pth|index`（本机模型/索引发现）；
+`POST /convert {audio_base64,params}`（JSON+base64，无额外依赖）、`GET /files?kind=pth|index`（本机模型/索引发现）、
+`POST /compact-index {index, target_vectors}`（紧凑索引生成）；
 自动使用环境内的 `ffmpeg.exe` 解码 mp3 底噪。设备自动选 `cuda:0`（NVIDIA）或 `cpu`，可 `--device` 指定。
 转换时**缓存 faiss 索引对象**（按路径），分块模式下每块不再重复读取 ~400MB 索引文件；`/load` 时自动清空缓存。
 
@@ -131,6 +132,21 @@ RVC 是变声：输入音频长度 = 输出音频长度，长文本必须先合�
 - **模型路径 (.pth)** 与 **索引路径 (.index)**——输入框右侧有「浏览」按钮（RVC 服务自动扫描本机模型/索引文件，点击回填路径）；**索引留空 = 免索引模式**（index_rate 自动为 0，质量略降仍可用）
 - **底噪音色**（Edge 底噪模式）：Edge 先合成再转换的原始音色
 - **高级参数**（折叠）：底噪语速/音调/音量（如 `+10%`）、说话人 ID spk_id（多说话人模型）、f0 方法（rmvpe 质量高 / pm 快）、变调、index_rate、resample_sr、rms_mix_rate、protect、滤波半径 filter_radius（仅 harvest）、F0 曲线文件（手动指定音高）
+
+### 紧凑索引（压缩 .index）
+
+RVC 训练出的检索索引常达**数百 MB**（实测 azusa-test：408MB / 129,396 向量 / 768 维），
+是分发音色包和冷启动加载的最大负担。设置面板「索引路径」右侧的**「压缩」按钮**可一键生成紧凑索引：
+
+1. 点「压缩」→ 选择目标向量数（2k ≈ 6MB / 5k ≈ 15MB / 10k ≈ 31MB / 20k ≈ 61MB）→ 「生成」；
+2. 原理：从原索引**子采样**向量，重建为同度量（IP）的精确 `IndexFlatIP` 索引——RVC 管线
+   （`read_index → reconstruct_n → search k=8`）零改动兼容；flat 精确检索比原 IVF `nprobe=1`
+   的近似检索**更准**，音色还原度基本不变；
+3. 生成**不覆盖原文件**，输出为 `原文件名_compact_N.index`；成功后自动填入索引路径，立即可用；
+4. 构建时短暂占用 ~1GB 内存（读取大索引 + 重建），约几秒到几十秒。
+
+> 408MB → 6MB（2k）意味着分发音色包时索引不再是障碍；配合免索引模式（留空），
+> 任何机器都能"选个音色直接用"。
 
 ### 设置项详解（参数作用与建议）
 
@@ -293,7 +309,8 @@ E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe rvc-server.py \
 
 `rvc-server.py` exposes `GET /health` (includes `gpu_name` / `vram_gb`),
 `POST /load {model,index}`, `POST /convert {audio_base64,params}` (JSON + base64,
-no extra deps) and `GET /files?kind=pth|index` (local model/index discovery);
+no extra deps), `GET /files?kind=pth|index` (local model/index discovery) and
+`POST /compact-index {index, target_vectors}` (compact-index builder);
 mp3 base audio is decoded with the env's bundled `ffmpeg.exe`. Device
 auto-selects `cuda:0` (NVIDIA) or `cpu`; override with `--device`. Loaded faiss
 index objects are **cached by path** (cleared on `/load`), so chunked conversion
@@ -334,6 +351,29 @@ everything before playing (a long silent wait), the plugin:
   speaker id spk_id (multi-speaker models), f0 method (rmvpe quality / pm
   speed), pitch shift, index_rate, resample_sr, rms_mix_rate, protect,
   filter_radius (harvest only), F0 curve file (manual pitch)
+
+### Compact index (shrink .index)
+
+Trained RVC retrieval indexes are often **hundreds of MB** (measured azusa-test:
+408MB / 129,396 vectors / 768-dim) — the biggest burden for distributing voice
+packs and cold-start loading. The **"压缩" (compress)** button next to the index
+path builds a compact index in one click:
+
+1. Click 压缩 → pick a target vector count (2k ≈ 6MB / 5k ≈ 15MB / 10k ≈ 31MB /
+   20k ≈ 61MB) → 生成;
+2. It **sub-samples** the original index's vectors and rebuilds an exact
+   `IndexFlatIP` with the same metric — the RVC pipeline
+   (`read_index → reconstruct_n → search k=8`) needs zero changes; flat exact
+   search is *more* accurate than the original IVF `nprobe=1` approximation, so
+   voice identity is essentially unchanged;
+3. The original file is **never overwritten**; output is
+   `原文件名_compact_N.index`, and the new path is filled into the index field
+   automatically;
+4. Build takes a few seconds to tens of seconds with a ~1GB memory peak.
+
+> 408MB → 6MB (2k) means the index is no longer a barrier to shipping a voice
+> pack; combined with index-free mode (empty path), any machine can pick a voice
+> and go.
 
 ### Settings explained (meaning & guidance)
 

@@ -290,6 +290,67 @@ def load(payload: dict):
     return {"ok": True, "model": _state["model"], "index": _state["index"]}
 
 
+@app.post("/compact-index")
+def compact_index(payload: dict):
+    """Build a compact index from a big trained index.
+
+    RVC indexes (IVF, ~hundreds of MB) are sub-sampled into a small exact
+    IndexFlatIP over the same metric/vectors, so the RVC pipeline (read_index ->
+    reconstruct_n -> search k=8) works unchanged. Flat search over the sample is
+    strictly more accurate than the original IVF nprobe=1 search. Output is
+    written next to the source (or into out_dir) and never overwrites it.
+    """
+    src = str(payload.get("index") or "").strip().strip('"')
+    if not src or not os.path.exists(src):
+        raise HTTPException(400, "index not found: %s" % src)
+    try:
+        target = int(payload.get("target_vectors", 10000))
+    except (TypeError, ValueError):
+        target = 10000
+    target = max(500, min(target, 200000))
+    out_dir = str(payload.get("out_dir") or "").strip().strip('"')
+    if not out_dir:
+        out_dir = os.path.dirname(os.path.abspath(src))
+    out_dir = os.path.abspath(out_dir)
+    with _lock:
+        try:
+            idx = _faiss.read_index(src)
+            ntotal = int(idx.ntotal)
+            d = int(idx.d)
+            src_size = os.path.getsize(src)
+            if ntotal <= target:
+                return {
+                    "ok": True, "already_small": True,
+                    "path": os.path.abspath(src),
+                    "vectors": ntotal, "source_vectors": ntotal,
+                    "size": src_size, "source_size": src_size,
+                    "reduction_pct": 0.0,
+                }
+            big = idx.reconstruct_n(0, ntotal)
+            rng = np.random.RandomState(42)
+            sample = np.ascontiguousarray(big[rng.permutation(ntotal)[:target]], dtype="float32")
+            new_idx = _faiss.IndexFlatIP(d)
+            new_idx.add(sample)
+            stem = os.path.splitext(os.path.basename(src))[0]
+            out_path = os.path.join(out_dir, "%s_compact_%d.index" % (stem, target))
+            _faiss.write_index(new_idx, out_path)
+            out_size = os.path.getsize(out_path)
+            return {
+                "ok": True, "path": out_path, "size": out_size,
+                "vectors": target, "source_vectors": ntotal,
+                "source_size": src_size,
+                "reduction_pct": round((1 - out_size / src_size) * 100, 1),
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            return JSONResponse(
+                status_code=500,
+                content={"code": "compact_index_error",
+                         "message": "%s\n%s" % (e, traceback.format_exc()[-600:])},
+            )
+
+
 @app.post("/convert")
 def convert(payload: dict):
     if _state["model"] is None:

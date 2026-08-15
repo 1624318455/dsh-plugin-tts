@@ -138,6 +138,23 @@ function startMockRvc() {
           }
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ audio_base64: miniWav().toString('base64'), sample_rate: 40000 }));
+        } else if (req.url === '/compact-index') {
+          const payload = JSON.parse(body || '{}');
+          if (!payload.index) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ message: 'index required' }));
+            return;
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            ok: true,
+            path: 'C:/models/demo_compact_' + (payload.target_vectors || 10000) + '.index',
+            size: 6000000,
+            vectors: payload.target_vectors || 10000,
+            source_vectors: 129396,
+            source_size: 408000000,
+            reduction_pct: 98.5
+          }));
         } else {
           res.writeHead(404);
           res.end();
@@ -225,6 +242,25 @@ if (speakRoute && audioRoute) {
     const fi = await call(filesRoute, mockReq(`/dsh-tts-api/rvc-files?baseUrl=http://127.0.0.1:${mock.port}&kind=index`), mockRes());
     const filesIdx = JSON.parse(fi.body);
     check('rvc-files proxy lists index files', fi.head.code === 200 && Array.isArray(filesIdx.files) && filesIdx.files.length > 0 && filesIdx.files[0].name === 'demo.index', fi.body);
+
+    // compact-index proxy route
+    const compactRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-compact-index');
+    const cr = await call(compactRoute, mockReq('/dsh-tts-api/rvc-compact-index', JSON.stringify({
+      baseUrl: `http://127.0.0.1:${mock.port}`,
+      index: 'C:/models/demo.index',
+      target_vectors: 2000
+    })), mockRes());
+    const compactData = JSON.parse(cr.body);
+    check('compact-index proxy returns compacted index', cr.head.code === 200
+      && compactData.ok === true
+      && compactData.path === 'C:/models/demo_compact_2000.index'
+      && compactData.reduction_pct === 98.5,
+      cr.body);
+    const cb = await call(compactRoute, mockReq('/dsh-tts-api/rvc-compact-index', JSON.stringify({
+      baseUrl: `http://127.0.0.1:${mock.port}`,
+      index: ''
+    })), mockRes());
+    check('compact-index proxy passes server error', cb.head.code === 502 && typeof JSON.parse(cb.body).error === 'string', cb.body);
   } finally {
     mock.server.close();
   }
