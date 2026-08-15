@@ -157,6 +157,32 @@ RVC 训练出的检索索引常达**数百 MB**（实测 azusa-test：408MB / 12
 人耳听感上差异很小——训练良好的模型本身承载大部分音色，索引是"精修"。**分发音色包建议 10k
 （31MB）**；想要更强索引特征可把 index_rate 调向 1.0。
 
+### 音色包（注册表 + 下载）
+
+从音色包仓库一键下载安装音色：设置面板 RVC 配置下方新增「音色包」模块——
+
+1. 填入仓库地址（目录需包含 `manifest.json`），点「获取列表」；
+2. 每个音色包卡片显示名称 / 描述 / 体积（模型 + 紧凑索引）/ 许可 / 作者；
+3. 点「下载并启用」：插件代下载（规避 CORS）、**sha256 逐一校验**、安装到
+   `~/.dsh/tts-rvc/packs/<包id>/`，自动填入模型/索引路径，并按清单设置底噪音色、
+   f0 方法、索引权重——立即可用；
+4. 已安装的包显示版本号，重复下载自动跳过；sha256 不符会中止并清理残留文件。
+
+清单格式（`manifest.json`）：
+
+```json
+{ "schema": 1, "packs": [ {
+  "id": "pack-id", "name": "音色名", "description": "...",
+  "version": "1.0.0", "author": "...", "license": "MIT",
+  "baseVoice": "zh-CN-YunyangNeural", "f0Method": "rmvpe", "indexRate": 0.75,
+  "model": { "url": "https://.../model.pth", "size": 55270272, "sha256": "..." },
+  "index": { "url": "https://.../index_compact.index", "size": 6144045, "sha256": "..." }
+} ] }
+```
+
+> 演示音色 azusa-test 受版权限制**不对外分发**，不出现在公开仓库；公开仓库只收录版权干净（可分发）的音色。
+> 本地测试可用 `node tests/mock-registry.mjs <目录> [端口]` 起一个静态仓库。
+
 ### 设置项详解（参数作用与建议）
 
 | 设置项 | 作用 | 建议 |
@@ -389,6 +415,39 @@ path builds a compact index in one click:
 > 408MB → 6MB (2k) means the index is no longer a barrier to shipping a voice
 > pack; combined with index-free mode (empty path), any machine can pick a voice
 > and go.
+
+### Voice packs (registry + download)
+
+One-click voice install from a pack registry: the "音色包" module below the RVC
+config in the settings panel —
+
+1. Enter a registry URL (its directory must contain `manifest.json`), click
+   "获取列表";
+2. Each pack card shows name / description / size (model + compact index) /
+   license / author;
+3. Click "下载并启用": the plugin downloads on your behalf (avoids CORS),
+   **verifies every file's sha256**, installs to `~/.dsh/tts-rvc/packs/<id>/`,
+   fills the model/index paths and applies the pack's base voice, f0 method and
+   index rate — ready to use immediately;
+4. Installed packs show their version; re-downloading skips silently; a sha256
+   mismatch aborts and cleans up partial files.
+
+Manifest format (`manifest.json`):
+
+```json
+{ "schema": 1, "packs": [ {
+  "id": "pack-id", "name": "Voice Name", "description": "...",
+  "version": "1.0.0", "author": "...", "license": "MIT",
+  "baseVoice": "zh-CN-YunyangNeural", "f0Method": "rmvpe", "indexRate": 0.75,
+  "model": { "url": "https://.../model.pth", "size": 55270272, "sha256": "..." },
+  "index": { "url": "https://.../index_compact.index", "size": 6144045, "sha256": "..." }
+} ] }
+```
+
+> The demo voice (azusa-test) is **not redistributable** and is not listed in a
+> public registry; public registries must only contain copyright-clean voices.
+> For local testing: `node tests/mock-registry.mjs <dir> [port]` serves a folder
+> as a static registry.
 
 ### Settings explained (meaning & guidance)
 

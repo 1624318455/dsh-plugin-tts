@@ -1,10 +1,15 @@
 // Smoke test for the Host half of @dsh-external/dsh-plugin-tts.
-// Uses a fake ctx (webServer captures the two routes) and exercises the real
-// Edge TTS synthesis over the network, plus the RVC chain against a mock
-// local RVC inference server, then serves the audio back.
+// Uses a fake ctx (webServer captures the routes) and exercises the real
+// Edge TTS synthesis over the network, the RVC chain against a mock local
+// RVC inference server, plus the voice-pack registry (mock static server).
 //   node tests/smoke.mjs
 import * as plugin from '../lib/index.mjs';
 import { createServer } from 'node:http';
+import { createHash } from 'node:crypto';
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { startMockRegistry } from './mock-registry.mjs';
 
 const routes = [];
 
@@ -263,6 +268,95 @@ if (speakRoute && audioRoute) {
     check('compact-index proxy passes server error', cb.head.code === 502 && typeof JSON.parse(cb.body).error === 'string', cb.body);
   } finally {
     mock.server.close();
+  }
+}
+
+// --- voice-pack registry: manifest proxy + verified install ---
+
+{
+  // isolated packs dir for the test
+  process.env.DSH_TTS_PACKS_DIR = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-packs-'));
+  // build a mock registry dir
+  const regDir = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-reg-'));
+  const modelBytes = Buffer.from('FAKE-MODEL-BYTES-0123456789'.repeat(8000)); // ~200KB
+  const indexBytes = Buffer.from('FAKE-INDEX-BYTES-abcdef'.repeat(6000));      // ~108KB
+  const sha = b => createHash('sha256').update(b).digest('hex');
+  const modelSha = sha(modelBytes);
+  const indexSha = sha(indexBytes);
+  writeFileSync(path.join(regDir, 'model.pth'), modelBytes);
+  writeFileSync(path.join(regDir, 'index.index'), indexBytes);
+  writeFileSync(path.join(regDir, 'manifest.json'), JSON.stringify({
+    schema: 1,
+    packs: [
+      {
+        id: 'pack-a',
+        name: 'Demo Voice A',
+        description: '测试音色包（模型+紧凑索引）',
+        version: '1.0.0',
+        author: 'tester',
+        license: 'MIT',
+        baseVoice: 'zh-CN-YunyangNeural',
+        f0Method: 'rmvpe',
+        indexRate: 0.75,
+        model: { url: '', size: modelBytes.length, sha256: modelSha },
+        index: { url: '', size: indexBytes.length, sha256: indexSha }
+      },
+      { id: 'pack-b', name: 'Demo Voice B', description: '免索引音色包', version: '2.0.0', license: 'CC-BY', model: { url: '', size: modelBytes.length, sha256: modelSha } }
+    ]
+  }, null, 2));
+
+  // fix relative urls after knowing the server port
+  const reg = await startMockRegistry(regDir, 0);
+  try {
+    const base = reg.base;
+    const manifestPath = path.join(regDir, 'manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    for (const p of manifest.packs) {
+      if (p.model) p.model.url = `${base}/model.pth`;
+      if (p.index) p.index.url = `${base}/index.index`;
+    }
+    writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const packsRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-packs');
+    const installRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-pack-install');
+    const installedRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-packs-installed');
+    check('plugin registers pack routes', packsRoute !== undefined && installRoute !== undefined && installedRoute !== undefined);
+
+    const pr = await call(packsRoute, mockReq(`/dsh-tts-api/rvc-packs?registry=${encodeURIComponent(base)}`), mockRes());
+    const prData = JSON.parse(pr.body);
+    check('rvc-packs proxies manifest', pr.head.code === 200 && Array.isArray(prData.packs) && prData.packs.length === 2, pr.body);
+
+    const ir = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-a' })), mockRes());
+    const irData = JSON.parse(ir.body);
+    const installedModel = irData.modelPath || '';
+    const installedIndex = irData.indexPath || '';
+    const modelOk = installedModel && existsSync(installedModel) && sha(readFileSync(installedModel)) === modelSha;
+    const indexOk = installedIndex && existsSync(installedIndex) && sha(readFileSync(installedIndex)) === indexSha;
+    check('rvc-pack-install downloads + sha256 verifies + writes', ir.head.code === 200 && irData.ok && modelOk && indexOk,
+      `model=${installedModel} index=${installedIndex}`);
+
+    const ir2 = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-a' })), mockRes());
+    check('re-install skips (already installed)', JSON.parse(ir2.body).skipped === true, ir2.body);
+
+    const irB = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-b' })), mockRes());
+    const irBData = JSON.parse(irB.body);
+    check('index-free pack installs without index', irB.head.code === 200 && irBData.ok && irBData.indexPath === '', irB.body);
+
+    const st = await call(installedRoute, mockReq('/dsh-tts-api/rvc-packs-installed'), mockRes());
+    const stData = JSON.parse(st.body);
+    check('rvc-packs-installed lists 2 packs', st.head.code === 200 && stData.installed && stData.installed['pack-a'] && stData.installed['pack-b'], st.body);
+
+    // tampered sha256 -> install must fail and not leave files
+    writeFileSync(path.join(regDir, 'manifest.json'), JSON.stringify({
+      schema: 1,
+      packs: [{ id: 'pack-bad', name: 'Bad', version: '1.0.0', model: { url: `${base}/model.pth`, size: modelBytes.length, sha256: '0'.repeat(64) } }]
+    }, null, 2));
+    const bad = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-bad' })), mockRes());
+    const badData = JSON.parse(bad.body);
+    check('tampered sha256 rejected', bad.head.code === 502 && /sha256/.test(badData.error || ''), bad.body);
+    check('failed install leaves no model file', !existsSync(path.join(process.env.DSH_TTS_PACKS_DIR, 'pack_bad', 'model.pth')));
+  } finally {
+    reg.server.close();
   }
 }
 
