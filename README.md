@@ -110,6 +110,25 @@ E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe rvc-server.py \
 - **底噪音色**：Edge 先合成再转换的原始音色
 - **高级参数**（折叠）：底噪语速/音调/音量（如 `+10%`）、说话人 ID spk_id（多说话人模型）、f0 方法（rmvpe 质量高 / pm 快）、变调、index_rate、resample_sr、rms_mix_rate、protect、滤波半径 filter_radius（仅 harvest）、F0 曲线文件（手动指定音高）
 
+### 设置项详解（参数作用与建议）
+
+| 设置项 | 作用 | 建议 |
+|---|---|---|
+| 语速 / 音调 / 音量 | Edge TTS 朗读属性；RVC 模式下作用于转换前底噪，语调会透传到最终音色 | `0` = 默认；语速 ±10-20% 听感自然 |
+| 服务地址 | 本地 RVC 推理服务地址 | 默认 `http://127.0.0.1:4892` |
+| 模型路径 (.pth) | RVC 模型文件，即音色来源 | 必填；训练产出的模型 |
+| 索引路径 (.index) | 音色检索索引，提升音色还原度 | 留空 = 免索引（还原度略降，仍可用） |
+| 底噪音色 | 转换前的原始语音，决定语调/停顿 | 男声/女声按喜好选 |
+| 说话人 ID (spk_id) | 多说话人模型选择说话人 | 单说话人模型保持 0 |
+| f0 方法 | 音高检测算法：rmvpe 效果最好；pm 最快；harvest 低音好但慢；crepe 吃 GPU | 默认 rmvpe；CPU 建议 pm |
+| 变调 (f0_up_key) | 对音高整体升降，单位半音 | 0 默认；±2-3 可微调声线 |
+| 索引权重 (index_rate) | 越高音色越接近模型训练者，越低越接近底噪原声 | 0.5-0.75 常用 |
+| 输出采样率 (resample_sr) | 输出音频采样率，越高细节越好、文件越大 | 40000 默认 |
+| 响度混合 (rms_mix_rate) | 输出音量包络混合比例，越高越接近训练者响度习惯 | 0.25 默认 |
+| 辅音保护 (protect) | 保护清辅音与呼吸声，过高保留更多原声细节 | 0.33 默认 |
+| 滤波半径 (filter_radius) | 音高平滑滤波（仅 harvest 有效），越大曲线越平滑 | ≥3 启用平滑 |
+| F0 曲线文件 | 手动指定音高曲线文件，覆盖自动提取 | 留空 = 自动提取 |
+
 ### 实测延迟（NVIDIA GPU，服务常驻）
 
 | 场景 | 延迟 |
@@ -264,6 +283,25 @@ audio is decoded with the env's bundled `ffmpeg.exe`. Device auto-selects
   speaker id spk_id (multi-speaker models), f0 method (rmvpe quality / pm
   speed), pitch shift, index_rate, resample_sr, rms_mix_rate, protect,
   filter_radius (harvest only), F0 curve file (manual pitch)
+
+### Settings explained (meaning & guidance)
+
+| Setting | Effect | Guidance |
+|---|---|---|
+| Rate / Pitch / Volume | Edge TTS properties; in RVC mode they shape the base audio and the prosody carries into the final voice | `0` = default; ±10-20% rate sounds natural |
+| Service URL | Local RVC inference service address | default `http://127.0.0.1:4892` |
+| Model path (.pth) | The RVC model — your voice source | required |
+| Index path (.index) | Voice retrieval index; improves identity | empty = index-free (slightly lower fidelity) |
+| Base voice | Original voice before conversion; decides prosody/pauses | pick male/female as you like |
+| Speaker id (spk_id) | Picks the speaker for multi-speaker models | keep 0 for single-speaker models |
+| f0 method | Pitch detection: rmvpe best; pm fastest; harvest good bass but slow; crepe GPU-heavy | rmvpe default; pm on CPU |
+| Pitch shift (f0_up_key) | Global pitch shift in semitones | 0 default; ±2-3 to tune the voice |
+| Index rate | Higher = closer to the trained voice; lower = closer to the base | 0.5-0.75 common |
+| Resample sr | Output sample rate; higher = more detail, bigger files | 40000 default |
+| RMS mix rate | Output volume-envelope mix; higher = closer to the trainer's loudness | 0.25 default |
+| Protect | Protects unvoiced consonants/breath; too high keeps more of the source | 0.33 default |
+| Filter radius | Pitch smoothing (harvest only); larger = smoother curve | ≥3 enables smoothing |
+| F0 curve file | Manual pitch curve, overrides auto extraction | empty = auto |
 
 ### Measured latency (NVIDIA GPU, warm server)
 
