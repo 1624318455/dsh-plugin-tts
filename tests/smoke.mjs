@@ -424,14 +424,17 @@ if (speakRoute && audioRoute) {
       const pr = mockRes();
       await call(progressRoute, mockReq(`/dsh-tts-api/rvc-pack-progress?key=${pKey}`), pr);
       const d = JSON.parse(pr.body);
-      if (d && d.done !== true && typeof d.phase === 'string') { sawProgress = true; break; }
+      if (d && d.waiting !== true && typeof d.phase === 'string') { sawProgress = true; break; }
     }
     check('pack-progress reports in-flight bytes/phase', sawProgress === true);
     const res = await installPromise;
     check('delayed install completes', JSON.parse(res.body).ok === true, res.body);
     const pr2 = mockRes();
     await call(progressRoute, mockReq(`/dsh-tts-api/rvc-pack-progress?key=${pKey}`), pr2);
-    check('pack-progress returns done after install', JSON.parse(pr2.body).done === true, pr2.body);
+    check('pack-progress finished after install', JSON.parse(pr2.body).finished === true, pr2.body);
+    const pr3 = mockRes();
+    await call(progressRoute, mockReq('/dsh-tts-api/rvc-pack-progress?key=unknown-key-xyz'), pr3);
+    check('pack-progress unknown key -> waiting (not done)', JSON.parse(pr3.body).waiting === true, pr3.body);
   } finally {
     reg.server.close();
   }
