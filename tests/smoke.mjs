@@ -346,6 +346,43 @@ if (speakRoute && audioRoute) {
     const stData = JSON.parse(st.body);
     check('rvc-packs-installed lists 2 packs', st.head.code === 200 && stData.installed && stData.installed['pack-a'] && stData.installed['pack-b'], st.body);
 
+    // multi-index pack with RELATIVE urls (schema v2)
+    writeFileSync(path.join(regDir, 'manifest.json'), JSON.stringify({
+      schema: 2,
+      packs: [{
+        id: 'pack-c',
+        name: 'Multi Index Voice',
+        version: '1.0.0',
+        license: 'MIT',
+        model: { url: 'packs-shared/model.pth', size: modelBytes.length, sha256: modelSha },
+        indexes: [
+          { id: 'tiny', name: '紧凑 2k', url: 'packs-shared/i2k.index', size: 5, sha256: sha(Buffer.from('IDX2K')) },
+          { id: 'mid', name: '紧凑 10k', url: 'packs-shared/i10k.index', size: 6, sha256: sha(Buffer.from('IDX10K')) }
+        ]
+      }]
+    }, null, 2));
+    mkdirSync(path.join(regDir, 'packs-shared'));
+    writeFileSync(path.join(regDir, 'packs-shared', 'model.pth'), modelBytes);
+    writeFileSync(path.join(regDir, 'packs-shared', 'i2k.index'), Buffer.from('IDX2K'));
+    writeFileSync(path.join(regDir, 'packs-shared', 'i10k.index'), Buffer.from('IDX10K'));
+
+    const ic1 = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-c' })), mockRes());
+    const ic1d = JSON.parse(ic1.body);
+    const ic1Ok = ic1.head.code === 200 && ic1d.ok && ic1d.indexId === 'tiny'
+      && readFileSync(ic1d.indexPath, 'utf8') === 'IDX2K' && ic1d.variants.length === 2;
+    check('multi-index install defaults to first variant (relative urls)', ic1Ok, ic1.body);
+
+    const ic2 = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-c', indexId: 'mid' })), mockRes());
+    const ic2d = JSON.parse(ic2.body);
+    const ic2Ok = ic2.head.code === 200 && ic2d.ok && ic2d.indexId === 'mid'
+      && readFileSync(ic2d.indexPath, 'utf8') === 'IDX10K';
+    check('switching index variant re-downloads the chosen index', ic2Ok, ic2.body);
+
+    const st2 = await call(installedRoute, mockReq('/dsh-tts-api/rvc-packs-installed'), mockRes());
+    const st2Data = JSON.parse(st2.body);
+    check('installed.json records chosen index sha256', st2Data.installed['pack-c'].indexId === 'mid'
+      && st2Data.installed['pack-c'].indexSha256 === sha(Buffer.from('IDX10K')), st2.body);
+
     // tampered sha256 -> install must fail and not leave files
     writeFileSync(path.join(regDir, 'manifest.json'), JSON.stringify({
       schema: 1,

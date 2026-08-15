@@ -8,7 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
   <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="Awesome"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-22%2B-blue" alt="node"></a>
-  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-24%20passed-success" alt="tests"></a>
+  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-27%20passed-success" alt="tests"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts"><img src="https://img.shields.io/github/stars/1624318455/dsh-plugin-tts" alt="stars"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts/commits/main"><img src="https://img.shields.io/github/last-commit/1624318455/dsh-plugin-tts" alt="last commit"></a>
 </p>
@@ -173,17 +173,22 @@ RVC 训练出的检索索引常达**数百 MB**（实测 azusa-test：408MB / 12
    f0 方法、索引权重——立即可用；
 4. 已安装的包显示版本号，重复下载自动跳过；sha256 不符会中止并清理残留文件。
 
-清单格式（`manifest.json`）：
+清单格式（`manifest.json`，schema 2；url 支持相对路径，自动按仓库地址解析）：
 
 ```json
-{ "schema": 1, "packs": [ {
+{ "schema": 2, "packs": [ {
   "id": "pack-id", "name": "音色名", "description": "...",
   "version": "1.0.0", "author": "...", "license": "MIT",
   "baseVoice": "zh-CN-YunyangNeural", "f0Method": "rmvpe", "indexRate": 0.75,
-  "model": { "url": "https://.../model.pth", "size": 55270272, "sha256": "..." },
-  "index": { "url": "https://.../index_compact.index", "size": 6144045, "sha256": "..." }
+  "model": { "url": "packs/pack-id/model.pth", "size": 55270272, "sha256": "..." },
+  "indexes": [ { "id": "c10k", "name": "紧凑 10k（推荐）",
+                 "url": "packs/pack-id/index_compact.index", "size": 30720045, "sha256": "..." } ]
 } ] }
 ```
+
+- `indexes` 为索引变体数组（可多个，UI 里选择）；省略时兼容旧的单个 `index` 字段；
+- `url` 用相对路径（相对 manifest.json 所在目录）即可，同一个仓库本地/线上通用；
+- 免索引的音色包：不写 `indexes` / `index`。
 
 > 演示音色 azusa-test 受版权限制**不对外分发**，不出现在公开仓库；公开仓库只收录版权干净（可分发）的音色。
 > 本地测试可用 `node tests/mock-registry.mjs <目录> [端口]` 起一个静态仓库。
@@ -441,17 +446,23 @@ config in the settings panel —
 4. Installed packs show their version; re-downloading skips silently; a sha256
    mismatch aborts and cleans up partial files.
 
-Manifest format (`manifest.json`):
+Manifest format (`manifest.json`, schema 2; `url` may be relative — resolved
+against the registry base, so the same manifest works locally and online):
 
 ```json
-{ "schema": 1, "packs": [ {
+{ "schema": 2, "packs": [ {
   "id": "pack-id", "name": "Voice Name", "description": "...",
   "version": "1.0.0", "author": "...", "license": "MIT",
   "baseVoice": "zh-CN-YunyangNeural", "f0Method": "rmvpe", "indexRate": 0.75,
-  "model": { "url": "https://.../model.pth", "size": 55270272, "sha256": "..." },
-  "index": { "url": "https://.../index_compact.index", "size": 6144045, "sha256": "..." }
+  "model": { "url": "packs/pack-id/model.pth", "size": 55270272, "sha256": "..." },
+  "indexes": [ { "id": "c10k", "name": "Compact 10k (recommended)",
+                 "url": "packs/pack-id/index_compact.index", "size": 30720045, "sha256": "..." } ]
 } ] }
 ```
+
+- `indexes` is an array of index variants (the UI lets you pick one); the legacy
+  single `index` field still works;
+- `url` can be a relative path; omit `indexes`/`index` for an index-free pack.
 
 > The demo voice (azusa-test) is **not redistributable** and is not listed in a
 > public registry; public registries must only contain copyright-clean voices.
@@ -525,3 +536,4 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@dsh-external\ds
 ## License
 
 MIT
+

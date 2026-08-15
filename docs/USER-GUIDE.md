@@ -189,12 +189,12 @@
 
 1. **准备文件**：模型 `model.pth`；可选一个紧凑索引（用设置里「压缩索引」生成，
    10k ≈ 31MB）。
-2. **建一个目录**（例如 `my-voice/`），放入 `model.pth`、`index.index`，
+2. **建一个目录**（例如 `my-voice/`），放入 `model.pth`、索引文件，
    再建一个 `manifest.json`（清单/菜单），内容如下（把尖括号替换成你自己的值）：
 
    ```json
    {
-     "schema": 1,
+     "schema": 2,
      "packs": [ {
        "id": "my-voice",
        "name": "我的音色",
@@ -205,15 +205,18 @@
        "baseVoice": "zh-CN-YunyangNeural",
        "f0Method": "rmvpe",
        "indexRate": 0.75,
-       "model": { "url": "https://你的地址/my-voice/model.pth", "size": 55270272, "sha256": "..." },
-       "index": { "url": "https://你的地址/my-voice/index.index", "size": 6144045, "sha256": "..." }
+       "model": { "url": "my-voice/model.pth", "size": 55270272, "sha256": "..." },
+       "indexes": [ { "id": "c10k", "name": "紧凑 10k（推荐）",
+                      "url": "my-voice/index.index", "size": 6144045, "sha256": "..." } ]
      } ]
    }
    ```
 
-   - `size`：文件字节数（右键文件属性可见）。
-   - `sha256`：在 PowerShell 里执行 `Get-FileHash 文件路径 -Algorithm SHA256` 得到。
-   - 免索引的音色包：删掉 `"index"` 这一行即可。
+   - `url` 用**相对路径**（相对 manifest.json 所在目录）即可，放哪都通用；
+   - `indexes` 是索引变体数组（可以放多个，用户在界面里选）；只想要一个也可以；
+   - `size`：文件字节数（右键文件属性可见）；
+   - `sha256`：在 PowerShell 里执行 `Get-FileHash 文件路径 -Algorithm SHA256` 得到；
+   - 免索引的音色包：不写 `indexes` 即可。
 3. 把整个目录放到**任意静态托管**（GitHub Pages / 对象存储 / 网盘直链等），
    保证上面 url 能直接下载。
 4. 把仓库地址（manifest.json 所在目录的网址）发给用户，他们按第 5 节操作。
@@ -224,7 +227,7 @@
 ## 附：开发/测试命令
 
 ```sh
-node tests/smoke.mjs              # 冒烟测试（24 项）
+node tests/smoke.mjs              # 冒烟测试（27 项）
 node tests/mock-registry.mjs <目录> [端口]   # 本地音色包仓库
 node tests/e2e-real-rvc.mjs       # 真实 RVC 端到端（需 4892 服务）
 node tests/e2e-compact-index.mjs  # 紧凑索引端到端（需 4892 服务）
