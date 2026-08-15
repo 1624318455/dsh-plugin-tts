@@ -314,6 +314,11 @@ def scan_files(kind):
     logs = os.path.join(RVC_DIR, "logs")
     if os.path.isdir(logs):
         roots.append(logs)
+    # the plugin's voice-pack install dir, so downloaded packs show up in the
+    # browse picker (installed files are named <packId>.pth / <packId>.index)
+    pack_root = os.path.expanduser(os.path.join("~", ".dsh", "tts-rvc", "packs"))
+    if os.path.isdir(pack_root):
+        roots.append(pack_root)
     out = []
     seen = set()
     for root in roots:

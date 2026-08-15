@@ -6,7 +6,7 @@
 import * as plugin from '../lib/index.mjs';
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { startMockRegistry } from './mock-registry.mjs';
@@ -391,7 +391,30 @@ if (speakRoute && audioRoute) {
     const bad = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-bad' })), mockRes());
     const badData = JSON.parse(bad.body);
     check('tampered sha256 rejected', bad.head.code === 502 && /sha256/.test(badData.error || ''), bad.body);
-    check('failed install leaves no model file', !existsSync(path.join(process.env.DSH_TTS_PACKS_DIR, 'pack_bad', 'model.pth')));
+    check('failed install leaves no model file', !existsSync(path.join(process.env.DSH_TTS_PACKS_DIR, 'pack_bad', 'pack_bad.pth')));
+
+    // installed files are named <packId>.pth / <packId>.index so the browse
+    // picker can tell voices apart
+    check('installed files use pack-id names',
+      irData.modelPath.endsWith('pack-a.pth') && irData.indexPath.endsWith('pack-a.index'),
+      `${irData.modelPath} / ${irData.indexPath}`);
+
+    // stale entry (files deleted) is reconciled away on read
+    const staleDir = path.join(process.env.DSH_TTS_PACKS_DIR, 'pack-a');
+    rmSync(staleDir, { recursive: true, force: true });
+    const st3 = await call(installedRoute, mockReq('/dsh-tts-api/rvc-packs-installed'), mockRes());
+    const st3Data = JSON.parse(st3.body);
+    check('deleted pack no longer listed as installed', !st3Data.installed['pack-a'], st3.body);
+
+    // uninstall route removes files + record
+    const ui = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({ registry: base, packId: 'pack-b' })), mockRes());
+    const uiData = JSON.parse(ui.body);
+    const uninstallRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-pack-uninstall');
+    const un = await call(uninstallRoute, mockReq('/dsh-tts-api/rvc-pack-uninstall', JSON.stringify({ packId: 'pack-b' })), mockRes());
+    check('rvc-pack-uninstall removes files + record', un.head.code === 200
+      && !existsSync(uiData.modelPath)
+      && !JSON.parse((await call(installedRoute, mockReq('/dsh-tts-api/rvc-packs-installed'), mockRes())).body).installed['pack-b'],
+      un.body);
   } finally {
     reg.server.close();
   }
