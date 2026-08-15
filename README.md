@@ -21,7 +21,7 @@
 
 # dsh-plugin-tts — Edge TTS 语音大集成
 
-基于 Microsoft Edge 在线 TTS（node-edge-tts 协议，免费、无需 API Key）的
+基于 Microsoft Edge 在线 TTS（node-edge-tts 协议）的
 DeepSeek Harness 语音插件：给 AI 回复加朗读，支持逐条手动朗读与自动朗读。
 
 ## 功能
@@ -31,7 +31,7 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读，支持逐条手动朗�
 2. **自动朗读开关**：输入框左下角、命令按钮与权限选择按钮之间的喇叭按钮；
    开启后每条新完成的 AI 回复自动朗读（按钮带圆形高亮），关闭则不自动朗读。
 3. **语音设置面板**：侧边栏「设置 → 插件」新增「语音」标签页：
-   - **TTS提供者**：Edge TTS（免费，无需 API Key）
+   - **TTS提供者**：Edge TTS
    - **声色**：22 个经实测可用的 Edge TTS 音色（默认 晓萱 zh-CN-XiaoxuanNeural）
    - **试听测试**：输入文本 + 播放按钮（播放中显示旋转 loading，可点击停止；失败时红字提示）
 
