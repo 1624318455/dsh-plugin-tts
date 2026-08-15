@@ -2,3 +2,6 @@ node_modules/
 *.log
 .voice-test.mp3
 .env
+
+__pycache__/
+*.pyc
