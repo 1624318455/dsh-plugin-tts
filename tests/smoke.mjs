@@ -119,6 +119,16 @@ function startMockRvc() {
         if (req.url === '/load') {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: true }));
+        } else if (req.url.startsWith('/files?kind=')) {
+          const kind = req.url.slice('/files?kind='.length);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            ok: true,
+            kind,
+            files: kind === 'pth'
+              ? [{ name: 'demo.pth', path: 'C:/models/demo.pth', size: 55000000 }]
+              : [{ name: 'demo.index', path: 'C:/models/demo.index', size: 400000000 }]
+          }));
         } else if (req.url === '/convert') {
           const payload = JSON.parse(body || '{}');
           if (!payload.audio_base64) {
@@ -154,6 +164,32 @@ if (speakRoute && audioRoute) {
       const bytes = Buffer.isBuffer(ares.body) ? ares.body : Buffer.from(ares.body ?? '');
       check('rvc audio route serves wav (RIFF)', ares.head.code === 200 && bytes.length > 44 && bytes.slice(0, 4).toString() === 'RIFF', `code=${ares.head.code} bytes=${bytes.length}`);
     }
+
+    // upload-mode base audio (skip Edge synthesis)
+    const upRes = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+      text: '上传底噪链路测试。',
+      voice: 'zh-CN-XiaoxuanNeural',
+      provider: 'rvc',
+      custom: {
+        baseUrl: `http://127.0.0.1:${mock.port}`,
+        model: 'mock.pth',
+        index: '',
+        baseSource: 'upload',
+        baseAudioName: 'sample.wav',
+        baseAudioBase64: miniWav(1).toString('base64')
+      }
+    })), mockRes());
+    const upParsed = JSON.parse(upRes.body);
+    check('rvc upload-base speak returns 200 + url', upRes.head.code === 200 && typeof upParsed.url === 'string', upParsed.url ?? upRes.body);
+
+    // file-discovery proxy route
+    const filesRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-files');
+    const fr = await call(filesRoute, mockReq(`/dsh-tts-api/rvc-files?baseUrl=http://127.0.0.1:${mock.port}&kind=pth`), mockRes());
+    const filesData = JSON.parse(fr.body);
+    check('rvc-files proxy lists pth files', fr.head.code === 200 && Array.isArray(filesData.files) && filesData.files.length > 0 && filesData.files[0].name === 'demo.pth', fr.body);
+    const fi = await call(filesRoute, mockReq(`/dsh-tts-api/rvc-files?baseUrl=http://127.0.0.1:${mock.port}&kind=index`), mockRes());
+    const filesIdx = JSON.parse(fi.body);
+    check('rvc-files proxy lists index files', fi.head.code === 200 && Array.isArray(filesIdx.files) && filesIdx.files.length > 0 && filesIdx.files[0].name === 'demo.index', fi.body);
   } finally {
     mock.server.close();
   }

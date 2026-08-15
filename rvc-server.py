@@ -197,6 +197,44 @@ def health():
     }
 
 
+def scan_files(kind):
+    """Discover local model/index files so the web UI can pick them by path."""
+    exts = {".pth"} if kind == "pth" else {".index"}
+    roots = [
+        os.environ.get("weight_root", os.path.join(RVC_DIR, "assets", "weights")),
+        os.environ.get("index_root", os.path.join(RVC_DIR, "assets", "indices")),
+    ]
+    logs = os.path.join(RVC_DIR, "logs")
+    if os.path.isdir(logs):
+        roots.append(logs)
+    out = []
+    seen = set()
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        for dirpath, _, names in os.walk(root):
+            for n in names:
+                if os.path.splitext(n)[1].lower() in exts:
+                    p = os.path.abspath(os.path.join(dirpath, n))
+                    if p in seen:
+                        continue
+                    seen.add(p)
+                    try:
+                        size = os.path.getsize(p)
+                    except OSError:
+                        size = 0
+                    out.append({"name": n, "path": p, "size": size})
+    out.sort(key=lambda f: f["name"].lower())
+    return out
+
+
+@app.get("/files")
+def files(kind: str = "pth"):
+    if kind not in ("pth", "index"):
+        raise HTTPException(400, "kind must be pth|index")
+    return {"ok": True, "kind": kind, "files": scan_files(kind)}
+
+
 @app.post("/load")
 def load(payload: dict):
     with _lock:
