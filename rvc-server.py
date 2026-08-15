@@ -59,6 +59,22 @@ os.environ.setdefault("rmvpe_root", os.path.join(RVC_DIR, "assets", "rmvpe"))
 import numpy as np
 import soundfile as sf
 import torch
+
+# torch >= 2.6 defaults torch.load to weights_only=True, which breaks fairseq's
+# hubert checkpoint loading (contains non-allowlisted globals). All checkpoints
+# here are local + trusted (model .pth, hubert, rmvpe), so restore the legacy
+# behavior. Harmless on older torch.
+_orig_torch_load = torch.load
+
+
+def _tts_torch_load(*args, **kwargs):
+    if "weights_only" not in kwargs:
+        kwargs["weights_only"] = False
+    return _orig_torch_load(*args, **kwargs)
+
+
+torch.load = _tts_torch_load
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
