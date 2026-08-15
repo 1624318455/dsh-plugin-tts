@@ -2,12 +2,12 @@
 // Serves whatever is in <dir> (manifest.json + pack files), so you can build a
 // local voice-pack repo and point the plugin's 音色包 registry URL at it.
 //   node tests/mock-registry.mjs <dir> [port]
-// Also exports startMockRegistry(dir, port=0) for use from tests.
+// Also exports startMockRegistry(dir, port=0, delayMs=0) for use from tests.
 import { createServer } from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 
-export function startMockRegistry(dir, port = 0) {
+export function startMockRegistry(dir, port = 0, delayMs = 0) {
   const root = path.resolve(dir);
   const server = createServer((req, res) => {
     const url = new URL(req.url, 'http://x');
@@ -23,12 +23,16 @@ export function startMockRegistry(dir, port = 0) {
     const type = file.endsWith('.json')
       ? 'application/json; charset=utf-8'
       : 'application/octet-stream';
-    res.writeHead(200, {
-      'Content-Type': type,
-      'Content-Length': bytes.length,
-      'Access-Control-Allow-Origin': '*'
-    });
-    res.end(bytes);
+    const send = () => {
+      res.writeHead(200, {
+        'Content-Type': type,
+        'Content-Length': bytes.length,
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(bytes);
+    };
+    if (delayMs > 0) setTimeout(send, delayMs);
+    else send();
   });
   return new Promise(resolve => {
     server.listen(port, '127.0.0.1', () =>

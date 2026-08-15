@@ -397,6 +397,46 @@ if (speakRoute && audioRoute) {
   }
 }
 
+// --- pack-install progress reporting (delayed registry) ---
+{
+  process.env.DSH_TTS_PACKS_DIR = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-packs-prog-'));
+  const regDir = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-reg-prog-'));
+  const modelBytes = Buffer.from('PROGRESS-MODEL-0123456789'.repeat(5000));
+  const sha = b => createHash('sha256').update(b).digest('hex');
+  writeFileSync(path.join(regDir, 'model.pth'), modelBytes);
+  writeFileSync(path.join(regDir, 'manifest.json'), JSON.stringify({
+    schema: 2,
+    packs: [{ id: 'pack-d', name: 'Slow Pack', version: '1.0.0', license: 'MIT',
+      model: { url: 'model.pth', size: modelBytes.length, sha256: sha(modelBytes) } }]
+  }));
+  const reg = await startMockRegistry(regDir, 0, 400); // 400ms delay per file
+  try {
+    const installRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-pack-install');
+    const progressRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-pack-progress');
+    check('plugin registers pack-progress route', progressRoute !== undefined);
+    const pKey = 'prog-' + Date.now();
+    const installPromise = call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({
+      registry: reg.base, packId: 'pack-d', progressKey: pKey
+    })), mockRes());
+    let sawProgress = false;
+    for (let i = 0; i < 8; i++) {
+      await new Promise(r => setTimeout(r, 120));
+      const pr = mockRes();
+      await call(progressRoute, mockReq(`/dsh-tts-api/rvc-pack-progress?key=${pKey}`), pr);
+      const d = JSON.parse(pr.body);
+      if (d && d.done !== true && typeof d.phase === 'string') { sawProgress = true; break; }
+    }
+    check('pack-progress reports in-flight bytes/phase', sawProgress === true);
+    const res = await installPromise;
+    check('delayed install completes', JSON.parse(res.body).ok === true, res.body);
+    const pr2 = mockRes();
+    await call(progressRoute, mockReq(`/dsh-tts-api/rvc-pack-progress?key=${pKey}`), pr2);
+    check('pack-progress returns done after install', JSON.parse(pr2.body).done === true, pr2.body);
+  } finally {
+    reg.server.close();
+  }
+}
+
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
 process.exit(failed.length === 0 ? 0 : 1);
