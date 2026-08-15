@@ -111,6 +111,31 @@ E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe rvc-server.py \
 自动使用环境内的 `ffmpeg.exe` 解码 mp3 底噪。设备自动选 `cuda:0`（NVIDIA）或 `cpu`，可 `--device` 指定。
 转换时**缓存 faiss 索引对象**（按路径），分块模式下每块不再重复读取 ~400MB 索引文件；`/load` 时自动清空缓存。
 
+### 便携运行时（免装 RVC WebUI）
+
+给"只有音色模型、不想装整套 RVC WebUI"的人：一个免安装文件夹，内含转换服务需要的一切
+（Python + torch + 推理核心 + hubert/rmvpe + ffmpeg + `rvc-server.py`），双击 `启动服务.bat`
+即用。**已在本机实测**（RTX 5070：模型加载 + 转换正常）。
+
+打包（在已装 RVC WebUI 的机器上，**零下载**）：
+
+```powershell
+E:\...\RVC20240604Nvidia\runtime\python.exe tools\package-runtime.py `
+  --rvc-dir "E:\...\RVC20240604Nvidia" --out "D:\rvc-portable" --skip-torch
+```
+
+- **RTX 50 系（Blackwell）可选提速**：官方 pytorch CDN 对部分网络极慢（实测 31KB/s），
+  用国内镜像在可见终端里升级 torch 到 cu128：
+
+  ```powershell
+  D:\rvc-portable\runtime\python.exe -m pip install --upgrade `
+    --extra-index-url https://mirrors.aliyun.com/pytorch-wheels/cu128 `
+    torch==2.7.0+cu128 torchaudio==2.7.0+cu128
+  ```
+
+- 成品约 7-9GB，压缩 3-4GB（超出 GitHub 附件 2GB 上限，用网盘/对象存储分发，
+  或只分享打包脚本让各自本机生成）。详见[使用手册 §10](docs/USER-GUIDE.md)。
+
 ### 长文本渐进播放（自适应分块）
 
 RVC 是变声：输入音频长度 = 输出音频长度，长文本必须先合成整段底噪再转换。
@@ -364,6 +389,34 @@ mp3 base audio is decoded with the env's bundled `ffmpeg.exe`. Device
 auto-selects `cuda:0` (NVIDIA) or `cpu`; override with `--device`. Loaded faiss
 index objects are **cached by path** (cleared on `/load`), so chunked conversion
 no longer re-reads the ~400MB index file per chunk.
+
+### Portable runtime (no RVC WebUI needed)
+
+For users who have voice models but do not want to install the whole RVC WebUI:
+a no-install folder with everything the conversion service needs (Python + torch
++ inference core + hubert/rmvpe + ffmpeg + `rvc-server.py`); double-click
+`启动服务.bat` and it runs. **Verified locally** (RTX 5070: model load + convert).
+
+Build on any machine with an RVC WebUI (**zero downloads**):
+
+```powershell
+E:\...\RVC20240604Nvidia\runtime\python.exe tools\package-runtime.py `
+  --rvc-dir "E:\...\RVC20240604Nvidia" --out "D:\rvc-portable" --skip-torch
+```
+
+- **Optional RTX 50-series (Blackwell) speed-up**: the official pytorch CDN is
+  very slow on some networks (measured 31KB/s); use a mirror in a visible
+  terminal to upgrade torch to cu128:
+
+  ```powershell
+  D:\rvc-portable\runtime\python.exe -m pip install --upgrade `
+    --extra-index-url https://mirrors.aliyun.com/pytorch-wheels/cu128 `
+    torch==2.7.0+cu128 torchaudio==2.7.0+cu128
+  ```
+
+- Result is ~7-9GB (zip 3-4GB, over GitHub's 2GB asset limit) — distribute via
+  cloud drive/object storage, or share the build script instead.
+  See [user guide §10](docs/USER-GUIDE.md).
 
 ### Adaptive chunked progressive playback (long RVC reads)
 

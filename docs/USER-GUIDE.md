@@ -81,6 +81,10 @@
 
 ### 4.2 启动"转换服务"（一次性；每次想用时都要先启动）
 
+**没有装 RVC WebUI？** 可以下载别人做好的**便携运行时**（一个免安装的文件夹，
+含转换所需的一切，双击 `启动服务.bat` 即用；详见手册末尾「便携运行时」）。
+下面以已装 RVC WebUI 为例：
+
 1. 找到你的 RVC WebUI 安装目录（里面能看到 `runtime` 文件夹和 `assets` 文件夹）。
 2. 打开 **PowerShell 或命令提示符**，把下面这一整行复制进去，
    **把三处路径换成你自己的**，回车：
@@ -221,6 +225,48 @@
    保证上面 url 能直接下载。
 4. 把仓库地址（manifest.json 所在目录的网址）发给用户，他们按第 5 节操作。
 5. ⚠️ 版权：只发布你有权分发的音色（自己训练的、或已获授权的）。
+
+---
+
+## 10. 便携运行时（免装 RVC WebUI 也能用）
+
+**给谁用**：只有音色模型、但不想装整套 RVC WebUI 的人（比如收到别人分享的音色包）。
+
+**是什么**：一个免安装的文件夹，里面装好了转换服务需要的一切
+（Python + torch + 推理核心 + hubert/rmvpe 模型 + ffmpeg + `rvc-server.py`）。
+
+**怎么用**：
+1. 解压到任意位置（例如 `D:\rvc-portable`）；
+2. 双击里面的 **`启动服务.bat`**（会弹出一个小窗口，显示
+   `dsh-plugin-tts RVC server: http://127.0.0.1:4892`）；
+3. 小窗口**别关**，回到插件设置按第 4.3 节填模型/索引即可。
+4. 想停止：关掉那个小窗口。
+
+**怎么制作（给打包者）**：在已装 RVC WebUI 的机器上执行：
+
+```powershell
+E:\...\RVC20240604Nvidia\runtime\python.exe `
+  tools\package-runtime.py `
+  --rvc-dir "E:\...\RVC20240604Nvidia" `
+  --out "D:\rvc-portable" --skip-torch
+```
+
+- 脚本复制已验证的 Python 环境 + 推理核心 + hubert/rmvpe + ffmpeg + rvc-server.py，
+  **不下载任何东西**，成品立即可用（已在本机实测：RTX 5070 上模型加载与转换正常）；
+- **RTX 50 系列（Blackwell）可选的提速升级**：官方 pytorch CDN 对部分网络很慢
+  （实测 31KB/s，3.3GB 要 29 小时），用国内镜像在**可见的终端窗口**里跑（能看到进度条）：
+
+  ```powershell
+  D:\rvc-portable\runtime\python.exe -m pip install --upgrade `
+    --extra-index-url https://mirrors.aliyun.com/pytorch-wheels/cu128 `
+    torch==2.7.0+cu128 torchaudio==2.7.0+cu128
+  ```
+
+  （或给打包脚本加 `--index-url https://mirrors.aliyun.com/pytorch-wheels`；
+  不升级也能用，只是老 torch 在 50 系显卡上有 sm_120 兼容警告、性能略降）
+- 成品文件夹约 7-9GB，压缩后 3-4GB（超出 GitHub 附件 2GB 上限，
+  用网盘/对象存储分发，或只把脚本分享出去让各自本机生成）；
+- 便携目录内用 `runtime\python.exe rvc-server.py --port 4892` 启动同样可行。
 
 ---
 

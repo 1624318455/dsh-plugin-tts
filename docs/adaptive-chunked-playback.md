@@ -150,8 +150,9 @@ Host 内部：
 
 ## 11. Phase 2 预留
 
-- 便携运行时打包（torch ≥ 2.7 cu128 适配 Blackwell），新用户开箱即用；
-- 音色包注册表 + 下载 UI（版权干净音色）。
+- 音色包注册表 + 下载 UI（版权干净音色）→ 已包含在下方"已完成"（含私有仓库 rvc-for-tts 示例）；
+- 便携运行时打包 → **已完成（v1）**：`tools/package-runtime.py` 复制已验证环境 + 可选
+  torch cu128 升级（RTX 50 系提速，官方 CDN 慢时用国内镜像）；本机实测转换正常。
 
 > 已完成：
 > - `calibration.json` 落盘（`~/.dsh/tts-rvc/`，7 天有效 + 设备指纹，跨会话复用探测结果）；
@@ -159,10 +160,13 @@ Host 内部：
 >   子采样重建为**与源同度量**的精确 flat 索引（RVC 训练默认 L2，pipeline 的
 >   `square(1/score)` 加权即按 L2 设计），2k→5.9MB（-98.5%）、10k→29.3MB（-92.5%），
 >   RVC 管线零改动兼容，实测转换正常；音色包分发不再受索引体积阻碍；
-> - **音色包注册表 + 下载 UI**：清单格式（模型 + 紧凑索引 + sha256 + 版权/作者/版本），
->   Host 代理清单与下载（规避 CORS）、sha256 逐一校验后安装到
->   `~/.dsh/tts-rvc/packs/<id>/`，自动填入模型/索引并应用底噪/f0/index_rate 默认值；
->   失败自动清理残留；mock 仓库 `tests/mock-registry.mjs` 供本地测试。
+> - **音色包注册表 + 下载 UI**：清单格式（schema 2：模型 + indexes 变体数组 + sha256 +
+>   版权/作者/版本，url 支持相对路径），Host 代理清单与下载（规避 CORS）、sha256 逐一校验后
+>   安装到 `~/.dsh/tts-rvc/packs/<id>/`，自动填入模型/索引并应用底噪/f0/index_rate 默认值；
+>   失败自动清理残留；mock 仓库 `tests/mock-registry.mjs` 供本地测试；私有音色仓库
+>   `github.com/1624318455/rvc-for-tts`（azusa-test 模型 + 2k/10k/20k 紧凑索引）；
+> - **便携运行时打包 v1**：`tools/package-runtime.py`（--skip-torch 零下载即可用；
+>   可选 cu128 升级适配 Blackwell，官方 CDN 慢时用 aliyun 镜像）。
 
 ---
 
