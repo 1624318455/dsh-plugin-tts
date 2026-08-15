@@ -1,0 +1,4 @@
+node_modules/
+*.log
+.voice-test.mp3
+.env

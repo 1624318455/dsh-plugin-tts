@@ -1,0 +1,4 @@
+# dsh-plugin-tts bundle: register the Edge TTS voice plugin (host routes + client UI).
+- insert:
+    - id: tts
+      name: '@dsh-external/dsh-plugin-tts'
