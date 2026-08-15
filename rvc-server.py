@@ -294,11 +294,12 @@ def load(payload: dict):
 def compact_index(payload: dict):
     """Build a compact index from a big trained index.
 
-    RVC indexes (IVF, ~hundreds of MB) are sub-sampled into a small exact
-    IndexFlatIP over the same metric/vectors, so the RVC pipeline (read_index ->
-    reconstruct_n -> search k=8) works unchanged. Flat search over the sample is
-    strictly more accurate than the original IVF nprobe=1 search. Output is
-    written next to the source (or into out_dir) and never overwrites it.
+    RVC indexes (IVF, ~hundreds of MB) are sub-sampled into a small exact flat
+    index with the SAME metric as the source (RVC trains with index_factory
+    which defaults to L2; the pipeline's square(1/score) weighting is built for
+    L2, so a wrong metric inverts the neighbor ranking). Flat search over the
+    sample is exact over the sample. Output is written next to the source (or
+    into out_dir) and never overwrites it.
     """
     src = str(payload.get("index") or "").strip().strip('"')
     if not src or not os.path.exists(src):
@@ -317,6 +318,10 @@ def compact_index(payload: dict):
             idx = _faiss.read_index(src)
             ntotal = int(idx.ntotal)
             d = int(idx.d)
+            try:
+                metric = int(getattr(idx, "metric_type", _faiss.METRIC_L2))
+            except Exception:
+                metric = _faiss.METRIC_L2
             src_size = os.path.getsize(src)
             if ntotal <= target:
                 return {
@@ -329,7 +334,10 @@ def compact_index(payload: dict):
             big = idx.reconstruct_n(0, ntotal)
             rng = np.random.RandomState(42)
             sample = np.ascontiguousarray(big[rng.permutation(ntotal)[:target]], dtype="float32")
-            new_idx = _faiss.IndexFlatIP(d)
+            new_idx = (
+                _faiss.IndexFlatIP(d) if metric == _faiss.METRIC_INNER_PRODUCT
+                else _faiss.IndexFlatL2(d)
+            )
             new_idx.add(sample)
             stem = os.path.splitext(os.path.basename(src))[0]
             out_path = os.path.join(out_dir, "%s_compact_%d.index" % (stem, target))

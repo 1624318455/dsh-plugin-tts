@@ -139,14 +139,20 @@ RVC 训练出的检索索引常达**数百 MB**（实测 azusa-test：408MB / 12
 是分发音色包和冷启动加载的最大负担。设置面板「索引路径」右侧的**「压缩」按钮**可一键生成紧凑索引：
 
 1. 点「压缩」→ 选择目标向量数（2k ≈ 6MB / 5k ≈ 15MB / 10k ≈ 31MB / 20k ≈ 61MB）→ 「生成」；
-2. 原理：从原索引**子采样**向量，重建为同度量（IP）的精确 `IndexFlatIP` 索引——RVC 管线
-   （`read_index → reconstruct_n → search k=8`）零改动兼容；flat 精确检索比原 IVF `nprobe=1`
-   的近似检索**更准**，音色还原度基本不变；
+2. 原理：从原索引**子采样**向量，重建为**与源索引同度量**的精确 flat 索引——RVC 训练默认
+   L2（pipeline 的 `square(1/score)` 加权即按 L2 设计），紧凑索引自动跟随源度量（源为内积则
+   用 `IndexFlatIP`，否则 `IndexFlatL2`），RVC 管线（`read_index → reconstruct_n → search k=8`）
+   零改动兼容；flat 精确检索比原 IVF `nprobe=1` 的近似检索**更准**，音色还原度基本不变；
 3. 生成**不覆盖原文件**，输出为 `原文件名_compact_N.index`；成功后自动填入索引路径，立即可用；
 4. 构建时短暂占用 ~1GB 内存（读取大索引 + 重建），约几秒到几十秒。
 
 > 408MB → 6MB（2k）意味着分发音色包时索引不再是障碍；配合免索引模式（留空），
 > 任何机器都能"选个音色直接用"。
+
+**实测声音对比**（同一段真实语音，index_rate 0.75，样本级均差/RMS）：免索引 vs 完整索引 ≈ 37%
+（索引确实在起作用）；完整 vs 紧凑 2k ≈ 37%（2k 样本的 8 近邻 ≠ 全量的 8 近邻，属正常抽样偏差）。
+人耳听感上差异很小——训练良好的模型本身承载大部分音色，索引是"精修"。**分发音色包建议 10k
+（31MB）**；想要更强索引特征可把 index_rate 调向 1.0。
 
 ### 设置项详解（参数作用与建议）
 
@@ -361,11 +367,13 @@ path builds a compact index in one click:
 
 1. Click 压缩 → pick a target vector count (2k ≈ 6MB / 5k ≈ 15MB / 10k ≈ 31MB /
    20k ≈ 61MB) → 生成;
-2. It **sub-samples** the original index's vectors and rebuilds an exact
-   `IndexFlatIP` with the same metric — the RVC pipeline
-   (`read_index → reconstruct_n → search k=8`) needs zero changes; flat exact
-   search is *more* accurate than the original IVF `nprobe=1` approximation, so
-   voice identity is essentially unchanged;
+2. It **sub-samples** the original index's vectors and rebuilds an exact flat
+   index with the **same metric as the source** (RVC trains with L2 by default —
+   the pipeline's `square(1/score)` weighting is designed for L2 — so the
+   compact index uses `IndexFlatL2`, or `IndexFlatIP` when the source is
+   inner-product). The RVC pipeline (`read_index → reconstruct_n → search k=8`)
+   needs zero changes; flat exact search is *more* accurate than the original
+   IVF `nprobe=1` approximation, so voice identity is essentially unchanged;
 3. The original file is **never overwritten**; output is
    `原文件名_compact_N.index`, and the new path is filled into the index field
    automatically;
