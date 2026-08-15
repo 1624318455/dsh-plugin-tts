@@ -5,6 +5,7 @@
 //   node tests/smoke.mjs
 import * as plugin from '../lib/index.mjs';
 import { createServer } from 'node:http';
+import net from 'node:net';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
@@ -459,6 +460,54 @@ if (speakRoute && audioRoute) {
     await call(progressRoute, mockReq('/dsh-tts-api/rvc-pack-progress?key=unknown-key-xyz'), pr3);
     check('pack-progress unknown key -> waiting (not done)', JSON.parse(pr3.body).waiting === true, pr3.body);
   } finally {
+    reg.server.close();
+  }
+}
+
+// --- pack download through an HTTP CONNECT proxy (mimics Clash) ---
+{
+  process.env.DSH_TTS_PACKS_DIR = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-packs-proxy-'));
+  const regDir = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-reg-proxy-'));
+  const modelBytes = Buffer.from('PROXY-DOWNLOAD-abcdef'.repeat(8000));
+  const sha = b => createHash('sha256').update(b).digest('hex');
+  writeFileSync(path.join(regDir, 'model.pth'), modelBytes);
+  writeFileSync(path.join(regDir, 'manifest.json'), JSON.stringify({
+    schema: 2,
+    packs: [{ id: 'pack-p', name: 'Proxy Pack', version: '1.0.0', license: 'MIT',
+      model: { url: 'model.pth', size: modelBytes.length, sha256: sha(modelBytes) } }]
+  }));
+  const reg = await startMockRegistry(regDir, 0);
+  // minimal CONNECT tunnel proxy (CONNECT arrives via the 'connect' event)
+  const proxy = createServer((req, res) => { res.writeHead(405); res.end(); });
+  proxy.on('connect', (req, clientSocket, head) => {
+    const idx = req.url.indexOf(':');
+    const host = req.url.slice(0, idx);
+    const port = Number(req.url.slice(idx + 1));
+    const target = net.connect(port, host, () => {
+      clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+      if (head && head.length) target.write(head);
+      clientSocket.pipe(target);
+      target.pipe(clientSocket);
+    });
+    target.on('error', () => { try { clientSocket.destroy(); } catch (e) {} });
+    clientSocket.on('error', () => {});
+  });
+  await new Promise(r => proxy.listen(0, '127.0.0.1', r));
+  const proxyPort = proxy.address().port;
+  try {
+    const packsRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-packs');
+    const installRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-pack-install');
+    const pr = await call(packsRoute, mockReq(`/dsh-tts-api/rvc-packs?registry=${encodeURIComponent(reg.base)}&proxy=${encodeURIComponent(`http://127.0.0.1:${proxyPort}`)}`), mockRes());
+    const prData = JSON.parse(pr.body);
+    check('manifest fetch through proxy', pr.head.code === 200 && prData.packs[0].id === 'pack-p', pr.body);
+    const ir = await call(installRoute, mockReq('/dsh-tts-api/rvc-pack-install', JSON.stringify({
+      registry: reg.base, packId: 'pack-p', proxy: `http://127.0.0.1:${proxyPort}`
+    })), mockRes());
+    const irData = JSON.parse(ir.body);
+    check('install through proxy tunnel downloads + verifies', ir.head.code === 200 && irData.ok
+      && existsSync(irData.modelPath) && sha(readFileSync(irData.modelPath)) === sha(modelBytes), ir.body);
+  } finally {
+    proxy.close();
     reg.server.close();
   }
 }
