@@ -1,8 +1,10 @@
 // Smoke test for the Host half of @dsh-external/dsh-plugin-tts.
 // Uses a fake ctx (webServer captures the two routes) and exercises the real
-// Edge TTS synthesis over the network, then serves the audio back.
+// Edge TTS synthesis over the network, plus the RVC chain against a mock
+// local RVC inference server, then serves the audio back.
 //   node tests/smoke.mjs
 import * as plugin from '../lib/index.mjs';
+import { createServer } from 'node:http';
 
 const routes = [];
 
@@ -84,6 +86,77 @@ if (speakRoute && audioRoute) {
 
   const badRes = await call(audioRoute, mockReq('/dsh-tts-audio/nope'), mockRes());
   check('unknown audio id -> 404', badRes.head.code === 404);
+}
+
+// --- RVC chain against a mock local RVC server ---
+
+function miniWav(seconds = 1, sr = 40000) {
+  const n = sr * seconds;
+  const dataSize = n * 2;
+  const buf = Buffer.alloc(44 + dataSize);
+  buf.write('RIFF', 0);
+  buf.writeUInt32LE(36 + dataSize, 4);
+  buf.write('WAVE', 8);
+  buf.write('fmt ', 12);
+  buf.writeUInt32LE(16, 16);
+  buf.writeUInt16LE(1, 20);
+  buf.writeUInt16LE(1, 22);
+  buf.writeUInt32LE(sr, 24);
+  buf.writeUInt32LE(sr * 2, 28);
+  buf.writeUInt16LE(2, 32);
+  buf.writeUInt16LE(16, 34);
+  buf.write('data', 36);
+  buf.writeUInt32LE(dataSize, 40);
+  return buf;
+}
+
+function startMockRvc() {
+  return new Promise((resolve) => {
+    const server = createServer((req, res) => {
+      let body = '';
+      req.on('data', (d) => (body += d));
+      req.on('end', () => {
+        if (req.url === '/load') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true }));
+        } else if (req.url === '/convert') {
+          const payload = JSON.parse(body || '{}');
+          if (!payload.audio_base64) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ message: 'audio_base64 required' }));
+            return;
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ audio_base64: miniWav().toString('base64'), sample_rate: 40000 }));
+        } else {
+          res.writeHead(404);
+          res.end();
+        }
+      });
+    });
+    server.listen(0, '127.0.0.1', () => resolve({ server, port: server.address().port }));
+  });
+}
+
+if (speakRoute && audioRoute) {
+  const mock = await startMockRvc();
+  try {
+    const res = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+      text: '这是一段 RVC 链路测试。',
+      voice: 'zh-CN-XiaoxuanNeural',
+      provider: 'rvc',
+      custom: { baseUrl: `http://127.0.0.1:${mock.port}`, model: 'mock.pth', index: '' }
+    })), mockRes());
+    const parsed = JSON.parse(res.body);
+    check('rvc speak returns 200 + url', res.head.code === 200 && typeof parsed.url === 'string' && parsed.url.startsWith('/dsh-tts-audio/'), parsed.url ?? res.body);
+    if (parsed.url) {
+      const ares = await call(audioRoute, mockReq(parsed.url), mockRes());
+      const bytes = Buffer.isBuffer(ares.body) ? ares.body : Buffer.from(ares.body ?? '');
+      check('rvc audio route serves wav (RIFF)', ares.head.code === 200 && bytes.length > 44 && bytes.slice(0, 4).toString() === 'RIFF', `code=${ares.head.code} bytes=${bytes.length}`);
+    }
+  } finally {
+    mock.server.close();
+  }
 }
 
 const failed = results.filter((r) => !r.ok);

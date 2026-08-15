@@ -84,6 +84,44 @@ TTS 引擎：worker 协议镜像 [node-edge-tts@1.2.10](https://github.com/Schne
 - 新消息完成（自动开启）→ 打断当前、朗读最新；无文本消息跳过；切换会话只停自动来源。
 - 合成/播放失败 → 静默清理状态并恢复图标（试听面板内会显示红字提示）。
 
+## 自定义音色（RVC）
+
+用你本地训练好的 **RVC 模型**做音色转换：设置面板把 TTS提供者切到「自定义音色（RVC）」，朗读链路变为
+`Edge TTS 底噪 → 本机 RVC 推理服务（rvc-server.py）→ 转换后的 wav → 播放`，全程在本机 GPU/CPU 上完成。
+
+### 启动本地 RVC 推理服务
+
+```sh
+# 任选一个 RVC-Project WebUI 安装（本机验证示例，azusa-test 仅本地使用）
+E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe rvc-server.py \
+    --rvc-dir "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia" \
+    --model "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\assets\weights\azusa-test.pth" \
+    --index "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\assets\indices\azusa-test_..._v2.index" \
+    --port 4892
+```
+
+`rvc-server.py` 提供 `GET /health`、`POST /load {model,index}`、`POST /convert {audio_base64,params}`（JSON+base64，
+无额外依赖）；自动使用环境内的 `ffmpeg.exe` 解码 mp3 底噪。设备自动选 `cuda:0`（NVIDIA）或 `cpu`，可 `--device` 指定。
+
+### 设置面板 RVC 配置
+
+- **服务地址**（默认 `http://127.0.0.1:4892`）
+- **模型路径 (.pth)** 与 **索引路径 (.index)**——**索引留空 = 免索引模式**（index_rate 自动为 0，质量略降仍可用）
+- **底噪音色**：Edge 先合成再转换的原始音色
+- **高级参数**（折叠）：f0 方法（rmvpe 质量高 / pm 快）、变调、index_rate、resample_sr、rms_mix_rate、protect
+
+### 实测延迟（NVIDIA GPU，服务常驻）
+
+| 场景 | 延迟 |
+|---|---|
+| 热转换（短句） | 带 index ~1s / 免 index ~0.4s |
+| 完整链路（Edge 合成 + 转换） | ~2-6s |
+| 首次请求（含 hubert/模型加载） | 数秒到十余秒 |
+
+### 版权提示
+
+演示用音色（azusa-test）**仅限本机开发验证，请勿对外分发**（声音版权）。对外发布的音色包必须使用版权干净的声音。
+
 ## 疑难排查
 
 - **403 / `Sec-MS-GEC` 被拒**：Edge 端点协议或版本校验变更，更新
@@ -192,6 +230,52 @@ derived from the voice locale, one retry on abnormal (1006) closures. Audio is
   messages are skipped; session switches only stop auto reads.
 - Synthesis / playback failures silently reset the icon state (the preview
   panel shows an inline error message).
+
+## Custom voice (RVC)
+
+Use your locally trained **RVC model** for voice conversion: switch the TTS
+provider to "自定义音色（RVC）" in the settings panel and the read pipeline
+becomes `Edge TTS base audio → local RVC inference server (rvc-server.py) →
+converted wav → playback`, all computed on the user's own GPU/CPU.
+
+### Start the local RVC inference server
+
+```sh
+# any RVC-Project WebUI install (azusa-test below is a local dev example only)
+E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe rvc-server.py \
+    --rvc-dir "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia" \
+    --model "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\assets\weights\azusa-test.pth" \
+    --index "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\assets\indices\azusa-test_..._v2.index" \
+    --port 4892
+```
+
+`rvc-server.py` exposes `GET /health`, `POST /load {model,index}` and
+`POST /convert {audio_base64,params}` (JSON + base64, no extra deps); mp3 base
+audio is decoded with the env's bundled `ffmpeg.exe`. Device auto-selects
+`cuda:0` (NVIDIA) or `cpu`; override with `--device`.
+
+### Settings-panel RVC config
+
+- **Service URL** (default `http://127.0.0.1:4892`)
+- **Model path (.pth)** and **Index path (.index)** — **leave index empty =
+  index-free mode** (index_rate forced to 0; slightly lower quality, still works)
+- **Base voice**: the Edge voice synthesized before conversion
+- **Advanced** (collapsible): f0 method (rmvpe quality / pm speed), pitch shift,
+  index_rate, resample_sr, rms_mix_rate, protect
+
+### Measured latency (NVIDIA GPU, warm server)
+
+| Scenario | Latency |
+|---|---|
+| Warm conversion (short clip) | with index ~1s / index-free ~0.4s |
+| Full chain (Edge synth + conversion) | ~2-6s |
+| First request (hubert/model load) | seconds to ~15s |
+
+### Copyright note
+
+The demo voice (azusa-test) is **for local development only — do not
+redistribute** (voice copyright). Published voice packs must use
+copyright-clean voices.
 
 ## Troubleshooting
 
