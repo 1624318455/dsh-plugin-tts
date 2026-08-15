@@ -8,7 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
   <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="Awesome"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-22%2B-blue" alt="node"></a>
-  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-14%20passed-success" alt="tests"></a>
+  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-24%20passed-success" alt="tests"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts"><img src="https://img.shields.io/github/stars/1624318455/dsh-plugin-tts" alt="stars"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts/commits/main"><img src="https://img.shields.io/github/last-commit/1624318455/dsh-plugin-tts" alt="last commit"></a>
 </p>
@@ -24,6 +24,9 @@
 基于 Microsoft Edge 在线 TTS（node-edge-tts 协议）的
 DeepSeek Harness 语音插件：给 AI 回复加朗读，支持逐条手动朗读与自动朗读。
 
+> 📖 **第一次用？看[《使用手册（执行手册）》](docs/USER-GUIDE.md)** —— 每一步都有
+> "做什么 / 怎么做 / 怎么算成功"，从朗读、RVC 音色到音色包下载全覆盖。
+
 ## 功能
 
 1. **消息朗读按钮**：每条 AI 回复左下角操作行（复制 / 好的回答 / 有问题的回答 / 在新对话中分支 之间）
@@ -31,8 +34,10 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读，支持逐条手动朗�
 2. **自动朗读开关**：输入框左下角、命令按钮与权限选择按钮之间的喇叭按钮；
    开启后每条新完成的 AI 回复自动朗读（按钮带圆形高亮），关闭则不自动朗读。
 3. **语音设置面板**：侧边栏「设置 → 插件」新增「语音」标签页：
-   - **TTS提供者**：Edge TTS
-   - **声色**：22 个经实测可用的 Edge TTS 音色（默认 晓萱 zh-CN-XiaoxuanNeural）
+   - **TTS提供者**：Edge TTS（免费在线）/ 自定义音色（RVC）
+   - **朗读音色**：22 个经实测可用的 Edge TTS 音色（默认 晓萱 zh-CN-XiaoxuanNeural）
+   - **声音调节**：语速 / 音调 / 音量（0 = 默认）
+   - **音色包**：从音色包仓库一键下载安装音色
    - **试听测试**：输入文本 + 播放按钮（播放中显示旋转 loading，可点击停止；失败时红字提示）
 
 ## 要求
@@ -130,11 +135,11 @@ RVC 是变声：输入音频长度 = 输出音频长度，长文本必须先合�
 
 ### 设置面板 RVC 配置
 
-- **底噪来源**：Edge TTS 合成 / 上传音频文件（wav/mp3/m4a/ogg/flac）。选「上传」时不再经过 Edge TTS，语速/音调/音量不适用。
+- **原声来源**：让 Edge TTS 先读一遍 / 上传音频文件（wav/mp3/m4a/ogg/flac）。选「上传」时不再经过 Edge TTS，语速/音调/音量不适用。
 - **服务地址**（默认 `http://127.0.0.1:4892`）
-- **模型路径 (.pth)** 与 **索引路径 (.index)**——输入框右侧有「浏览」按钮（RVC 服务自动扫描本机模型/索引文件，点击回填路径）；**索引留空 = 免索引模式**（index_rate 自动为 0，质量略降仍可用）
-- **底噪音色**（Edge 底噪模式）：Edge 先合成再转换的原始音色
-- **高级参数**（折叠）：底噪语速/音调/音量（如 `+10%`）、说话人 ID spk_id（多说话人模型）、f0 方法（rmvpe 质量高 / pm 快）、变调、index_rate、resample_sr、rms_mix_rate、protect、滤波半径 filter_radius（仅 harvest）、F0 曲线文件（手动指定音高）
+- **模型路径 (.pth)** 与 **索引路径 (.index)**——输入框右侧有「浏览」按钮（RVC 服务自动扫描本机模型/索引文件，点击回填路径）；**索引留空 = 免索引模式**（index_rate 自动为 0，质量略降仍可用）；索引路径旁有「压缩索引」按钮（生成紧凑索引）
+- **原声音色**（原声来源=Edge 时）：Edge 先合成再转换的原始音色
+- **高级参数**（折叠，一般不用改）：原声语速/音调/音量（如 `+10%`）、说话人 ID spk_id（多说话人模型）、f0 方法（rmvpe 质量高 / pm 快）、变调、索引权重 index_rate、resample_sr、rms_mix_rate、protect、滤波半径 filter_radius（仅 harvest）、F0 曲线文件（手动指定音高）
 
 ### 紧凑索引（压缩 .index）
 
@@ -255,6 +260,10 @@ MIT
 A dual-sided (Host + Web UI) DeepSeek Harness plugin that reads assistant
 replies aloud using Microsoft Edge's online TTS (node-edge-tts protocol —
 free, no API key).
+
+> 📖 **First time? See the [user guide (执行手册)](docs/USER-GUIDE.md)** — every step
+> covers "what / how / how to tell it worked": read-aloud, RVC voices and
+> voice-pack downloads.
 
 ## Features
 
