@@ -117,7 +117,10 @@ RVC 是变声：输入音频长度 = 输出音频长度，长文本必须先合�
    通过 `GET /dsh-tts-api/rvc-next` 逐块拉取——**转换与播放重叠，长文无缝**；
 4. 分档表：`ratio ≤ 0.4 → 20s/预热2`，`0.4-0.6 → 15s/2`，`0.6-0.9 → 10s/3`，
    `> 0.9（CPU）→ 6s/4`，探测失败兜底 `10s/3`；
-5. 短文本（≤12 秒）与上传底噪模式**不切块**，仍走单 URL 链路，零额外开销。
+5. 短文本（≤12 秒）与上传底噪模式**不切块**，仍走单 URL 链路，零额外开销；
+6. **进度可见**：播放时朗读按钮 tooltip 与试听面板显示「第 x/y 段 · 边播边合成」；
+7. **校准落盘**：探测结果存入 `~/.dsh/tts-rvc/calibration.json`（7 天有效，
+   记录 GPU 名做设备指纹），dsh 重启后直接复用，换显卡自动重新探测。
 
 > 完整设计见 [`docs/adaptive-chunked-playback.md`](docs/adaptive-chunked-playback.md)。
 
@@ -312,7 +315,12 @@ everything before playing (a long silent wait), the plugin:
 4. Tiers: `ratio ≤ 0.4 → 20s/prewarm 2`, `0.4-0.6 → 15s/2`, `0.6-0.9 → 10s/3`,
    `> 0.9 (CPU) → 6s/4`, probe failure falls back to `10s/3`;
 5. Short text (≤12s) and upload-base mode stay on the single-URL path (zero
-   extra overhead).
+   extra overhead);
+6. **Visible progress**: the read button tooltip and preview panel show
+   "chunk x/y · playing while converting";
+7. **Persistent calibration**: results are stored in
+   `~/.dsh/tts-rvc/calibration.json` (7-day validity, GPU-name fingerprint) —
+   reused across dsh restarts, re-probed automatically when the GPU changes.
 
 > Full design: [`docs/adaptive-chunked-playback.md`](docs/adaptive-chunked-playback.md).
 

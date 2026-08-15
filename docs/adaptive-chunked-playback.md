@@ -42,9 +42,14 @@ Edge 合成整段底噪? 不 —— 改成：
 首次使用长文本 RVC 时，Host 做一次 **5 秒探测**：
 
 1. Edge 合成一段固定探测文本（≈3.6 秒音频）；
-2. 本机 RVC 转换，测出 `ratio = 转换耗时 / 音频秒数`；
+2. 本机 RVC 转换，测出 `ratio = 转换耗时 / 音频秒数`（含每块 Edge 合成耗时，
+   与真实分块流水线口径一致，偏保守）；
 3. 按分档表决定 `chunkSec`（每块音频秒数）与 `prewarm`（先转换几块再开播）；
-4. 结果按配置指纹缓存到**本次会话**（`~/.dsh/tts-rvc/calibration.json` 落盘留到 Phase 2）。
+4. 结果按配置指纹持久化到 `~/.dsh/tts-rvc/calibration.json`：
+   - **7 天有效**，dsh 重启后直接复用，连那一次 ~7s 探测都省掉；
+   - 同时记录 `device`（RVC 服务 `/health` 上报的 GPU 名）；换显卡/切 CPU 时
+     自动重新探测，不会拿旧的 GPU 数据给 CPU 用；
+   - 探测失败不覆盖磁盘上的旧有效条目（会话内 2 分钟用保守档兜底）。
 
 | ratio | 块大小 | 预热块数 | 适用 |
 |---|---|---|---|
@@ -98,20 +103,23 @@ Host 内部：
 
 ## 6. 前端渐进播放
 
-`playChunks(jobId, chunks, token)`：
+`playChunks(jobId, chunks, total, token)`：
 
 - 维护一个**缓冲队列**；播放第 n 块的同时，若"剩余缓冲 < 2 块"就向
   `/rvc-next` 拉下一块（**转换与播放重叠**）；
 - 块与块之间 `onended` 无缝衔接，同一 `<audio>` 换 src；
 - 停止/打断：`speakToken` 全局令牌，任何新朗读或停止都会使旧队列立即退出；
-- 播放期间朗读按钮保持音柱动画（"下一段合成中…"由动画本身表达，不静默丢内容）；
+- **进度可见**：`shared.chunkProgress = { index, total }` 随每块开播更新——
+  朗读按钮 tooltip 显示「第 x/y 段播放中」，试听面板显示
+  「正在播放 第 x/y 段 · 后续段落边播边合成…」（"下一段合成中…"不再只是动画，
+  有明确数字，绝不静默丢内容）；
 - 失败：某块加载失败 → 跳过继续；后续块合成失败 → 红字提示并停止。
 
 ## 7. RVC 服务端配套
 
 `rvc-server.py` 本次新增：
 
-1. **`/health` 上报 `gpu_name` / `vram_gb`** —— 为 Phase 2 的"按设备给默认档位"做准备；
+1. **`/health` 上报 `gpu_name` / `vram_gb`** —— 校准持久化的设备指纹来源；
 2. **faiss 索引缓存**：RVC pipeline 每次转换都会 `faiss.read_index` 重新读一遍
    ~400MB 索引文件（每块一次，代价可观）。现在按路径缓存加载好的 Index 对象，
    `/load` 时清空 —— 分块模式下每块省掉一次 400MB 磁盘读。
@@ -127,17 +135,22 @@ Host 内部：
 | 停止 / 换消息 / 切会话 | 令牌失效，队列立即退出，无残留播放 |
 | 刷新页面 | 队列随页面消失；Host job 按时回收 |
 
-## 9. 实测（RTX 5070 + azusa-test）
+## 10. 实测（RTX 5070 + azusa-test）
 
-- 短句链路 ~5.4s（含 Edge 合成）；（等待真实长文本数据回填）
-- 长文本：预热 2 块后即可开播，后续每块在上一块播放期间完成，无感知停顿。
+| 场景 | 结果 |
+|---|---|
+| 短句链路 | ~4.6-5.4s（含 Edge 合成） |
+| 长文本首响 | 探测 + 预热 2 块 ≈ 6-7s（**此后 7 天内从 calibration.json 直接复用，不再探测**） |
+| 长文本全链 | 6/6 块取完，迟到块 RIFF 476KB；块间无感知停顿 |
+| 索引缓存收益 | ratio 0.62 → 0.48（省掉每块 400MB 索引重读），档位 10s/3 → 15s/2 |
 
-## 10. Phase 2 预留
+## 11. Phase 2 预留
 
-- `calibration.json` 落盘（`~/.dsh/tts-rvc/`），跨会话复用探测结果，按设备指纹细分档位；
 - 紧凑索引生成工具（免 index / 紧凑 index 二选一已支持），减少首块延迟；
 - 便携运行时打包（torch ≥ 2.7 cu128 适配 Blackwell），新用户开箱即用；
 - 音色包注册表 + 下载 UI（版权干净音色）。
+
+> 已完成：`calibration.json` 落盘（`~/.dsh/tts-rvc/`，7 天有效 + 设备指纹，跨会话复用探测结果）。
 
 ---
 
@@ -148,7 +161,9 @@ read must first synthesize the whole base audio with Edge TTS. Instead of
 converting everything before playing (long silent wait), the plugin now:
 
 1. **Probes** the local machine once (convert a ~3.6s clip, measure
-   `ratio = convert_time / audio_seconds`);
+   `ratio = convert_time / audio_seconds`); results persist to
+   `~/.dsh/tts-rvc/calibration.json` (7-day validity, GPU-name fingerprint,
+   re-probes on device change), so the probe is paid only once per config;
 2. Picks **chunk size (6–20s) and prewarm count (2–4)** from a ratio tier table;
 3. Splits the text into sentence-aligned chunks, converts the prewarm chunks,
    and returns a **job queue** immediately;
