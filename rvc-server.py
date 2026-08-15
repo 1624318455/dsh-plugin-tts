@@ -212,6 +212,8 @@ def convert(payload: dict):
     if not audio_b64:
         raise HTTPException(400, "audio_base64 required")
     p = payload.get("params") or {}
+    spk_id = int(p.get("spk_id", 0))
+    f0_file = str(p.get("f0_file") or "").strip().strip('"')
     f0_up_key = int(p.get("f0_up_key", 0))
     f0_method = str(p.get("f0_method", "rmvpe"))
     index_rate = float(p.get("index_rate", 0.75))
@@ -225,10 +227,16 @@ def convert(payload: dict):
             data = unb64(audio_b64)
             wav_path = decode_to_wav(data)
             try:
+                # pipeline expects f0_file to be an object with a `.name` path
+                f0_handle = (
+                    type("F0File", (), {"name": os.path.abspath(f0_file)})()
+                    if f0_file
+                    else None
+                )
                 # file_index="" + file_index2=<index> bypasses the WebUI's
                 # "trained"->"added" auto-rewrite; empty index = index-free mode.
                 info, opt = vc.vc_single(
-                    0, wav_path, f0_up_key, None, f0_method,
+                    spk_id, wav_path, f0_up_key, f0_handle, f0_method,
                     "", _state["index"], index_rate,
                     filter_radius, resample_sr, rms_mix_rate, protect,
                 )

@@ -108,7 +108,7 @@ E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe rvc-server.py \
 - **服务地址**（默认 `http://127.0.0.1:4892`）
 - **模型路径 (.pth)** 与 **索引路径 (.index)**——**索引留空 = 免索引模式**（index_rate 自动为 0，质量略降仍可用）
 - **底噪音色**：Edge 先合成再转换的原始音色
-- **高级参数**（折叠）：f0 方法（rmvpe 质量高 / pm 快）、变调、index_rate、resample_sr、rms_mix_rate、protect
+- **高级参数**（折叠）：底噪语速/音调/音量（如 `+10%`）、说话人 ID spk_id（多说话人模型）、f0 方法（rmvpe 质量高 / pm 快）、变调、index_rate、resample_sr、rms_mix_rate、protect、滤波半径 filter_radius（仅 harvest）、F0 曲线文件（手动指定音高）
 
 ### 实测延迟（NVIDIA GPU，服务常驻）
 
@@ -260,8 +260,10 @@ audio is decoded with the env's bundled `ffmpeg.exe`. Device auto-selects
 - **Model path (.pth)** and **Index path (.index)** — **leave index empty =
   index-free mode** (index_rate forced to 0; slightly lower quality, still works)
 - **Base voice**: the Edge voice synthesized before conversion
-- **Advanced** (collapsible): f0 method (rmvpe quality / pm speed), pitch shift,
-  index_rate, resample_sr, rms_mix_rate, protect
+- **Advanced** (collapsible): base voice rate/pitch/volume (e.g. `+10%`),
+  speaker id spk_id (multi-speaker models), f0 method (rmvpe quality / pm
+  speed), pitch shift, index_rate, resample_sr, rms_mix_rate, protect,
+  filter_radius (harvest only), F0 curve file (manual pitch)
 
 ### Measured latency (NVIDIA GPU, warm server)
 
