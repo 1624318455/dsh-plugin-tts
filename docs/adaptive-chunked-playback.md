@@ -101,19 +101,23 @@ Host 内部：
 - job 惰性回收：完成 2 分钟后 / 创建 10 分钟后清理，上限 50 个；
 - 单块失败不影响已缓冲的块，只把错误带给前端，前端提示后停止。
 
-## 6. 前端渐进播放
+## 6. 前端渐进播放（无感衔接）
 
-`playChunks(jobId, chunks, total, token)`：
+`playChunks(jobId, chunks, total, token)` 使用 **Web Audio 精确调度**：
 
-- 维护一个**缓冲队列**；播放第 n 块的同时，若"剩余缓冲 < 2 块"就向
-  `/rvc-next` 拉下一块（**转换与播放重叠**）；
-- 块与块之间 `onended` 无缝衔接，同一 `<audio>` 换 src；
-- 停止/打断：`speakToken` 全局令牌，任何新朗读或停止都会使旧队列立即退出；
-- **进度可见**：`shared.chunkProgress = { index, total }` 随每块开播更新——
-  朗读按钮 tooltip 显示「第 x/y 段播放中」，试听面板显示
-  「正在播放 第 x/y 段 · 后续段落边播边合成…」（"下一段合成中…"不再只是动画，
-  有明确数字，绝不静默丢内容）；
-- 失败：某块加载失败 → 跳过继续；后续块合成失败 → 红字提示并停止。
+- 每个块 `fetch → decodeAudioData` 成 AudioBuffer（保持 2 块解码余量），
+  按采样时钟**首尾相接调度**：`src.start(prevEnd)`（prevEnd 由已调度缓冲时长累加），
+  块间零事件抖动、零重载延迟；
+- **服务端裁剪每块边缘填充静音**（rvc-server `/convert` 输出前 `trim_edges`）：
+  实测每块头 138ms / 尾 538ms 纯静音（Edge TTS + RVC 填充），裁掉并各保留
+  20ms / 120ms 自然气息，块间不再有 ~680ms 死寂；
+- 停止/打断：`speakToken` 全局令牌 + 源列表 `stop()`（waCleanup），立即静音；
+- **进度可见**：`shared.chunkProgress = { index, total }` 随块播放更新——朗读按钮
+  tooltip 与试听面板显示「第 x/y 段 · 边播边合成」（绝不静默丢内容）；
+- 失败：某块合成失败 → 红字提示并停止；无 Web Audio 环境降级为双 `<audio>` ping-pong。
+
+> 备注：`vc_single` 返回 **int16**，`trim_edges` 先归一化为 float [-1,1] 再处理，
+> 否则 `sf.write` 会把 int16 样本值当 [-1,1] 幅值整体削波（曾导致输出 99% 满幅失真）。
 
 ## 7. RVC 服务端配套
 

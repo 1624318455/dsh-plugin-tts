@@ -218,6 +218,50 @@ def unb64(s):
     return base64.b64decode(str(s))
 
 
+def trim_edges(audio, sr, lead_ms=250, tail_ms=700, lead_keep_ms=20, tail_keep_ms=120, thr=0.003, fade_ms=5):
+    """Trim per-chunk edge silence so chunked playback joins seamlessly.
+
+    Edge TTS and the RVC pipeline both leave padding silence at clip edges
+    (measured: ~140ms lead, ~540ms tail per chunk). Played back-to-back those
+    add up to a ~680ms dead gap at every chunk boundary. Trim near-silence
+    below `thr` (default -50dB), keep a short natural breath at each edge, and
+    apply a tiny fade to avoid clicks.
+
+    vc_single returns INT16 audio; integer dtypes are normalized to float
+    [-1, 1] here (sf.write expects float in [-1,1] and would otherwise clip).
+    Returns a float32 array in [-1, 1].
+    """
+    x = np.asarray(audio)
+    if np.issubdtype(x.dtype, np.integer):
+        info = np.iinfo(x.dtype)
+        x = x.astype(np.float32) / float(info.max)
+    else:
+        x = x.astype(np.float32)
+    n = len(x)
+    if n < int(sr * 0.1):
+        return x
+    absx = np.abs(x)
+    lead_n = min(int(sr * lead_ms / 1000), n)
+    tail_n = min(int(sr * tail_ms / 1000), n)
+    lead = 0
+    while lead < lead_n and absx[lead] < thr:
+        lead += 1
+    tail = 0
+    while tail < tail_n and absx[n - 1 - tail] < thr:
+        tail += 1
+    lead = max(0, lead - int(sr * lead_keep_ms / 1000))
+    tail = max(0, tail - int(sr * tail_keep_ms / 1000))
+    if lead == 0 and tail == 0:
+        return x
+    out = np.copy(x[lead: n - tail])
+    fade_n = int(sr * fade_ms / 1000)
+    if fade_n > 0 and len(out) > 2 * fade_n:
+        ramp = np.linspace(0.0, 1.0, fade_n, dtype=np.float32)
+        out[:fade_n] *= ramp
+        out[-fade_n:] *= ramp[::-1]
+    return out
+
+
 @app.get("/health")
 def health():
     gpu_name = None
@@ -403,6 +447,7 @@ def convert(payload: dict):
             if opt is None or opt[0] is None:
                 raise HTTPException(500, "inference failed: %s" % str(info)[-500:])
             tgt_sr, audio = opt
+            audio = trim_edges(audio, int(tgt_sr))
             buf = io.BytesIO()
             sf.write(buf, audio, int(tgt_sr), format="wav")
             return {"audio_base64": b64(buf.getvalue()), "sample_rate": int(tgt_sr)}

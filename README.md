@@ -115,12 +115,15 @@ RVC 是变声：输入音频长度 = 输出音频长度，长文本必须先合�
    `速度比 = 转换耗时 / 音频时长`），按分档表选定**块大小**与**预热块数**；
 2. 文本按句切块（每块 ≈ 6-20 秒音频，落在语义边界）；
 3. 先转换预热块（GPU 2 块 / CPU 最多 4 块）立即开播，其余块由前端在播放期间
-   通过 `GET /dsh-tts-api/rvc-next` 逐块拉取——**转换与播放重叠，长文无缝**；
-4. 分档表：`ratio ≤ 0.4 → 20s/预热2`，`0.4-0.6 → 15s/2`，`0.6-0.9 → 10s/3`，
+   通过 `GET /dsh-tts-api/rvc-next` 逐块拉取——**转换与播放重叠**；
+4. **无感衔接**：rvc-server 转换时**裁剪每块头尾填充静音**（实测每块头 138ms/
+   尾 538ms → 各保留 20ms/120ms 自然气息），前端用 **Web Audio 采样级精确拼接**
+   （解码成 AudioBuffer 按 `start(prevEnd)` 首尾相接，块间零事件抖动、零重载延迟）；
+5. 分档表：`ratio ≤ 0.4 → 20s/预热2`，`0.4-0.6 → 15s/2`，`0.6-0.9 → 10s/3`，
    `> 0.9（CPU）→ 6s/4`，探测失败兜底 `10s/3`；
-5. 短文本（≤12 秒）与上传底噪模式**不切块**，仍走单 URL 链路，零额外开销；
-6. **进度可见**：播放时朗读按钮 tooltip 与试听面板显示「第 x/y 段 · 边播边合成」；
-7. **校准落盘**：探测结果存入 `~/.dsh/tts-rvc/calibration.json`（7 天有效，
+6. 短文本（≤12 秒）与上传底噪模式**不切块**，仍走单 URL 链路，零额外开销；
+7. **进度可见**：播放时朗读按钮 tooltip 与试听面板显示「第 x/y 段 · 边播边合成」；
+8. **校准落盘**：探测结果存入 `~/.dsh/tts-rvc/calibration.json`（7 天有效，
    记录 GPU 名做设备指纹），dsh 重启后直接复用，换显卡自动重新探测。
 
 > 完整设计见 [`docs/adaptive-chunked-playback.md`](docs/adaptive-chunked-playback.md)。
@@ -334,14 +337,18 @@ everything before playing (a long silent wait), the plugin:
 2. Splits the text into sentence-aligned chunks;
 3. Converts the prewarm chunks, starts playback immediately, and the client
    pulls further chunks via `GET /dsh-tts-api/rvc-next` while playing —
-   **conversion overlaps playback, so long reads stream seamlessly**;
-4. Tiers: `ratio ≤ 0.4 → 20s/prewarm 2`, `0.4-0.6 → 15s/2`, `0.6-0.9 → 10s/3`,
+   **conversion overlaps playback**;
+4. **Gapless joins**: the server trims each chunk's edge padding silence
+   (measured ~138ms lead / ~538ms tail → keep a 20ms/120ms natural breath), and
+   the client plays chunks with **Web Audio sample-accurate scheduling**
+   (AudioBuffers chained at `start(prevEnd)` — no event jitter, no reload gap);
+5. Tiers: `ratio ≤ 0.4 → 20s/prewarm 2`, `0.4-0.6 → 15s/2`, `0.6-0.9 → 10s/3`,
    `> 0.9 (CPU) → 6s/4`, probe failure falls back to `10s/3`;
-5. Short text (≤12s) and upload-base mode stay on the single-URL path (zero
+6. Short text (≤12s) and upload-base mode stay on the single-URL path (zero
    extra overhead);
-6. **Visible progress**: the read button tooltip and preview panel show
+7. **Visible progress**: the read button tooltip and preview panel show
    "chunk x/y · playing while converting";
-7. **Persistent calibration**: results are stored in
+8. **Persistent calibration**: results are stored in
    `~/.dsh/tts-rvc/calibration.json` (7-day validity, GPU-name fingerprint) —
    reused across dsh restarts, re-probed automatically when the GPU changes.
 
