@@ -67,6 +67,34 @@ def copytree(src, dst):
     shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
 
 
+def patch_infer_for_pyav(infer_dir):
+    """macOS-only: make RVC's infer/lib/audio.py work with modern PyAV.
+
+    The RVC infer code calls ``av.open(fp, "rb")`` / ``av.open(fp, "wb", ...)``.
+    Old PyAV (bundled by the Windows RVC WebUI runtime) accepted those modes,
+    but every PyAV >= 10 rejects them for file-like objects (only 'r'/'w'/None
+    are allowed), and macOS arm64 wheels only exist for these newer versions.
+    Without this fix /convert fails with "ValueError: mode must be 'r', 'w',
+    or None, got: rb". This rewrites the copied (packaged) audio.py in place;
+    it never touches the user's RVC install.
+    """
+    audio = os.path.join(infer_dir, "lib", "audio.py")
+    if not os.path.exists(audio):
+        print("[package]   (no infer/lib/audio.py — skip PyAV patch)", flush=True)
+        return
+    with open(audio, "r", encoding="utf-8") as f:
+        src = f.read()
+    new = src.replace('av.open(i, "rb")', 'av.open(i, "r")').replace(
+        'av.open(o, "wb", format=format)', 'av.open(o, "w", format=format)'
+    )
+    if new == src:
+        print("[package]   (infer/lib/audio.py already PyAV-compatible)", flush=True)
+        return
+    with open(audio, "w", encoding="utf-8") as f:
+        f.write(new)
+    print("[package]   patched infer/lib/audio.py: av.open 'rb'->'r', 'wb'->'w'", flush=True)
+
+
 def step(msg, fn):
     print("[package] %s ..." % msg, flush=True)
     fn()
@@ -108,6 +136,9 @@ def main():
 
     step("copy runtime (%.1f GB)" % dir_gb(runtime), lambda: copytree(runtime, os.path.join(out, "runtime")))
     step("copy infer/", lambda: copytree(os.path.join(rvc, "infer"), os.path.join(out, "infer")))
+    # macOS-only: the packaged infer must tolerate modern PyAV (see the helper).
+    if platform == "darwin":
+        step("patch infer/lib/audio.py for modern PyAV (macOS)", lambda: patch_infer_for_pyav(os.path.join(out, "infer")))
     if os.path.isdir(os.path.join(rvc, "assets", "hubert")):
         step("copy assets/hubert", lambda: copytree(os.path.join(rvc, "assets", "hubert"), os.path.join(out, "assets", "hubert")))
     if os.path.isdir(os.path.join(rvc, "assets", "rmvpe")):
