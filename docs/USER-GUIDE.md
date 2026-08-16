@@ -86,22 +86,24 @@
 下面以已装 RVC WebUI 为例：
 
 1. 找到你的 RVC WebUI 安装目录（里面能看到 `runtime` 文件夹和 `assets` 文件夹）。
-2. 打开 **PowerShell 或命令提示符**，复制下面这行，**把三处 `<...>` 换成你的真实路径**，回车：
+2. 打开 **PowerShell 或命令提示符**，启动服务（**不需要指定模型/索引**——模型在设置面板里点「浏览」选择，
+   首次朗读自动加载；`--model/--index` 只是可选的预载参数）：
 
-   ```powershell
-   <你的RVC目录>\runtime\python.exe <rvc-server.py的路径> --rvc-dir "<你的RVC目录>" --model "<你的RVC目录>\assets\weights\你的模型.pth" --index "<你的RVC目录>\logs\你的索引.index" --port 4892
-   ```
+   - **推荐**：把 `rvc-server.py` 复制到 RVC 根目录（与 `runtime/` 同级），然后：
 
-   真实示例（路径已实测可用）：
+     ```powershell
+     <你的RVC目录>\runtime\python.exe <你的RVC目录>\rvc-server.py --port 4892
+     ```
 
-   ```powershell
-   E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe D:\Work\ForAI\dsh-plugin-TTS\plugin\rvc-server.py --rvc-dir "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia" --model "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\assets\weights\keruanV1.pth" --index "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\logs\keruanV1.index" --port 4892
-   ```
+   - 或者 rvc-server.py 放在别处时，用 `--rvc-dir` 指定 RVC 根目录：
 
-   > ⚠️ 占位符必须替换：`<你的RVC目录>` = 你的 RVC WebUI 根目录（含 `runtime`/`assets`/`logs`）；
-   > `<rvc-server.py的路径>` = **rvc-server.py 文件**所在位置——它在插件源码目录
-   > 或从 GitHub 仓库 `1624318455/dsh-plugin-tts` 下载（**不在** `node_modules` 插件包里）。
-   > `--index` 可整行删掉（免索引）。
+     ```powershell
+     <你的RVC目录>\runtime\python.exe <rvc-server.py的路径> --rvc-dir "<你的RVC目录>" --port 4892
+     ```
+
+   > `<你的RVC目录>` = RVC WebUI 根目录（含 `runtime`/`assets`/`logs`）；`<rvc-server.py的路径>` = rvc-server.py
+   > 文件所在位置（插件源码目录，或从 GitHub 仓库 `1624318455/dsh-plugin-tts` 下载，**不在** node_modules 里）。
+   > 想要"启动即预载某个音色"再额外加：`--model "<RVC目录>\assets\weights\xxx.pth" --index "<RVC目录>\logs\xxx.index"`。
 
 3. **成功的样子**：窗口里出现一行
    `dsh-plugin-tts RVC server: http://127.0.0.1:4892 ...`，
