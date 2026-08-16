@@ -204,8 +204,31 @@ E:\...\RVC20240604Nvidia\runtime\python.exe tools\package-runtime.py `
 - 成品约 7-9GB，压缩 3-4GB（超出 GitHub 附件 2GB 上限，用网盘/对象存储分发，
   或只分享打包脚本让各自本机生成）。详见[使用手册 §10](USER-GUIDE.md)。
 - **跨平台**：`--platform auto|windows|linux|darwin`——Windows 生成 `启动服务.bat`，
-  Linux/macOS 生成 `start-rvc-server.sh`（macOS 自动跳过 torch 升级）。Linux/macOS
-  路径**未经实测**，发布前请在目标平台验证。
+  Linux/macOS 生成 `start-rvc-server.sh`（macOS 自动跳过 torch 升级）。
+  **macOS（Apple Silicon）已实测通过**：`package-runtime.py --platform darwin` 打包后，
+  `mac-verify.sh` 全链路 PASS，CPU 转换**快于实时**（热约 0.45× / 冷约 0.8×，见下）。
+
+### macOS 实测要点（Apple Silicon，macOS 26.x）
+
+Darwin 打包时 `package-runtime.py` 会自动对 `infer/lib/audio.py` 打一个
+**macOS 专用补丁**：把 `av.open(..., "rb"/"wb")` 改成 `av.open(..., "r"/"w")`。
+现代 PyAV（≥10，macOS arm64 唯一可装的 wheel 版本）拒绝 `"rb"/"wb"` 文件模式，
+不打这个补丁 `/convert` 会报 `ValueError: mode must be 'r', 'w', or None, got: rb`。
+Windows 的 RVC WebUI 自带旧 PyAV 不受影响，所以只在 darwin 分支打补丁。
+
+手动跑（不打包，直接用 `~/rvc-work`）时，除锁定版本清单外**还需**：
+
+- `pip install av praat-parselmouth torchcrepe`（旧版 infer 的隐式依赖）
+- `faiss-cpu==1.7.3`（最新 1.13 要求 `numpy>=1.25`，与锁定 `numpy==1.23.5` 冲突）
+- 装 `fairseq==0.12.2` 前把 pip 降到 **<24.1**（其依赖 omegaconf 的 `PyYAML>=5.1.*`
+  元数据在新 pip 里被拒）；并保持 `setuptools<81`（否则缺 `pkg_resources`，librosa 0.9.1 导入失败）
+- **方案 B 拉 infer 时务必用旧版 tag**（如 `2.2.231006`）：新版 RVC 已把 `infer/`
+  整体重构为 `infer/vc/ + infer/module/`，与 `rvc-server.py` 期望的
+  `infer/modules/vc/ + infer/lib/infer_pack/models.py` 完全不兼容
+
+> 🐛 若用旧版 `mac-verify.sh` 遇到"第 5 步 RIFF 校验误报 FAIL"：这是脚本自身 bug
+> （macOS 的 `od` 字节间双空格导致 `grep "52 49 46 46"` 匹配不到），已改为
+> 去空格比较十六进制，输出实为合法 RIFF。（旧版会造成 `exit 1` 假失败。）
 
 ---
 

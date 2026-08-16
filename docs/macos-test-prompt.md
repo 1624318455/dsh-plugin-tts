@@ -59,7 +59,22 @@ macOS 上设备会自动选 **CPU**（`device=cpu, is_half=false`），转换比
   cp -r rvc-src/infer ~/rvc-work/infer
   cp rvc-src/requirements.txt ~/rvc-work/requirements.txt
   ```
-  注意：新版 RVC 仓库的 `infer/` 可能改了 hubert 资产的路径。**用 `grep -rn "hubert" ~/rvc-work/infer/ | grep -i "assets\|\.pt"` 检查代码实际引用的路径**，按它建目录（老版是 `assets/hubert/hubert_base.pt`，新版可能是 `assets/hubert_base/pytorch_model.bin` + config.json + preprocessor_config.json）。
+  注意：**新版 RVC 仓库（当前 HEAD）的 `infer/` 已经整体重构，不能直接用**——布局从
+  `infer/modules/vc/ + infer/lib/infer_pack/` 变成了 `infer/vc/ + infer/module/`，
+  hubert 也改成了 HuggingFace Transformers 格式，与 `rvc-server.py` 期望的旧版结构
+  （`from infer.modules.vc.modules import VC` 等）完全不兼容，连 `infer/modules` 目录都不存在。
+  实测请改用**旧版 tag**（与其锁定依赖匹配）：
+  ```bash
+  git clone --depth 1 https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI.git rvc-src
+  cd rvc-src && git fetch --depth 1 origin tag 2.2.231006
+  git archive 2.2.231006 infer/ | tar -x -C ../rvc-work/
+  git show 2.2.231006:requirements.txt > ../rvc-work/requirements.txt
+  ```
+  若坚持用新布局，`rvc-server.py` 会直接 `ModuleNotFoundError`（没有 `infer/modules`）。
+
+  另外无论哪种 infer：**手装依赖时，除锁定版本清单外还需** `av`、`praat-parselmouth`、
+  `torchcrepe`；`faiss-cpu` 用 `==1.7.3`（最新 1.13 要求 numpy≥1.25）；装 `fairseq==0.12.2`
+  前把 pip 降到 **<24.1**；保持 `setuptools<81`（否则缺 `pkg_resources`）。
 
 # 步骤 2：搭工作目录和模型资产
 
@@ -193,8 +208,22 @@ python3 ~/dsh-plugin-tts/tools/package-runtime.py \
 
 - **HuggingFace 下载慢/超时** → 换 `https://hf-mirror.com/...` 前缀；
 - **GitHub raw 下载慢** → ghproxy 类镜像或让用户拷文件；
-- **fairseq 装不上** → `--no-build-isolation` → One-sixth fork（见步骤 3）；
+- **fairseq 装不上** → 先 `pip install "pip<24.1"` 降 pip（实测根因是 omegaconf 的
+  `PyYAML>=5.1.*` 元数据被新 pip 拒绝，`--no-build-isolation` 无效）；再不行才试
+  One-sixth fork（见步骤 3）；
 - **numpy 2.x 报错** → `pip install "numpy<1.24"`；
+- **缺 `pkg_resources` / librosa 导入失败** → `pip install "setuptools<81"`（新 setuptools 移除了它）；
+- **缺 `av` / `parselmouth` / `torchcrepe`** → 旧版 infer 的隐式依赖，`pip install av praat-parselmouth torchcrepe`；
+- **faiss-cpu 装了 1.13 与 numpy 1.23.5 冲突** → `pip install "faiss-cpu==1.7.3"`；
+- **/convert 报 `mode must be 'r', 'w', or None, got: rb`** → PyAV≥10 拒绝 `"rb"/"wb"`
+  （macOS 无法装老 PyAV 绕开）：手动把 `infer/lib/audio.py` 的
+  `av.open(i,"rb")→av.open(i,"r")`、`av.open(o,"wb",...)→av.open(o,"w",...)`；
+  用 `package-runtime.py --platform darwin` 打包会自动打此补丁；
+- **mac-verify.sh 第 5 步误报 "not a RIFF file"（exit 1）** → 脚本自身 bug：macOS 的
+  `od` 字节间双空格使 `grep "52 49 46 46"` 匹配不到。用新版（已改去空格比 hex）或
+  确认 `file out.wav` 确实是 "RIFF ..." 即视为通过；
+- **方案 B 的 infer 目录结构与 rvc-server.py 不匹配** → 当前 HEAD 已重构，用旧 tag
+  `2.2.231006`（见步骤 1）；
 - **端口被占用** → 换 `--port 4893`，verify 脚本第三个参数跟着改；
 - **/convert 报 `no model loaded`** → 先 /load 成功再 /convert；
 - **/convert 报 `audio decode failed`** → 确认系统 ffmpeg 可用（`ffmpeg -version`）；
