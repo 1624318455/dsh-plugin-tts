@@ -31,6 +31,20 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软�
 > 📖 **第一次用？看[《使用手册（执行手册）》](docs/USER-GUIDE.md)**——每一步都有
 > "做什么 / 怎么做 / 怎么算成功"，从朗读、RVC 音色到音色包下载全覆盖。
 
+
+## 单条朗读和自动朗读
+![alt text](Snipaste_2026-08-16_13-29-01.png)
+![alt text](Snipaste_2026-08-16_13-29-11.png)
+
+## RVC配置
+![alt text](Snipaste_2026-08-16_13-28-10.png)
+
+## RVC高级参数
+![alt text](Snipaste_2026-08-16_13-28-23.png)
+
+## RVC音色包
+![alt text](Snipaste_2026-08-16_13-28-37.png)
+
 ## 功能
 
 1. **消息朗读按钮**：每条 AI 回复左下角操作行新增「朗读」按钮，点击朗读该条消息
@@ -66,23 +80,23 @@ dsh plugin --profile web add "file:/path/to/dsh-plugin-tts"
 
 ## 可用音色（经实测，Edge TTS）
 
-| 区域 | 音色 |
-|---|---|
+| 区域     | 音色                                                                                                                                                           |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 简体中文 | 晓萱 Xiaoxuan · 晓伊 Xiaoyi · 云希 Yunxi · 云扬 Yunyang · 晓晓 Xiaoxiao · 云健 Yunjian · 云夏 Yunxia · 晓北(辽宁) liaoning-Xiaobei · 晓妮(陕西) shaanxi-Xiaoni |
-| 台湾 | 曉臻 HsiaoChen · 曉雨 HsiaoYu · 雲哲 YunJhe |
-| 香港 | 曉佳 HiuGaai · 曉曼 HiuMaan · 雲龍 WanLung |
-| 英文 | Aria · Jenny · Guy · Sonia(英) |
-| 日/韩/法 | 七海 Nanami · SunHi · Denise |
+| 台湾     | 曉臻 HsiaoChen · 曉雨 HsiaoYu · 雲哲 YunJhe                                                                                                                    |
+| 香港     | 曉佳 HiuGaai · 曉曼 HiuMaan · 雲龍 WanLung                                                                                                                     |
+| 英文     | Aria · Jenny · Guy · Sonia(英)                                                                                                                                 |
+| 日/韩/法 | 七海 Nanami · SunHi · Denise                                                                                                                                   |
 
 > 注：Xiaohan / Xiaomeng / Xiaorui / Xiaoshuang 等旧音色已被 Edge 端点移除（返回
 > `1007 Unsupported voice`），未列入。
 
 ## 架构
 
-| 层 | 位置 | 职责 |
-|---|---|---|
-| Host | `lib/index.mjs` | 注册 `/dsh-tts-api/speak`（合成/分块队列）、`/dsh-tts-audio/<id>`（音频）、`/dsh-tts-api/rvc-*`（RVC 推理/文件/紧凑索引/音色包）等 webServer 路由；用 `node -e` 运行零依赖 worker |
-| Client | `lib/client.js` | `shell.overlay` 隐藏 `<audio>` 宿主 + UI（朗读按钮 / 自动朗读开关 / 语音设置面板），通过 `fetch` 调 Host 路由 |
+| 层     | 位置            | 职责                                                                                                                                                                              |
+| ------ | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Host   | `lib/index.mjs` | 注册 `/dsh-tts-api/speak`（合成/分块队列）、`/dsh-tts-audio/<id>`（音频）、`/dsh-tts-api/rvc-*`（RVC 推理/文件/紧凑索引/音色包）等 webServer 路由；用 `node -e` 运行零依赖 worker |
+| Client | `lib/client.js` | `shell.overlay` 隐藏 `<audio>` 宿主 + UI（朗读按钮 / 自动朗读开关 / 语音设置面板），通过 `fetch` 调 Host 路由                                                                     |
 
 TTS 引擎：worker 协议镜像 [node-edge-tts@1.2.10](https://github.com/SchneeHertz/node-edge-tts)：
 `Sec-MS-GEC` 查询参数（ticks 向下取整到 5 分钟边界）、
