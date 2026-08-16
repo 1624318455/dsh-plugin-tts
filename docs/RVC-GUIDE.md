@@ -197,6 +197,9 @@ E:\...\RVC20240604Nvidia\runtime\python.exe tools\package-runtime.py `
 
 - 成品约 7-9GB，压缩 3-4GB（超出 GitHub 附件 2GB 上限，用网盘/对象存储分发，
   或只分享打包脚本让各自本机生成）。详见[使用手册 §10](USER-GUIDE.md)。
+- **跨平台**：`--platform auto|windows|linux|darwin`——Windows 生成 `启动服务.bat`，
+  Linux/macOS 生成 `start-rvc-server.sh`（macOS 自动跳过 torch 升级）。Linux/macOS
+  路径**未经实测**，发布前请在目标平台验证。
 
 ---
 

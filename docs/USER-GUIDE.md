@@ -269,7 +269,10 @@ E:\...\RVC20240604Nvidia\runtime\python.exe `
   不升级也能用，只是老 torch 在 50 系显卡上有 sm_120 兼容警告、性能略降）
 - 成品文件夹约 7-9GB，压缩后 3-4GB（超出 GitHub 附件 2GB 上限，
   用网盘/对象存储分发，或只把脚本分享出去让各自本机生成）；
-- 便携目录内用 `runtime\python.exe rvc-server.py --port 4892` 启动同样可行。
+- 便携目录内用 `runtime\python.exe rvc-server.py --port 4892` 启动同样可行；
+- **跨平台**：脚本支持 `--platform auto|windows|linux|darwin`——Windows 生成
+  `启动服务.bat`，Linux/macOS 生成 `start-rvc-server.sh`（macOS 无 CUDA，自动跳过
+  torch 升级）。Linux/macOS 路径**未经实测**，发布前请先在目标平台验证。
 
 ---
 
