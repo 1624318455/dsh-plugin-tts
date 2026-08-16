@@ -6,10 +6,12 @@
 import * as plugin from '../lib/index.mjs';
 import { createServer } from 'node:http';
 import net from 'node:net';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdtempSync, writeFileSync, readFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { startMockRegistry } from './mock-registry.mjs';
 
 const routes = [];
@@ -510,6 +512,30 @@ if (speakRoute && audioRoute) {
     proxy.close();
     reg.server.close();
   }
+}
+
+// --- tools/make-pack.mjs: one-command pack generation + validation ---
+{
+  const makePack = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'tools', 'make-pack.mjs');
+  const repo = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-packrepo-'));
+  const incoming = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-incoming-'));
+  writeFileSync(path.join(incoming, 'model.pth'), Buffer.from('GEN-MODEL-12345'));
+  writeFileSync(path.join(incoming, 'idx2k.index'), Buffer.from('GEN-INDEX-2K'));
+  writeFileSync(path.join(incoming, 'idx10k.index'), Buffer.from('GEN-INDEX-10K'));
+  const out = execFileSync(process.execPath, [
+    makePack, '--id', 'pack-gen', '--name', 'Gen Voice', '--dir', incoming, '--repo', repo,
+    '--desc', 'generated test pack', '--author', 'tester', '--license', 'MIT'
+  ], { encoding: 'utf8' });
+  const m = JSON.parse(readFileSync(path.join(repo, 'manifest.json'), 'utf8'));
+  const p = m.packs.find(x => x.id === 'pack-gen');
+  const sha = b => createHash('sha256').update(b).digest('hex');
+  const modelOk = p && existsSync(path.join(repo, p.model.url))
+    && readFileSync(path.join(repo, p.model.url)).toString() === 'GEN-MODEL-12345'
+    && p.model.sha256 === sha(Buffer.from('GEN-MODEL-12345'));
+  const idxOk = p && Array.isArray(p.indexes) && p.indexes.length === 2;
+  check('make-pack generates pack + manifest', modelOk && idxOk && /added pack/.test(out), JSON.stringify(p).slice(0, 200));
+  const chk = execFileSync(process.execPath, [makePack, '--check', '--repo', repo], { encoding: 'utf8' });
+  check('make-pack --check validates packs', /OK: 1 pack\(s\) validated/.test(chk), chk.trim().split('\n').pop());
 }
 
 const failed = results.filter((r) => !r.ok);
