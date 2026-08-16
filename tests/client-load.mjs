@@ -65,6 +65,13 @@ globalThis.document = {
   head: { appendChild() {} },
 };
 globalThis.Audio = function(){ this.play = () => Promise.resolve(); this.pause=()=>{}; this.setAttribute=()=>{}; this.removeAttribute=()=>{}; };
+// in-memory localStorage so the i18n persistence (loadPersistedLang/setLang) works
+const memStore = new Map();
+globalThis.localStorage = {
+  getItem: k => (memStore.has(k) ? memStore.get(k) : null),
+  setItem: (k, v) => memStore.set(k, String(v)),
+  removeItem: k => memStore.delete(k),
+};
 
 // ---- load the bundle ----
 let failed = false;
@@ -81,8 +88,31 @@ try {
   };
   // evaluate client.js in this context
   const fn = new Function('window', 'navigator', 'document', 'Audio', clientSrc + '\n;return window.__ModuleLoader__;');
+  globalThis.__dshTtsClientSrc = clientSrc;
   const ml = fn(globalThis.window, globalThis.navigator, globalThis.document, globalThis.Audio);
   check('client.js loads + apply() runs', injectedComponents.length > 0, `${injectedComponents.length} slot(s) injected`);
+  // ---- i18n preference persistence (round-trip) ----
+  try {
+    const hooks = globalThis.window.__dshTtsI18n;
+    check('i18n hook exposed for tests', !!hooks && typeof hooks.setLang === 'function');
+    // switch to English -> must persist
+    hooks.setLang('en');
+    check('setLang("en") persists to localStorage', memStore.get('dsh-tts-lang') === 'en',
+      'stored=' + memStore.get('dsh-tts-lang'));
+    check('active locale resolves to en', hooks.current() === 'en', 'current()=' + hooks.current());
+    // simulate reload by re-invoking the loader factory in a fresh module eval that
+    // calls loadPersistedLang() from the same localStorage
+    const src2 = globalThis.__dshTtsClientSrc;
+    const fn2 = new Function('window', 'navigator', 'document', 'Audio', src2 + '\n;return window.__ModuleLoader__;');
+    const ml2 = fn2(globalThis.window, globalThis.navigator, globalThis.document, globalThis.Audio);
+    const I18N2 = globalThis.window.__dshTtsI18n;
+    check('persisted language survives reload (lang=en)', I18N2.lang === 'en', 'lang=' + I18N2.lang);
+    check('persisted language resolves to en after reload', I18N2.current() === 'en');
+    // reset to auto for isolation
+    hooks.setLang('auto');
+  } catch (e) {
+    check('i18n preference persistence round-trip', false, String(e && e.message || e));
+  }
 } catch (e) {
   check('client.js loads + apply() runs', false, String(e && e.stack || e));
   failed = true;
