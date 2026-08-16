@@ -134,10 +134,22 @@ lives in the **[RVC Custom Voice Guide](docs/RVC-GUIDE.md)**.
 
 > RVC-specific troubleshooting: [RVC Guide → Troubleshooting](docs/RVC-GUIDE.md#troubleshooting).
 
+## UI language (i18n)
+
+The settings panel has an **Interface language** selector at the top:
+**Auto (follow browser) / 中文 / English**.
+- Default "Auto" follows the browser/system language (Simplified Chinese and
+  others → Chinese, everything else → English).
+- Switching applies immediately and is **persisted** to localStorage
+  (`dsh-tts-lang`), surviving page reloads.
+- Covers the whole settings panel, bubble/read-aloud buttons, diagnostics,
+  voice-pack panel, plus RVC service errors/progress hints.
+
 ## Development
 
 ```sh
 node tests/smoke.mjs   # fake-ctx route registration + real Edge TTS synthesis + audio serve assertions
+npm run test:all       # full: smoke + live + patch + i18n + client-load
 ```
 
 Hot-reload after editing `lib/` (on Windows a `file:` install is a COPY, not a

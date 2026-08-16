@@ -130,10 +130,18 @@ TTS 引擎：worker 协议镜像 [node-edge-tts@1.2.10](https://github.com/Schne
 
 > RVC 相关排查见 [《RVC 指南》疑难排查](docs/RVC-GUIDE.md#rvc-疑难排查)。
 
+## 界面语言（i18n）
+
+插件设置面板顶部有「界面语言」选择：**自动（跟随浏览器）/ 中文 / English**。
+- 默认「自动」：按浏览器/系统语言显示（简体中文及其他 → 中文，其余 → English）。
+- 切换后**立即生效**，并持久化到 localStorage（`dsh-tts-lang`），刷新/重开面板不丢。
+- 覆盖范围：整个设置面板 + 气泡/朗读按钮 + 诊断 + 音色包面板，以及 RVC 服务的报错/进度提示。
+
 ## 开发
 
 ```sh
 node tests/smoke.mjs   # 冒烟测试：fake ctx 注册路由 + 真实 Edge TTS 合成 + 音频回放断言
+npm run test:all       # 全量：smoke + live + patch + i18n + client-load
 ```
 
 改 `lib/` 后的热更新（Windows 下 `file:` 安装是**复制**而非符号链接，
