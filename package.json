@@ -34,7 +34,10 @@
     "@deepseek-ai/dsh-base": "^0.1.0-rc.6"
   },
   "scripts": {
-    "test": "node tests/smoke.mjs"
+    "test": "node tests/smoke.mjs",
+    "test:live": "node tests/rvc-server-live.mjs",
+    "test:patch": "node tests/package-runtime-patch.mjs",
+    "test:all": "node tests/smoke.mjs && node tests/rvc-server-live.mjs && node tests/package-runtime-patch.mjs"
   },
   "license": "MIT"
 }

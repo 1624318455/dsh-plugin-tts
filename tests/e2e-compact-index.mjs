@@ -1,4 +1,10 @@
 // One-off real end-to-end for the compact-index tool.
+//
+// [DEPRECATED in favor of tests/rvc-server-live.mjs] This one-off test hardcodes
+// Windows paths (E:/AI/.../azusa-test.pth) and is not portable. The standard,
+// environment-aware live scenario + boundary suite is `tests/rvc-server-live.mjs`
+// (npm run test:live). This file is kept for Windows reference only.
+
 // Requires the local rvc-server (NEW code with /compact-index) on 4892.
 //   node tests/e2e-compact-index.mjs
 import { createServer } from 'node:http';

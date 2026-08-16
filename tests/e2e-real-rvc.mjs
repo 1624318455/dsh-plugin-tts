@@ -1,4 +1,10 @@
 // One-off real end-to-end: plugin Host -> real rvc-server (azusa-test) chain.
+//
+// [DEPRECATED in favor of tests/rvc-server-live.mjs] This one-off test hardcodes
+// Windows paths (E:/AI/.../azusa-test.pth) and is not portable. The standard,
+// environment-aware live scenario + boundary suite is `tests/rvc-server-live.mjs`
+// (npm run test:live). This file is kept for Windows reference only.
+
 // Verifies Edge base synth + real RVC conversion + audio route serving.
 import * as plugin from '../lib/index.mjs';
 

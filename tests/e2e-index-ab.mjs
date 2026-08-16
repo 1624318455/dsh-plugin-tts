@@ -1,4 +1,10 @@
 // One-off real A/B: how much does the index actually change the output?
+//
+// [DEPRECATED in favor of tests/rvc-server-live.mjs] This one-off test hardcodes
+// Windows paths (E:/AI/.../azusa-test.pth) and is not portable. The standard,
+// environment-aware live scenario + boundary suite is `tests/rvc-server-live.mjs`
+// (npm run test:live). This file is kept for Windows reference only.
+
 // Same real Edge-TTS base audio converted under three configs on the local
 // rvc-server (4892, NEW code): index-free vs full index vs compact-2k index.
 //   node tests/e2e-index-ab.mjs
