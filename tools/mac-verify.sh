@@ -115,7 +115,16 @@ print("convert ok: wall=%.1fs  sample_rate=%s  out=%s  (%.2fx realtime)" % (wall
 PYEOF
 
 step 5 "output sanity (RIFF + duration)"
-head -c 4 "$TMPD/out.wav" | od -An -tx1 | grep -qi "52 49 46 46" || { echo "FAIL: not a RIFF file"; FAIL=1; }
+# RIFF magic check. NB: macOS `od -An -tx1` pads bytes with *two* spaces
+# ("52  49  46  46") while GNU `od` uses one ("52 49 46 46"), so a literal
+# "52 49 46 46" grep wrongly fails on macOS even for a valid RIFF file.
+# Strip whitespace and compare the raw hex instead (portable across both).
+if command -v xxd >/dev/null 2>&1; then
+  MAGIC="$(head -c 4 "$TMPD/out.wav" | xxd -p | tr -d '[:space:]')"
+else
+  MAGIC="$(head -c 4 "$TMPD/out.wav" | od -An -tx1 | tr -d '[:space:]')"
+fi
+if [ "$MAGIC" != "52494646" ]; then echo "FAIL: not a RIFF file"; FAIL=1; fi
 if command -v ffprobe >/dev/null 2>&1; then
   DUR="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$TMPD/out.wav" 2>/dev/null)"
   echo "out.wav duration: ${DUR:-unknown}s (input speech was ~3s)"
