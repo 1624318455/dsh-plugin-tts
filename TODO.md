@@ -4,7 +4,7 @@
 
 - [x] **B站介绍视频已发布**，简介已放便携运行时网盘链接（`E:\rvc-portable-torch2.7-cu128.zip`，4.35GB）。
 - [x] 便携运行时 zip 已上传个人网盘。
-- [ ] 把 B站视频链接填进 `docs/USER-GUIDE.md` §10 下载入口（等作者提供视频 URL）。
+- [x] B站视频链接已填入 `docs/USER-GUIDE.md` §10（https://www.bilibili.com/video/BV1ukbQ6qECo/）。
 - [ ] macOS 实测：测试 prompt 已就绪（`docs/macos-test-prompt.md` + `tools/mac-verify.sh`），
       在 Mac 上跑完把结果回报、按结果修复。
 
