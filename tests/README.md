@@ -9,7 +9,9 @@
 npm test            # 烟测：43 项，纯 mock + 真实 Edge TTS，无需本地 RVC 服务
 npm run test:live   # 场景 + 边界：需要本地 rvc-server.py（可自启），见下
 npm run test:patch  # 边界：package-runtime.py 的 darwin PyAV 补丁逻辑（纯临时目录，无需 RVC）
-npm run test:all    # 三者都跑
+npm run test:i18n   # i18n 回归：所有 t(key) 都有中英文、无缺失/多余、UI 无残留硬编码中文
+npm run test:client # 客户端加载+渲染：mock 浏览器环境跑 lib/client.js，验证国际化后 UI 不崩
+npm run test:all    # 以上全部
 ```
 
 ## 各层说明
@@ -19,6 +21,8 @@ npm run test:all    # 三者都跑
 | 烟测 | `tests/smoke.mjs` (`npm test`) | 无需本地 RVC；会用真实 Edge TTS 联网合成 | 路由注册、Edge 合成、mock RVC 链路、上传底噪、分块渐进播放、文件代理、compact-index 代理、诊断、音色包注册表（sha256/代理/进度/多索引/卸载）、make-pack 工具 |
 | 场景+边界 | `tests/rvc-server-live.mjs` (`npm run test:live`) | 本地 RVC 服务（见下） | 真实 `health/files/load/convert/compact-index` 场景 + 协议边界（坏 base64、空音频、未知 f0_method、缺失模型/索引、并发转换、未知路由） |
 | 打包边界 | `tests/package-runtime-patch.mjs` (`npm run test:patch`) | 仅 python3（临时目录） | `package-runtime.py` 的 darwin PyAV 补丁：`av.open` `rb/wb→r/w`、不动 Python `open(file,"rb")`、幂等 |
+| i18n 回归 | `tests/i18n-keys.mjs` (`npm run test:i18n`) | 无 | 中英文词典键集一致、所有 `t(key)` 有双语定义、UI 区无残留硬编码中文、无死键 |
+| 客户端加载/渲染 | `tests/client-load.mjs` (`npm run test:client`) | 无（mock 浏览器） | `lib/client.js` 在 mock 环境加载、`apply()` 运行、4 个组件（auto-read/read/xml/设置面板）渲染不抛错 |
 
 ## test:live 的环境约定（跨平台友好）
 

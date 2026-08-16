@@ -37,7 +37,9 @@
     "test": "node tests/smoke.mjs",
     "test:live": "node tests/rvc-server-live.mjs",
     "test:patch": "node tests/package-runtime-patch.mjs",
-    "test:all": "node tests/smoke.mjs && node tests/rvc-server-live.mjs && node tests/package-runtime-patch.mjs"
+    "test:i18n": "node tests/i18n-keys.mjs",
+    "test:client": "node tests/client-load.mjs",
+    "test:all": "node tests/smoke.mjs && node tests/rvc-server-live.mjs && node tests/package-runtime-patch.mjs && node tests/i18n-keys.mjs && node tests/client-load.mjs"
   },
   "license": "MIT"
 }
