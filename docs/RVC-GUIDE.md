@@ -50,21 +50,25 @@ Edge TTS 朗读（原声）→ 本机 RVC 推理服务（rvc-server.py）→ 转
 <a name="启动本地-rvc-服务"></a>
 ## 启动本地 RVC 服务
 
-打开 PowerShell / 命令提示符，把下面一整行复制进去（**路径换成你自己的**），回车：
+打开 PowerShell / 命令提示符，复制下面这行，**把三处 `<...>` 换成你的真实路径**，回车：
 
 ```powershell
-E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe `
-  D:\path\to\rvc-server.py `
-  --rvc-dir "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia" `
-  --model "E:\...\assets\weights\你的模型.pth" `
-  --index "E:\...\assets\indices\你的索引.index" `
-  --port 4892
+<你的RVC目录>\runtime\python.exe <rvc-server.py的路径> --rvc-dir "<你的RVC目录>" --model "<你的RVC目录>\assets\weights\你的模型.pth" --index "<你的RVC目录>\logs\你的索引.index" --port 4892
 ```
 
-- `rvc-server.py` 在插件安装目录（`node_modules\@dsh-external\dsh-plugin-tts\rvc-server.py`）或 GitHub 仓库；
+真实示例（路径已实测可用）：
+
+```powershell
+E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe D:\Work\ForAI\dsh-plugin-TTS\plugin\rvc-server.py --rvc-dir "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia" --model "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\assets\weights\keruanV1.pth" --index "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\logs\keruanV1.index" --port 4892
+```
+
+- ⚠️ 占位符必须替换：`<你的RVC目录>` = RVC WebUI 根目录（含 `runtime`/`assets`/`logs`）；
+  `<rvc-server.py的路径>` = **rvc-server.py 文件**所在位置——它在插件源码目录或从
+  GitHub 仓库 `1624318455/dsh-plugin-tts` 下载（**不在** `node_modules` 插件包里）；
 - `--index` 可整行删掉（免索引模式）；
 - **成功的样子**：窗口出现 `dsh-plugin-tts RVC server: http://127.0.0.1:4892 ...`，然后**这个窗口别关**；
-- 换模型：关掉窗口，改 `--model` 再启动。
+- 换模型：关掉窗口，改 `--model` 再启动；
+- 提示 `[Errno 10048]`：端口被占用，先关掉旧的 rvc-server 窗口再启动。
 
 `rvc-server.py` API：`GET /health`（含 `gpu_name` / `vram_gb`）、`POST /load {model,index}`、
 `POST /convert {audio_base64,params}`（JSON+base64，无额外依赖）、`GET /files?kind=pth|index`（本机模型/索引发现）、

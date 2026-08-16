@@ -86,20 +86,22 @@
 下面以已装 RVC WebUI 为例：
 
 1. 找到你的 RVC WebUI 安装目录（里面能看到 `runtime` 文件夹和 `assets` 文件夹）。
-2. 打开 **PowerShell 或命令提示符**，把下面这一整行复制进去，
-   **把三处路径换成你自己的**，回车：
+2. 打开 **PowerShell 或命令提示符**，复制下面这行，**把三处 `<...>` 换成你的真实路径**，回车：
 
    ```powershell
-   E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe `
-     D:\path\to\rvc-server.py `
-     --rvc-dir "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia" `
-     --model "E:\...\assets\weights\你的模型.pth" `
-     --index "E:\...\assets\indices\你的索引.index" `
-     --port 4892
+   <你的RVC目录>\runtime\python.exe <rvc-server.py的路径> --rvc-dir "<你的RVC目录>" --model "<你的RVC目录>\assets\weights\你的模型.pth" --index "<你的RVC目录>\logs\你的索引.index" --port 4892
    ```
 
-   > `rvc-server.py` 在插件安装目录里（`node_modules\@dsh-external\dsh-plugin-tts\rvc-server.py`），
-   > 也可以从 GitHub 仓库 `1624318455/dsh-plugin-tts` 下载。`--index` 可以整行删掉（免索引）。
+   真实示例（路径已实测可用）：
+
+   ```powershell
+   E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\runtime\python.exe D:\Work\ForAI\dsh-plugin-TTS\plugin\rvc-server.py --rvc-dir "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia" --model "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\assets\weights\keruanV1.pth" --index "E:\AI\RVC20240604Nvidia\RVC20240604Nvidia\logs\keruanV1.index" --port 4892
+   ```
+
+   > ⚠️ 占位符必须替换：`<你的RVC目录>` = 你的 RVC WebUI 根目录（含 `runtime`/`assets`/`logs`）；
+   > `<rvc-server.py的路径>` = **rvc-server.py 文件**所在位置——它在插件源码目录
+   > 或从 GitHub 仓库 `1624318455/dsh-plugin-tts` 下载（**不在** `node_modules` 插件包里）。
+   > `--index` 可整行删掉（免索引）。
 
 3. **成功的样子**：窗口里出现一行
    `dsh-plugin-tts RVC server: http://127.0.0.1:4892 ...`，
