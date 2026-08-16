@@ -127,6 +127,9 @@ function startMockRvc() {
         if (req.url === '/load') {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: true }));
+        } else if (req.url === '/health') {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, model_loaded: true, model: 'demo.pth', gpu_name: 'Mock GPU', vram_gb: 8 }));
         } else if (req.url.startsWith('/files?kind=')) {
           const kind = req.url.slice('/files?kind='.length);
           res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -269,6 +272,25 @@ if (speakRoute && audioRoute) {
       index: ''
     })), mockRes());
     check('compact-index proxy passes server error', cb.head.code === 502 && typeof JSON.parse(cb.body).error === 'string', cb.body);
+
+    // ---- one-click diagnostics ----
+    const diagnoseRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/diagnose');
+    check('plugin registers diagnose route', diagnoseRoute !== undefined);
+    const dg = await call(diagnoseRoute, mockReq('/dsh-tts-api/diagnose', JSON.stringify({
+      rvcBaseUrl: `http://127.0.0.1:${mock.port}`
+    })), mockRes());
+    const dgData = JSON.parse(dg.body);
+    const edge = dgData.checks.find(c => c.id === 'edge');
+    const rvc = dgData.checks.find(c => c.id === 'rvc-server');
+    const model = dgData.checks.find(c => c.id === 'rvc-model');
+    check('diagnose: edge synthesis ok', dg.head.code === 200 && edge && edge.ok === true, JSON.stringify(edge));
+    check('diagnose: rvc server + model ok (mock)', rvc && rvc.ok === true && model && model.ok === true, JSON.stringify({ rvc, model }));
+    const dgBad = await call(diagnoseRoute, mockReq('/dsh-tts-api/diagnose', JSON.stringify({
+      rvcBaseUrl: 'http://127.0.0.1:1'
+    })), mockRes());
+    const dgBadData = JSON.parse(dgBad.body);
+    const rvcBad = dgBadData.checks.find(c => c.id === 'rvc-server');
+    check('diagnose: unreachable rvc classified as connect', rvcBad && rvcBad.ok === false && rvcBad.cls === 'connect', JSON.stringify(rvcBad));
   } finally {
     mock.server.close();
   }
