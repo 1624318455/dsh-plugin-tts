@@ -16,6 +16,7 @@
 #       --index "E:\...\assets\indices\azusa-test_..._v2.index" \
 #       --port 4892
 import argparse
+import binascii
 import io
 import os
 import subprocess
@@ -231,7 +232,10 @@ def b64(data):
 
 def unb64(s):
     import base64
-    return base64.b64decode(str(s))
+    try:
+        return base64.b64decode(str(s), validate=False)
+    except (binascii.Error, ValueError) as e:
+        raise HTTPException(400, "invalid audio_base64: %s" % e)
 
 
 def trim_edges(audio, sr, lead_ms=250, tail_ms=700, lead_keep_ms=20, tail_keep_ms=120, thr=0.003, fade_ms=5):
@@ -436,6 +440,11 @@ def convert(payload: dict):
     f0_file = str(p.get("f0_file") or "").strip().strip('"')
     f0_up_key = int(p.get("f0_up_key", 0))
     f0_method = str(p.get("f0_method", "rmvpe"))
+    # validate early so a bad f0_method never reaches infer (which crashes with
+    # an UnboundLocalError and a 500). Keep the RVC f0 method set.
+    _F0_METHODS = {"rmvpe", "pm", "harvest", "crepe", "rmvpe+", "mangio-crepe", "fcpe"}
+    if f0_method not in _F0_METHODS:
+        raise HTTPException(400, "unknown f0_method: %r (expected one of %s)" % (f0_method, sorted(_F0_METHODS)))
     index_rate = float(p.get("index_rate", 0.75))
     filter_radius = int(p.get("filter_radius", 3))
     resample_sr = int(p.get("resample_sr", 40000))
@@ -447,6 +456,17 @@ def convert(payload: dict):
             data = unb64(audio_b64)
             wav_path = decode_to_wav(data)
             try:
+                # Validate the decoded audio is actually decodable + has samples.
+                # Without this, an empty/corrupt wav falls through to infer's
+                # load_audio which dies with a RuntimeError -> 500. Treat it as
+                # a client error (400) instead.
+                try:
+                    with sf.SoundFile(wav_path) as s:
+                        frames = s.frames
+                except Exception:
+                    frames = 0
+                if frames <= 0:
+                    raise HTTPException(400, "audio decode failed: empty or unreadable audio")
                 # pipeline expects f0_file to be an object with a `.name` path
                 f0_handle = (
                     type("F0File", (), {"name": os.path.abspath(f0_file)})()
