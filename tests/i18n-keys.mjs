@@ -62,8 +62,19 @@ while ((c = cjkRe.exec(render))) {
 check('no CJK UI literal left outside dictionary', cjk.length === 0, cjk.length ? cjk.slice(0, 10).join(' | ') : undefined);
 
 // dictionary has no dead keys (excluding voice.*/baseVoice.* data labels and lang labels used only in the switcher)
-const dead = [...zhKeys].filter(k => used.has(k) ? false : /^voice\.|^baseVoice\./.test(k) ? false : true);
-check('dictionary has no dead keys (excluding voice/baseVoice data)', dead.length === 0, dead.length ? 'dead: ' + dead.join(',') : undefined);
+// host.* keys are resolved DYNAMICALLY (hostErrText(t(i18n.code)) and
+// t("host.phase." + phaseKey)) so they won't appear as literal t("host.x")
+// calls; they are part of the host<->client i18n contract. Exclude them here.
+const dead = [...zhKeys].filter(k =>
+  used.has(k) ? false
+  : /^voice\.|^baseVoice\.|^host\./.test(k) ? false
+  : true);
+check('dictionary has no dead keys (excluding voice/baseVoice/host data)', dead.length === 0, dead.length ? 'dead: ' + dead.join(',') : undefined);
+// host.* keys form a complete bi-dictionary set (already covered by the
+// identical-key-sets check); also ensure the handful the client references
+// statically are present.
+const hostStatic = ["host.phase.model", "host.phase.index", "host.phase.prepare"];
+check('host.* phase keys present in both langs', hostStatic.every(k => zhKeys.has(k) && enKeys.has(k)));
 
 const failed = results.filter(r => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} i18n checks passed`);
