@@ -89,8 +89,14 @@ try {
   // ---------- SCENARIO: happy path ----------
   {
     const h = await http('GET', '/health');
-    check('scenario /health ok+cpu', h.status === 200 && h.data.ok === true && h.data.device === 'cpu' && h.data.cuda_available === false,
-      `device=${h.data && h.data.device} cuda=${h.data && h.data.cuda_available}`);
+    // Accept either a CPU or a CUDA device: the health payload must be
+    // self-consistent (cuda_available matches the reported device), so this
+    // works both on CI (cpu) and on a Windows/macOS GPU regression host (cuda).
+    const dev = h.data && h.data.device;
+    const cuda = h.data && h.data.cuda_available;
+    const consistent = (dev === 'cpu' && cuda === false) || (typeof dev === 'string' && dev.startsWith('cuda') && cuda === true);
+    check('scenario /health ok + consistent device', h.status === 200 && h.data.ok === true && consistent,
+      `device=${dev} cuda=${cuda}`);
 
     const f = await http('GET', '/files?kind=pth');
     check('scenario /files lists pth', f.status === 200 && Array.isArray(f.data && f.data.files), f.text.slice(0, 120));

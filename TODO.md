@@ -10,7 +10,8 @@
       并新增 live/边界 标准测试（见 `tests/` 与 `tests/README.md`）。
 - [x] 中英文国际化：设置面板/气泡/诊断/音色包/RVC 报错全部 zh/en，含语言切换与持久化
       （见 `lib/client.js` 的 i18n 层 + `tests/i18n-keys.mjs`、`tests/client-load.mjs`）。
-- [x] CI：`.github/workflows/test.yml` 已加（Node 20/22/24，跑 smoke/i18n/client-load/patch）。
+- [x] CI：`.github/workflows/test.yml` 已加（Node 22/24，跑 smoke/i18n/client-load/patch；
+      注：Edge TTS worker 依赖原生 `WebSocket`，需 Node ≥ 22，故矩阵不含 20）。
 
 ## 后续功能（按需启动）
 

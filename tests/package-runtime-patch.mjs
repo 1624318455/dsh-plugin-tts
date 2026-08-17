@@ -18,6 +18,24 @@ function check(name, ok, detail) {
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = path.join(repo, 'tools', 'package-runtime.py');
+// Run the driver with python3 when available, else fall back to `python` and
+// then to the Windows `py -3` launcher. Windows installs often only ship
+// `python`, and a bare `python`/`python3` may be a dead Microsoft Store stub
+// that exits 9009, so the `py` launcher is the reliable last resort.
+function runPython(driverPath) {
+  const tries = [
+    ['python3', []],
+    ['python', []],
+    ['py', ['-3']]
+  ];
+  for (const [cmd, pre] of tries) {
+    try {
+      return execFileSync(cmd, [...pre, driverPath], { encoding: 'utf8' });
+    } catch (e) {
+      if (cmd === 'py') throw e; // give up after the last fallback
+    }
+  }
+}
 // sample = the unpatched (as-released) audio.py
 const sample = [
   'import av',
@@ -51,7 +69,7 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 m.patch_infer_for_pyav(${JSON.stringify(path.join(dir, 'infer'))})
 `);
-  execFileSync('python3', [driver], { encoding: 'utf8' });
+  runPython(driver);
 
   const out = readFileSync(audioPath, 'utf8');
   check('darwin patch replaces av.open rb/wb', !/av\.open\([^)]*"(rb|wb)"/.test(out), out.split('\n').filter(l => l.includes('av.open')).join(' | '));
@@ -59,7 +77,7 @@ m.patch_infer_for_pyav(${JSON.stringify(path.join(dir, 'infer'))})
   check('darwin patch converts to r/w', out.includes('av.open(i, "r")') && out.includes('av.open(o, "w", format=format)'));
 
   // idempotency: running twice changes nothing
-  execFileSync('python3', [driver], { encoding: 'utf8' });
+  runPython(driver);
   check('patch idempotent (second run unchanged)', readFileSync(audioPath, 'utf8') === out);
 } finally {
   rmSync(dir, { recursive: true, force: true });

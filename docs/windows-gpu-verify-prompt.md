@@ -32,7 +32,7 @@ HTTP 协议（JSON + base64，无额外依赖）：
 1. Windows 10/11、NVIDIA GPU（RTX 50 系为佳）、已装 NVIDIA 驱动；
 2. 一套 **RVC WebUI 安装**（目录里含 `runtime\python.exe` 与 `infer\`），例如 Windows 上已验证的 `E:\AI\RVC20240604Nvidia\RVC20240604Nvidia`（内含 `assets\weights`、`assets\indices`、`assets\hubert`、`assets\rmvpe`，以及一个音色 `.pth`+`.index`）；
 3. `git`、`ffmpeg`（RVC runtime 自带或系统有）；
-4. `node`（≥20）与 `npm`（跑插件自带测试用）。
+4. `node`（≥22，Edge TTS worker 使用原生 `WebSocket`，见 README）与 `npm`（跑插件自带测试用）。
 
 # 步骤 1：获取被测代码
 

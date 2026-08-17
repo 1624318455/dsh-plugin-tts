@@ -9,8 +9,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        node: [20, 22, 24]
+        # The Edge TTS worker uses the native WebSocket (Node >= 22, see README).
+        node: [22, 24]
     steps:
       - uses: actions/checkout@v4
 

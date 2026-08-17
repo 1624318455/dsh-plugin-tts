@@ -3,6 +3,9 @@
   "description": "Edge TTS 语音大集成插件：消息朗读按钮、自动朗读开关、语音设置面板（Edge TTS）",
   "version": "0.2.0",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "main": "lib/index.mjs",
   "exports": {
     ".": {
