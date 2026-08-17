@@ -1,7 +1,7 @@
 {
   "name": "@dsh-external/dsh-plugin-tts",
   "description": "Edge TTS 语音大集成插件：消息朗读按钮、自动朗读开关、语音设置面板（Edge TTS）",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "main": "lib/index.mjs",
   "exports": {
