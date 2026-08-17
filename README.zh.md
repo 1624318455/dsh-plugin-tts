@@ -157,6 +157,8 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@dsh-external\ds
 - 音色 / 自动朗读开关状态保存在内存（动态设置面板，不落盘），刷新页面后复位默认值；
   音色包相关设置（仓库地址/代理/进行中下载）会记忆在 localStorage。
 - 合成音频写入 OS 临时目录，由系统清理。
+- 中英文**布局/视觉**（英文文本较长可能换行/溢出，主题变量 `--dsw-*` 适配）需在**装有所插件的真实 dsh 界面**里人工确认——
+  本插件无独立 HTML，UI 由 dsh web 宿主注入 slots 渲染，无法脱离宿主做 headless 截图对比（`tests/client-load.mjs` 只做内存渲染断言，不生成真实 DOM/CSS）。
 
 ## License
 

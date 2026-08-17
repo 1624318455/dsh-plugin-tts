@@ -166,6 +166,11 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@dsh-external\ds
   persistence); a page refresh resets the defaults. Voice-pack settings
   (registry URL / proxy / in-flight download) are remembered in localStorage.
 - Synthesized audio is written to the OS temp dir and cleaned by the OS.
+- zh/en **layout/visual** fitting (English text is longer; may wrap/overflow; theme
+  vars `--dsw-*`) must be eyeballed in the real dsh UI with the plugin loaded — this
+  plugin ships no standalone HTML (its UI is slot-injected by the dsh web host), so
+  it cannot be headless-screenshotted here (`tests/client-load.mjs` asserts the
+  in-memory render only, not real DOM/CSS).
 
 ## License
 
