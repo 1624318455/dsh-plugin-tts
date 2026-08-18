@@ -8,7 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
   <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="Awesome"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-22%2B-blue" alt="node"></a>
-  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-37%20passed-success" alt="tests"></a>
+  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-44%20passed-success" alt="tests"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts"><img src="https://img.shields.io/github/stars/1624318455/dsh-plugin-tts" alt="stars"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts/commits/main"><img src="https://img.shields.io/github/last-commit/1624318455/dsh-plugin-tts" alt="last commit"></a>
 </p>
@@ -66,6 +66,9 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软�
 
 - DeepSeek Harness `web` profile（`dsh web`）
 - Node.js ≥ 22（worker 使用原生 `WebSocket`）
+- 仅使用 **RVC 自定义音色** 时：还需要本机 RVC 推理环境（RVC WebUI 或便携运行时，
+  并在使用前启动 `rvc-server.py`）。macOS 用户请看 [《RVC 指南》](docs/RVC-GUIDE.md)
+  的「启动本地 RVC 服务」和 [《使用手册》](docs/USER-GUIDE.md) §4.2。
 
 ## 安装
 
@@ -114,8 +117,10 @@ TTS 引擎：worker 协议镜像 [node-edge-tts@1.2.10](https://github.com/Schne
 ## RVC 自定义音色
 
 用你本地训练的 **RVC 模型**做音色转换：设置面板把 TTS提供者切到「自定义音色（RVC）」
-即可。涵盖**服务启动、面板配置、长文无缝播放、紧凑索引、音色包一键安装、便携运行时、
-设置项详解与排查**——完整内容见 **[《RVC 自定义音色指南》](docs/RVC-GUIDE.md)**。
+即可。**第一次用 RVC 先做两件事**：①准备模型文件（.pth）；②启动本地 RVC 服务——
+macOS/Windows/Linux 的启动命令见 [《RVC 指南》](docs/RVC-GUIDE.md) 或
+[《使用手册》](docs/USER-GUIDE.md) §4.2。涵盖**服务启动、面板配置、长文无缝播放、紧凑索引、
+音色包一键安装、便携运行时、设置项详解与排查**——完整内容见 **[《RVC 自定义音色指南》](docs/RVC-GUIDE.md)**。
 
 > 公开音色仓库示例：[rvc-for-tts](https://github.com/1624318455/rvc-for-tts)
 > （设置 → 语音 → 音色包 → 仓库地址填 `https://raw.githubusercontent.com/1624318455/rvc-for-tts/main`）。

@@ -77,13 +77,17 @@
 |---|---|---|
 | RVC 模型文件（`.pth`） | 你的音色本体（通常几 MB~几十 MB） | ✅ 必须 |
 | 索引文件（`.index`） | 让音色更像原声的辅助文件（几百 MB，可压缩） | ❌ 可选 |
-| RVC WebUI 安装 | 你训练模型时用的那个程序 | ✅ 必须（服务要跑在它里面） |
+| RVC WebUI 安装 **或便携运行时** | 转换服务要跑在它里面；没有 RVC WebUI 也能用便携运行时 | ✅ 二选一 |
 
 ### 4.2 启动"转换服务"（一次性；每次想用时都要先启动）
 
 **没有装 RVC WebUI？** 可以下载别人做好的**便携运行时**（一个免安装的文件夹，
-含转换所需的一切，双击 `启动服务.bat` 即用；详见手册末尾「便携运行时」）。
-下面以已装 RVC WebUI 为例：
+含转换所需的一切，Windows 双击 `启动服务.bat`，macOS/Linux 运行 `start-rvc-server.sh`；
+详见手册末尾「便携运行时」）。
+
+按你的系统操作：
+
+#### Windows（已装 RVC WebUI）
 
 1. 找到你的 RVC WebUI 安装目录（里面能看到 `runtime` 文件夹和 `assets` 文件夹）。
 2. 打开 **PowerShell 或命令提示符**，启动服务（**不需要指定模型/索引**——模型在设置面板里点「浏览」选择，
@@ -101,11 +105,34 @@
      <你的RVC目录>\runtime\python.exe <rvc-server.py的路径> --rvc-dir "<你的RVC目录>" --port 4892
      ```
 
-   > `<你的RVC目录>` = RVC WebUI 根目录（含 `runtime`/`assets`/`logs`）；`<rvc-server.py的路径>` = rvc-server.py
-   > 文件所在位置（插件源码目录，或从 GitHub 仓库 `1624318455/dsh-plugin-tts` 下载，**不在** node_modules 里）。
-   > 想要"启动即预载某个音色"再额外加：`--model "<RVC目录>\assets\weights\xxx.pth" --index "<RVC目录>\logs\xxx.index"`。
+#### macOS / Linux
 
-3. **成功的样子**：窗口里出现一行
+- **最省事：便携运行时**。解压后运行：
+
+  ```bash
+  path/to/rvc-portable/start-rvc-server.sh
+  ```
+
+- **已有自己搭好的 RVC 环境**（例如 `~/rvc-work`）：
+
+  ```bash
+  ~/rvc-work/venv/bin/python ~/rvc-work/rvc-server.py --port 4892
+  ```
+
+- **已有 RVC WebUI 目录**（含 `runtime/` 和 `infer/`）：
+
+  ```bash
+  <你的RVC目录>/runtime/bin/python <你的RVC目录>/rvc-server.py --port 4892
+  ```
+
+#### 通用
+
+- `<你的RVC目录>` = RVC WebUI 根目录（含 `runtime`/`assets`/`logs`）；`<rvc-server.py的路径>` = rvc-server.py
+  文件所在位置（插件源码目录，或从 GitHub 仓库 `1624318455/dsh-plugin-tts` 下载，**不在** node_modules 里）。
+- 想要"启动即预载某个音色"再额外加：
+  `--model "<RVC目录>/assets/weights/xxx.pth" --index "<RVC目录>/logs/xxx.index"`。
+
+3. **成功的样子**：终端/命令行窗口里出现一行
    `dsh-plugin-tts RVC server: http://127.0.0.1:4892 ...`，
    然后**这个窗口别关**（关了服务就停了）。
 4. 想换模型时：关掉窗口，换 `--model` 再启动一次。
@@ -166,6 +193,7 @@
 | 症状 | 最常见原因 | 怎么办 |
 |---|---|---|
 | 点朗读没声音 | 浏览器自动播放限制 | 先在页面任意处点一下再试；检查系统音量 |
+| 点「浏览」提示"浏览文件需要先启动本地 RVC 服务" | 4.2 那个服务没启动 / 服务地址不对 | 按 4.2 启动并保留窗口；确认「服务地址」是 `http://127.0.0.1:4892` |
 | 提示"无法连接本地 RVC 推理服务" | 4.2 那个服务窗口没开 / 被关了 | 重新启动服务窗口（4.2），别关它 |
 | 提示"未配置 RVC 模型路径" | 4.3 没填模型 | 填 .pth 路径（或点浏览） |
 | 首次朗读等十几秒 | 正常：加载模型 + 自动测速 | 等它；之后会快 |
@@ -247,11 +275,13 @@
 可在视频评论区/私信联系作者，或按下方「怎么制作」用自己机器现打一个。
 
 **怎么用**：
-1. 解压到任意位置（例如 `D:\rvc-portable`）；
-2. 双击里面的 **`启动服务.bat`**（会弹出一个小窗口，显示
-   `dsh-plugin-tts RVC server: http://127.0.0.1:4892`）；
-3. 小窗口**别关**，回到插件设置按第 4.3 节填模型/索引即可。
-4. 想停止：关掉那个小窗口。
+1. 解压到任意位置（Windows 例如 `D:\rvc-portable`；macOS/Linux 例如 `~/rvc-portable`）；
+2. 启动服务：
+   - Windows：双击里面的 **`启动服务.bat`**（会弹出一个小窗口）；
+   - macOS/Linux：在终端运行 **`~/rvc-portable/start-rvc-server.sh`**；
+   - 都会显示 `dsh-plugin-tts RVC server: http://127.0.0.1:4892`；
+3. 这个窗口/终端**别关**，回到插件设置按第 4.3 节填模型/索引即可。
+4. 想停止：关掉那个窗口/按 `Ctrl+C`。
 
 **怎么制作（给打包者）**：在已装 RVC WebUI 的机器上执行：
 
@@ -280,7 +310,8 @@ E:\...\RVC20240604Nvidia\runtime\python.exe `
 - 便携目录内用 `runtime\python.exe rvc-server.py --port 4892` 启动同样可行；
 - **跨平台**：脚本支持 `--platform auto|windows|linux|darwin`——Windows 生成
   `启动服务.bat`，Linux/macOS 生成 `start-rvc-server.sh`（macOS 无 CUDA，自动跳过
-  torch 升级）。Linux/macOS 路径**未经实测**，发布前请先在目标平台验证。
+  torch 升级）。**macOS（Apple Silicon）已实测通过**，详见《RVC 指南》的 macOS 注意事项；
+  Linux 仍建议先在目标平台验证。
 
 ---
 

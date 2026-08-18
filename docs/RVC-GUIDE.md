@@ -50,8 +50,13 @@ Edge TTS 朗读（原声）→ 本机 RVC 推理服务（rvc-server.py）→ 转
 <a name="启动本地-rvc-服务"></a>
 ## 启动本地 RVC 服务
 
-打开 PowerShell / 命令提示符，启动服务（**不需要指定模型/索引**——模型在设置面板里点「浏览」
-选择，首次朗读自动加载；`--model/--index` 只是可选的预载参数）：
+先选你的操作系统。**不需要指定模型/索引**——模型在设置面板里点「浏览」选择，首次朗读自动加载；
+`--model/--index` 只是可选的预载参数。启动成功的样子统一是：
+终端/命令行窗口出现 `dsh-plugin-tts RVC server: http://127.0.0.1:4892 ...`，然后**这个窗口别关**。
+
+### Windows（已装 RVC WebUI）
+
+打开 PowerShell / 命令提示符：
 
 - **推荐**：把 `rvc-server.py` 复制到 RVC 根目录（与 `runtime/` 同级），然后：
 
@@ -65,12 +70,45 @@ Edge TTS 朗读（原声）→ 本机 RVC 推理服务（rvc-server.py）→ 转
   <你的RVC目录>\runtime\python.exe <rvc-server.py的路径> --rvc-dir "<你的RVC目录>" --port 4892
   ```
 
-- ⚠️ `<你的RVC目录>` = RVC WebUI 根目录（含 `runtime`/`assets`/`logs`）；`<rvc-server.py的路径>` = rvc-server.py
+### macOS
+
+- **最省事：便携运行时**（[见下文](#便携运行时免装-rvc-webui)）。解压后运行：
+
+  ```bash
+  path/to/rvc-portable/start-rvc-server.sh
+  ```
+
+- **已有自己搭好的 RVC 环境**（例如按本仓库 `docs/macos-test-prompt.md` 搭建的 `~/rvc-work`）：
+
+  ```bash
+  ~/rvc-work/venv/bin/python ~/rvc-work/rvc-server.py --port 4892
+  ```
+
+- **已有 RVC WebUI 目录**（含 `runtime/` 与 `infer/`）：
+
+  ```bash
+  <你的RVC目录>/runtime/bin/python <你的RVC目录>/rvc-server.py --port 4892
+  ```
+
+> ⚠️ 在 macOS 上第一次使用前，请先确认推理依赖已装好。最稳妥的方式是按下文
+> 「便携运行时」或 `docs/macos-test-prompt.md` 的清单准备 Python 3.9 环境；
+> 常见的缺失（`ModuleNotFoundError: No module named 'parselmouth'`）只要
+> `pip install praat-parselmouth av torchcrepe` 等即可补上。
+
+### Linux
+
+```bash
+<你的RVC目录>/runtime/bin/python <你的RVC目录>/rvc-server.py --port 4892
+```
+
+### 通用说明
+
+- `<你的RVC目录>` = RVC WebUI 根目录（含 `runtime`/`assets`/`logs`）；`<rvc-server.py的路径>` = rvc-server.py
   文件所在位置（插件源码目录，或从 GitHub 仓库 `1624318455/dsh-plugin-tts` 下载，**不在** node_modules 里）；
-- 想要"启动即预载某个音色"再额外加：
-  `--model "<RVC目录>\assets\weights\xxx.pth" --index "<RVC目录>\logs\xxx.index"`；
-- **成功的样子**：窗口出现 `dsh-plugin-tts RVC server: http://127.0.0.1:4892 ...`，然后**这个窗口别关**；
-- 换模型：直接在设置面板「浏览」里选（无需重启服务）；提示 `[Errno 10048]` = 端口被占用，先关旧的再启动。
+- 想要"启动即预载某个音色"再额外加（路径分隔符按系统使用 `/` 或 `\`）：
+  `--model "<RVC目录>/assets/weights/xxx.pth" --index "<RVC目录>/logs/xxx.index"`；
+- 换模型：直接在设置面板「浏览」里选（无需重启服务）；提示端口被占用（Windows `[Errno 10048]` /
+  macOS/Linux `Address already in use`）= 端口被占用，先关旧的再启动。
 
 `rvc-server.py` API：`GET /health`（含 `gpu_name` / `vram_gb`）、`POST /load {model,index}`、
 `POST /convert {audio_base64,params}`（JSON+base64，无额外依赖）、`GET /files?kind=pth|index`（本机模型/索引发现）、
@@ -182,8 +220,9 @@ RVC 训练出的检索索引常达**数百 MB**（实测示例 408MB / 129,396 �
 ## 便携运行时（免装 RVC WebUI）
 
 给"只有音色模型、不想装整套 RVC WebUI"的人：一个免安装文件夹，内含转换服务需要的一切
-（Python + torch + 推理核心 + hubert/rmvpe + ffmpeg + `rvc-server.py`），双击 `启动服务.bat` 即用。
-**已在本机实测**（RTX 5070：模型加载 + 转换正常）。
+（Python + torch + 推理核心 + hubert/rmvpe + ffmpeg + `rvc-server.py`），
+Windows 双击 `启动服务.bat`，macOS/Linux 运行 `start-rvc-server.sh` 即用。
+**Windows 已在本机实测**（RTX 5070：模型加载 + 转换正常）；**macOS（Apple Silicon）也已实测通过**。
 
 打包（在已装 RVC WebUI 的机器上，**零下载**）：
 
@@ -274,6 +313,7 @@ Windows 的 RVC WebUI 自带旧 PyAV 不受影响，所以只在 darwin 分支�
 
 | 症状 | 最常见原因 | 怎么办 |
 |---|---|---|
+| 点「浏览」提示"浏览文件需要先启动本地 RVC 服务" | 服务没启动 / 服务地址不对 | 按[启动本地 RVC 服务](#启动本地-rvc-服务)启动并保留窗口；若已启动，确认「服务地址」= `http://127.0.0.1:4892` |
 | 提示"无法连接本地 RVC 推理服务" | 服务窗口没开 / 被关了 | 重新启动服务（见[启动本地 RVC 服务](#启动本地-rvc-服务)），别关窗口 |
 | 提示"未配置 RVC 模型路径" | 模型路径为空 | 填 .pth 路径（或点浏览） |
 | 首次朗读等十几秒 | 正常：加载模型 + 自动测速 | 等它；之后会快 |
@@ -301,11 +341,17 @@ converted wav → playback`, all on the user's own GPU/CPU.
 1. **Prepare**: an RVC model (`.pth`, required) + optional index (`.index`), and either
    an RVC WebUI install or the [portable runtime](#便携运行时免装-rvc-webui).
 2. **Start the service** (keep the window open):
-   ```powershell
-   E:\...\RVC20240604Nvidia\runtime\python.exe rvc-server.py `
-     --rvc-dir "E:\...\RVC20240604Nvidia" --model "E:\...\xxx.pth" `
-     --index "E:\...\xxx.index" --port 4892
-   ```
+   - Windows:
+     ```powershell
+     E:\...\RVC20240604Nvidia\runtime\python.exe rvc-server.py `
+       --rvc-dir "E:\...\RVC20240604Nvidia" --model "E:\...\xxx.pth" `
+       --index "E:\...\xxx.index" --port 4892
+     ```
+   - macOS/Linux (portable runtime or a manually prepared `~/rvc-work`):
+     ```bash
+     path/to/rvc-portable/start-rvc-server.sh
+     # or: ~/rvc-work/venv/bin/python ~/rvc-work/rvc-server.py --port 4892
+     ```
 3. **Configure**: 设置 → 插件 → 语音 → TTS提供者 = 自定义音色（RVC）；keep 服务地址 default;
    fill 模型路径 (browse or paste); index optional (empty = index-free).
 

@@ -254,6 +254,15 @@ if (speakRoute && audioRoute) {
     const filesIdx = JSON.parse(fi.body);
     check('rvc-files proxy lists index files', fi.head.code === 200 && Array.isArray(filesIdx.files) && filesIdx.files.length > 0 && filesIdx.files[0].name === 'demo.index', fi.body);
 
+    // unreachable RVC service -> actionable, platform-aware startup hint
+    const badFiles = await call(filesRoute, mockReq('/dsh-tts-api/rvc-files?baseUrl=http%3A%2F%2F127.0.0.1%3A1&kind=pth'), mockRes());
+    const badFilesData = JSON.parse(badFiles.body);
+    check('rvc-files unreachable returns actionable startup hint',
+      badFiles.head.code === 502 &&
+      badFilesData.i18n && badFilesData.i18n.code === 'host.filesNeedsServer' &&
+      badFilesData.i18n.params && /rvc-server\.py/.test(badFilesData.i18n.params.startup || ''),
+      badFiles.body);
+
     // compact-index proxy route
     const compactRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-compact-index');
     const cr = await call(compactRoute, mockReq('/dsh-tts-api/rvc-compact-index', JSON.stringify({

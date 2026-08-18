@@ -8,7 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
   <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="Awesome"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-22%2B-blue" alt="node"></a>
-  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-37%20passed-success" alt="tests"></a>
+  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-44%20passed-success" alt="tests"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts"><img src="https://img.shields.io/github/stars/1624318455/dsh-plugin-tts" alt="stars"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts/commits/main"><img src="https://img.shields.io/github/last-commit/1624318455/dsh-plugin-tts" alt="last commit"></a>
 </p>
@@ -62,6 +62,10 @@ RVC runtime** means no RVC WebUI install is needed.
 
 - DeepSeek Harness `web` profile (`dsh web`)
 - Node.js >= 22 (the worker uses the native `WebSocket`)
+- For **RVC custom voices only**: a local RVC inference environment (an RVC WebUI
+  or the portable runtime) and a running `rvc-server.py`. macOS users: see the
+  [RVC Guide](docs/RVC-GUIDE.md) → "启动本地 RVC 服务" and the
+  [User Guide](docs/USER-GUIDE.md) §4.2.
 
 ## Install
 
@@ -113,10 +117,13 @@ derived from the voice locale, one retry on abnormal (1006) closures. Audio is
 ## Custom voice (RVC)
 
 Use your locally trained **RVC model** for voice conversion: switch the TTS
-provider to "自定义音色（RVC）" in the settings panel. The full story — service
-startup, panel config, gapless chunked playback, compact index, voice-pack
-registry install, portable runtime, settings reference and troubleshooting —
-lives in the **[RVC Custom Voice Guide](docs/RVC-GUIDE.md)**.
+provider to "自定义音色（RVC）" in the settings panel. **First-time RVC users
+need two things**: a model file (`.pth`) and a running local RVC service — see
+the [RVC Guide](docs/RVC-GUIDE.md) or [User Guide](docs/USER-GUIDE.md) §4.2 for
+macOS/Windows/Linux startup commands. The full story — service startup, panel
+config, gapless chunked playback, compact index, voice-pack registry install,
+portable runtime, settings reference and troubleshooting — lives in the
+**[RVC Custom Voice Guide](docs/RVC-GUIDE.md)**.
 
 > Public pack registry example: [rvc-for-tts](https://github.com/1624318455/rvc-for-tts)
 > (设置 → 语音 → 音色包 → registry URL: `https://raw.githubusercontent.com/1624318455/rvc-for-tts/main`).

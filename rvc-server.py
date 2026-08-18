@@ -15,6 +15,9 @@
 #       --model "E:\...\assets\weights\azusa-test.pth" \
 #       --index "E:\...\assets\indices\azusa-test_..._v2.index" \
 #       --port 4892
+# Usage (macOS/Linux, portable or manually prepared env):
+#   ~/rvc-work/venv/bin/python ~/rvc-work/rvc-server.py --port 4892
+#   # or: <rvc-dir>/runtime/bin/python <rvc-dir>/rvc-server.py --port 4892
 import argparse
 import binascii
 import io
