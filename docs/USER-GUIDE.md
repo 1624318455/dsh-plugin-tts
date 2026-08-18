@@ -110,13 +110,13 @@
 - **最省事：便携运行时**。解压后运行：
 
   ```bash
-  path/to/rvc-portable/start-rvc-server.sh
+  <你的便携包目录>/start-rvc-server.sh
   ```
 
-- **已有自己搭好的 RVC 环境**（例如 `~/rvc-work`）：
+- **已有自己搭好的 RVC 环境**：
 
   ```bash
-  ~/rvc-work/venv/bin/python ~/rvc-work/rvc-server.py --port 4892
+  <你的工作目录>/venv/bin/python <你的工作目录>/rvc-server.py --port 4892
   ```
 
 - **已有 RVC WebUI 目录**（含 `runtime/` 和 `infer/`）：
@@ -278,7 +278,7 @@
 1. 解压到任意位置（Windows 例如 `D:\rvc-portable`；macOS/Linux 例如 `~/rvc-portable`）；
 2. 启动服务：
    - Windows：双击里面的 **`启动服务.bat`**（会弹出一个小窗口）；
-   - macOS/Linux：在终端运行 **`~/rvc-portable/start-rvc-server.sh`**；
+   - macOS/Linux：在终端运行 **`<你的便携包目录>/start-rvc-server.sh`**；
    - 都会显示 `dsh-plugin-tts RVC server: http://127.0.0.1:4892`；
 3. 这个窗口/终端**别关**，回到插件设置按第 4.3 节填模型/索引即可。
 4. 想停止：关掉那个窗口/按 `Ctrl+C`。

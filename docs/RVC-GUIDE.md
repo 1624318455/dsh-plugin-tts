@@ -75,13 +75,13 @@ Edge TTS 朗读（原声）→ 本机 RVC 推理服务（rvc-server.py）→ 转
 - **最省事：便携运行时**（[见下文](#便携运行时免装-rvc-webui)）。解压后运行：
 
   ```bash
-  path/to/rvc-portable/start-rvc-server.sh
+  <你的便携包目录>/start-rvc-server.sh
   ```
 
-- **已有自己搭好的 RVC 环境**（例如按本仓库 `docs/macos-test-prompt.md` 搭建的 `~/rvc-work`）：
+- **已有自己搭好的 RVC 环境**（例如按本仓库 `docs/macos-test-prompt.md` 搭建的目录）：
 
   ```bash
-  ~/rvc-work/venv/bin/python ~/rvc-work/rvc-server.py --port 4892
+  <你的工作目录>/venv/bin/python <你的工作目录>/rvc-server.py --port 4892
   ```
 
 - **已有 RVC WebUI 目录**（含 `runtime/` 与 `infer/`）：
@@ -347,10 +347,10 @@ converted wav → playback`, all on the user's own GPU/CPU.
        --rvc-dir "E:\...\RVC20240604Nvidia" --model "E:\...\xxx.pth" `
        --index "E:\...\xxx.index" --port 4892
      ```
-   - macOS/Linux (portable runtime or a manually prepared `~/rvc-work`):
+   - macOS/Linux (portable runtime or a manually prepared RVC directory):
      ```bash
-     path/to/rvc-portable/start-rvc-server.sh
-     # or: ~/rvc-work/venv/bin/python ~/rvc-work/rvc-server.py --port 4892
+     <你的便携包目录>/start-rvc-server.sh
+     # or: <你的工作目录>/venv/bin/python <你的工作目录>/rvc-server.py --port 4892
      ```
 3. **Configure**: 设置 → 插件 → 语音 → TTS提供者 = 自定义音色（RVC）；keep 服务地址 default;
    fill 模型路径 (browse or paste); index optional (empty = index-free).
