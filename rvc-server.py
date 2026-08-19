@@ -207,7 +207,12 @@ def load_model(model_path, index_path):
 
 
 def decode_to_wav(data):
-    """Return a wav file path for the input bytes; decodes mp3/etc via bundled ffmpeg."""
+    """Return a wav file path for the input bytes; decodes mp3/etc via ffmpeg or PyAV.
+
+    The Windows portable runtime ships ffmpeg.exe; macOS/Linux portable builds may
+    not have a bundled ffmpeg, so we fall back to PyAV (already a Python dep in
+    the RVC runtime) to decode and downmix to mono WAV.
+    """
     if data[:4] == b"RIFF":
         fd, path = tempfile.mkstemp(suffix=".wav")
         with os.fdopen(fd, "wb") as f:
@@ -218,14 +223,59 @@ def decode_to_wav(data):
         f.write(data)
     dst = tempfile.mktemp(suffix=".wav")
     ff = os.path.join(RVC_DIR, "ffmpeg.exe") if os.path.exists(os.path.join(RVC_DIR, "ffmpeg.exe")) else "ffmpeg"
-    r = subprocess.run([ff, "-y", "-i", src, "-ac", "1", dst], capture_output=True)
+    ffmpeg_err = b""
     try:
-        os.unlink(src)
-    except OSError:
-        pass
-    if r.returncode != 0 or not os.path.exists(dst):
-        raise HTTPException(400, "audio decode failed: %s" % r.stderr.decode("utf-8", "ignore")[-300:])
-    return dst
+        r = subprocess.run([ff, "-y", "-i", src, "-ac", "1", dst], capture_output=True)
+        if r.returncode == 0 and os.path.exists(dst):
+            try:
+                os.unlink(src)
+            except OSError:
+                pass
+            return dst
+        ffmpeg_err = r.stderr or b""
+    except FileNotFoundError:
+        ffmpeg_err = b"ffmpeg not found; trying PyAV fallback"
+    except Exception as e:
+        ffmpeg_err = str(e).encode("utf-8", "ignore")
+    # PyAV fallback: self-contained for macOS/Linux portable builds and also
+    # useful when the system has no ffmpeg in PATH.
+    try:
+        import av
+        from av.audio.resampler import AudioResampler
+        with av.open(src) as container:
+            stream = container.streams.audio[0]
+            rate = stream.rate or 44100
+            with av.open(dst, "w", format="wav") as out:
+                out_stream = out.add_stream("pcm_s16le", rate=rate)
+                out_stream.layout = "mono"
+                resampler = AudioResampler(format="s16", layout="mono", rate=rate)
+                for frame in container.decode(stream):
+                    for rf in resampler.resample(frame):
+                        for packet in out_stream.encode(rf):
+                            out.mux(packet)
+                for rf in resampler.resample(None):
+                    for packet in out_stream.encode(rf):
+                        out.mux(packet)
+                for packet in out_stream.encode(None):
+                    out.mux(packet)
+        try:
+            os.unlink(src)
+        except OSError:
+            pass
+        return dst
+    except Exception as e:
+        try:
+            os.unlink(src)
+        except OSError:
+            pass
+        try:
+            os.unlink(dst)
+        except OSError:
+            pass
+        detail = str(e)[-300:]
+        if ffmpeg_err:
+            detail = "%s | PyAV: %s" % (ffmpeg_err.decode("utf-8", "ignore")[-300:], detail)
+        raise HTTPException(400, "audio decode failed: %s" % detail)
 
 
 def b64(data):

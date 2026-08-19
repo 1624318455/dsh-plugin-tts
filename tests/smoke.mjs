@@ -92,8 +92,48 @@ if (speakRoute && audioRoute) {
     check('audio route serves valid mp3', ares.head.code === 200 && isMp3, `code=${ares.head.code} bytes=${bytes.length}`);
   }
 
+  // repeated speak of the same text+voice must reuse the in-session audio cache
+  // (replay does not re-synthesize)
+  {
+    const res2 = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({ text: '你好，这是一个冒烟测试。', voice: 'zh-CN-XiaoxuanNeural' })), mockRes());
+    const parsed2 = JSON.parse(res2.body);
+    check('repeated speak reuses cached URL (no re-synthesize)', res2.head.code === 200 && parsed2.url === parsed.url, `first=${parsed.url} second=${parsed2.url}`);
+  }
+
+  // ?download=1 forces a Content-Disposition attachment on the audio asset
+  if (parsed.url) {
+    const dres = await call(audioRoute, mockReq(parsed.url + '?download=1'), mockRes());
+    const cd = dres.head && dres.head.headers && dres.head.headers['Content-Disposition'];
+    check('audio download sets Content-Disposition attachment', dres.head.code === 200 && /attachment/.test(cd || ''), cd);
+  }
+
   const badRes = await call(audioRoute, mockReq('/dsh-tts-audio/nope'), mockRes());
   check('unknown audio id -> 404', badRes.head.code === 404);
+
+  // M2 subset: long plain-Edge reads also stream progressively (jobId+chunks),
+  // not a single blocking synthesis
+  {
+    const longEdge = '这是一段很长的文本用于验证 Edge 长读也走自适应分块渐进播放，避免等待整段合成。'.repeat(10);
+    const er = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+      text: longEdge, voice: 'zh-CN-XiaoxuanNeural', provider: 'edge-tts'
+    })), mockRes());
+    const ep = JSON.parse(er.body);
+    check('long edge read returns chunked job (streaming subset)',
+      er.head.code === 200 && typeof ep.jobId === 'string' && Array.isArray(ep.chunks) && ep.chunks.length >= 1,
+      ep.jobId ? `jobId=${ep.jobId} chunks=${ep.chunks.length} total=${ep.total}` : er.body);
+  }
+
+  // M1+ local-piper provider: registered in the abstraction; unconfigured -> graceful
+  // localized error (not a crash)
+  {
+    const pr = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+      text: 'hello', voice: '', provider: 'local-piper', custom: {}
+    })), mockRes());
+    const pp = JSON.parse(pr.body);
+    check('local-piper unconfigured returns graceful error (i18n code)',
+      pr.head.code === 500 && pp.error && pp.i18n && pp.i18n.code === 'host.piperUnconfigured',
+      JSON.stringify(pp));
+  }
 }
 
 // --- RVC chain against a mock local RVC server ---
@@ -243,6 +283,28 @@ if (speakRoute && audioRoute) {
       const cRes = await call(audioRoute, mockReq(longParsed.chunks[0]), mockRes());
       const cBytes = Buffer.isBuffer(cRes.body) ? cRes.body : Buffer.from(cRes.body ?? '');
       check('chunk audio route serves wav (RIFF)', cRes.head.code === 200 && cBytes.length > 44 && cBytes.slice(0, 4).toString() === 'RIFF', `code=${cRes.head.code} bytes=${cBytes.length}`);
+    }
+
+    // ---- explicit cancel: abandoning a chunked job releases it immediately ----
+    {
+      const spRes = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+        text: longText,
+        voice: 'zh-CN-XiaoxuanNeural',
+        provider: 'rvc',
+        custom: { baseUrl: `http://127.0.0.1:${mock.port}`, model: 'mock.pth', index: '' }
+      })), mockRes());
+      const sp = JSON.parse(spRes.body);
+      if (typeof sp.jobId === 'string') {
+        const nextRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-next');
+        const c1 = await call(nextRoute, mockReq(`/dsh-tts-api/rvc-next?job=${sp.jobId}&cancel=1`), mockRes());
+        const c1p = JSON.parse(c1.body);
+        check('rvc-next cancel returns {done,cancelled}', c1.head.code === 200 && c1p.done === true && c1p.cancelled === true, c1.body);
+        const c2 = await call(nextRoute, mockReq(`/dsh-tts-api/rvc-next?job=${sp.jobId}`), mockRes());
+        const c2p = JSON.parse(c2.body);
+        check('cancelled job no longer servable (gone)', c2.head.code === 200 && c2p.done === true && c2p.gone === true, c2.body);
+      } else {
+        check('cancel test precondition: long rvc speak returns jobId', false, spRes.body);
+      }
     }
 
     // file-discovery proxy route

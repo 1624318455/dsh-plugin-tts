@@ -6,3 +6,7 @@ node_modules/
 __pycache__/
 *.pyc
 *.tgz
+
+# local vision-verification scratch
+.dsh-vision-router/
+tools/ui-preview.html

@@ -57,6 +57,20 @@ RVC runtime** means no RVC WebUI install is needed.
 5. **Gapless long reads**: adaptive chunked progressive playback — probe-calibrated
    chunk size, play-while-converting, Web Audio sample-accurate joins, no gaps
    between chunks (see the [design doc](docs/adaptive-chunked-playback.md)).
+6. **Mini player** while reading: pause / resume + playback speed (1x / 1.25x /
+   1.5x) on the message's action row; chunked long reads surface a visible
+   "chunk x/y" counter.
+7. **Themed tooltips & RVC onboarding**: hover tooltips use the app's theme
+   tokens (`--dsw-*`); the RVC panel opens with a first-time 3-step guide
+   (per-OS startup commands + one-click diagnostics).
+8. **Download audio**: a download button on each message saves the synthesized
+   audio (Edge base or RVC-converted) as an MP3 — reuses the in-session cache so
+   a just-read message downloads instantly.
+9. **Read selected text**: selecting text in a message shows a floating
+   "朗读选中" chip — click it to read just that selection.
+10. **Streaming long reads (Edge too)**: long plain-Edge reads also stream
+    progressively (first chunk plays while the rest synthesize), reusing the
+    gapless chunked pipeline — no more waiting for full synthesis.
 
 ## Requirements
 
@@ -111,8 +125,26 @@ derived from the voice locale, one retry on abnormal (1006) closures. Audio is
 - Disabling auto-read never interrupts a manual read; it stops auto reads.
 - A newly completed message (auto on) interrupts the current read; text-less
   messages are skipped; session switches only stop auto reads.
+- Stopping / switching messages **eagerly cancels** the active RVC chunked job on
+  the Host, so the local conversion service stops scheduling new chunks and
+  releases GPU/memory promptly (no waiting for the lazy GC).
+- Repeatedly reading the same text + voice **reuses the in-session audio cache**
+  (no re-synthesis); if the cached backing file was cleaned by the OS, it
+  transparently re-synthesizes instead of serving a stale 404 URL.
+- If an Edge voice was removed by the endpoint (`1007 Unsupported voice`), the
+  voice is pruned from the picker and the plugin auto-falls back to the default.
+- Audio is **autoplay-unlocked** on the first user gesture (Web Audio context
+  resumed + silent clip) so reads aren't silently blocked by browser policy.
+- `Esc` / `S` (outside an input) stops the current read-aloud.
 - Synthesis / playback failures silently reset the icon state (the preview
   panel shows an inline error message).
+
+## Settings persistence
+
+Voice, auto-read toggle, provider and RVC settings are **persisted to
+localStorage** (`dsh-tts-settings`) and restored on load, surviving refresh /
+reopen. A "Reset to defaults" button in the settings panel restores defaults and
+clears the stored settings.
 
 ## Custom voice (RVC)
 
@@ -169,9 +201,10 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@dsh-external\ds
 
 ## Known limits
 
-- Voice / auto-read toggle state is in-memory (dynamic settings, no disk
-  persistence); a page refresh resets the defaults. Voice-pack settings
-  (registry URL / proxy / in-flight download) are remembered in localStorage.
+- Voice / auto-read toggle / provider / RVC settings are persisted to
+  localStorage and survive refresh (see "Settings persistence" above); the
+  audio cache itself is in-session only (files live in the OS temp dir, cleaned
+  by the OS), so a full restart re-synthesizes the first read of each text.
 - Synthesized audio is written to the OS temp dir and cleaned by the OS.
 - zh/en **layout/visual** fitting (English text is longer; may wrap/overflow; theme
   vars `--dsw-*`) must be eyeballed in the real dsh UI with the plugin loaded — this

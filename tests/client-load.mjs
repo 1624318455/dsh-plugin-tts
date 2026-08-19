@@ -113,6 +113,39 @@ try {
   } catch (e) {
     check('i18n preference persistence round-trip', false, String(e && e.message || e));
   }
+
+  // ---- settings persistence round-trip (voice/auto-read/provider/rvc) ----
+  try {
+    const S1 = globalThis.window.__dshTtsSettings;
+    check('settings hook exposed for tests', !!S1 && typeof S1.get === 'function' && typeof S1.reset === 'function');
+    // seed a "user-changed" snapshot into localStorage, then simulate a reload by
+    // re-running the factory so loadSettings() applies it
+    memStore.set('dsh-tts-settings', JSON.stringify({
+      autoRead: true, voice: 'zh-CN-YunyangNeural', provider: 'rvc',
+      rvc: { baseUrl: 'http://127.0.0.1:9999', model: '/x.pth', indexRate: 0.5 },
+    }));
+    const srcS = globalThis.__dshTtsClientSrc;
+    const fnS = new Function('window', 'navigator', 'document', 'Audio', srcS + '\n;return window.__ModuleLoader__;');
+    const mlS = fnS(globalThis.window, globalThis.navigator, globalThis.document, globalThis.Audio);
+    const S2 = globalThis.window.__dshTtsSettings;
+    const s2 = S2.get();
+    check('settings loaded from localStorage', s2.autoRead === true && s2.voice === 'zh-CN-YunyangNeural' && s2.provider === 'rvc', JSON.stringify(s2));
+    check('rvc settings loaded from localStorage', s2.rvc.baseUrl === 'http://127.0.0.1:9999' && s2.rvc.model === '/x.pth' && s2.rvc.indexRate === 0.5, JSON.stringify(s2.rvc));
+    // reset: restore defaults + drop stored settings
+    S2.reset();
+    const r = S2.get();
+    check('reset restores defaults', r.autoRead === false && r.voice === 'zh-CN-XiaoxuanNeural' && r.provider === 'edge-tts', JSON.stringify(r));
+    check('reset clears stored settings', !memStore.has('dsh-tts-settings'));
+    // corrupt stored JSON must not crash; falls back to defaults
+    memStore.set('dsh-tts-settings', '{not json');
+    const fnC = new Function('window', 'navigator', 'document', 'Audio', srcS + '\n;return window.__ModuleLoader__;');
+    fnC(globalThis.window, globalThis.navigator, globalThis.document, globalThis.Audio);
+    const S3 = globalThis.window.__dshTtsSettings;
+    check('corrupt stored settings ignored (defaults)', S3.get().voice === 'zh-CN-XiaoxuanNeural');
+    memStore.delete('dsh-tts-settings');
+  } catch (e) {
+    check('settings persistence round-trip', false, String(e && e.stack || e));
+  }
 } catch (e) {
   check('client.js loads + apply() runs', false, String(e && e.stack || e));
   failed = true;
@@ -141,6 +174,31 @@ if (!failed) {
       check(`render ${slot}`, !!node, undefined);
     } catch (e) {
       check(`render ${slot}`, false, String(e && e.stack || e).slice(0, 200));
+    }
+  }
+}
+
+// P2-1: auto-read toggle is now a labeled pill (headphones + dot), distinct
+// from a mic/speaker — verifies the reworked element structure renders.
+{
+  const comp = injectedComponents.find(c => c.slot === 'conversation.input.left');
+  if (comp) {
+    try {
+      const h = makeHookCtx();
+      const orig = { useState: react.useState, useEffect: react.useEffect, useRef: react.useRef, useMemo: react.useMemo };
+      react.useState = h.useState; react.useEffect = h.useEffect; react.useRef = h.useRef; react.useMemo = h.useMemo;
+      const node = comp.fn()({});
+      react.useState = orig.useState; react.useEffect = orig.useEffect; react.useRef = orig.useRef; react.useMemo = orig.useMemo;
+      const hasClass = (n, cls) => {
+        if (!n) return false;
+        if (n.props && n.props.className === cls) return true;
+        const ch = n.children;
+        if (Array.isArray(ch)) { for (const c of ch) { if (hasClass(c, cls)) return true; } }
+        return false;
+      };
+      check('auto-read rendered as labeled pill', hasClass(node, 'dsh-tts-auto-pill') && hasClass(node, 'dsh-tts-auto-label'), undefined);
+    } catch (e) {
+      check('auto-read rendered as labeled pill', false, String(e && e.stack || e).slice(0, 200));
     }
   }
 }
