@@ -83,6 +83,9 @@ try {
       const require_ = name => { if (name === 'react') return react; throw new Error('unknown require: ' + name); };
       const mod = factory(require_);
       if (!mod || !mod.apply) throw new Error('factory did not export apply');
+      if (!Array.isArray(mod.inject) || !mod.inject.includes('slots'))
+        throw new Error('factory must export inject including "slots" (fiber inject waiting)');
+      globalThis.__dshTtsClientMod = mod;
       mod.apply(ctx);
     },
   };
@@ -91,6 +94,7 @@ try {
   globalThis.__dshTtsClientSrc = clientSrc;
   const ml = fn(globalThis.window, globalThis.navigator, globalThis.document, globalThis.Audio);
   check('client.js loads + apply() runs', injectedComponents.length > 0, `${injectedComponents.length} slot(s) injected`);
+  check('client bundle exports inject with slots', Array.isArray(globalThis.__dshTtsClientMod?.inject) && globalThis.__dshTtsClientMod.inject.includes('slots'));
   // ---- i18n preference persistence (round-trip) ----
   try {
     const hooks = globalThis.window.__dshTtsI18n;
