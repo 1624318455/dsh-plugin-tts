@@ -52,7 +52,7 @@ RVC runtime** means no RVC WebUI install is needed.
      loader shows while it is synthesizing/playing (click again to stop),
      failures show an inline message.
 4. **RVC custom voices**: read with your own trained RVC models, computed
-   locally (upload base audio, index-free mode, advanced params — see the
+   locally (index-free mode, advanced params — see the
    [RVC guide](docs/RVC-GUIDE.md)).
 5. **Gapless long reads**: adaptive chunked progressive playback — probe-calibrated
    chunk size, play-while-converting, Web Audio sample-accurate joins, no gaps
@@ -72,13 +72,18 @@ RVC runtime** means no RVC WebUI install is needed.
     progressively (first chunk plays while the rest synthesize), reusing the
     gapless chunked pipeline — no more waiting for full synthesis.
 11. **Approval voice alerts**: optional voice broadcast of Agent approval events.
-    When enabled, an approval request (`approval/asked`) is announced aloud and
-    **interrupts the current read** (the agent is waiting on the decision); an
-    approval result (`approval/decided`) is announced only when idle. Alerts
-    always use Edge TTS with their own alert voice (independent of the RVC
-    service), are deduplicated by approval id, and off by default. (Scope note:
-    task-completion announcements are deferred to a later phase — the jobs
-    subsystem has no session-event channel this plugin can observe yet.)
+     When enabled, an approval request (`approval/asked`) is announced aloud and
+     **interrupts the current read** (the agent is waiting on the decision); an
+     approval result (`approval/decided`) is announced only when idle. Alerts
+     always use Edge TTS with their own alert voice (independent of the RVC
+     service), are deduplicated by approval id, and off by default. (Scope note:
+     task-completion announcements are deferred to a later phase — the jobs
+     subsystem has no session-event channel this plugin can observe yet.)
+12. **Clean reads, quiet RVC**: message Markdown (code blocks, tables, links,
+    quotes, task lists) is cleaned before reading — no symbol soup; an opt-in
+    "read raw Markdown symbols" toggle keeps verbatim reads for source code.
+    With the Edge provider the RVC panel stays fully hidden behind a single
+    "need a cloned voice?" entry, so casual reading is zero-config.
 
 ## Requirements
 
@@ -162,11 +167,19 @@ derived from the voice locale, one retry on abnormal (1006) closures. Audio is
 
 ## Settings persistence
 
-Voice, auto-read toggle, provider, the RVC fallback toggle, the approval-alert
-settings and RVC settings are **persisted to localStorage**
-(`dsh-tts-settings`) and restored on load, surviving refresh / reopen. A "Reset
-to defaults" button in the settings panel restores defaults and clears the
-stored settings.
+Layered storage:
+
+- **Host file** (`~/.dsh/tts-rvc/settings.json`, `{ version: 1, rvc: … }`):
+  service-class RVC config — service URL, model and index paths. Shared across
+  browsers, survives browser-data clears and incognito. Served/updated through
+  `GET /dsh-tts-api/rvc-config` + `POST /dsh-tts-api/rvc-config-save`
+  (legacy `localStorage` values migrate up once, then the file wins).
+- **localStorage** (`dsh-tts-settings`): UI prefs only — voice, auto-read
+  toggle, provider, sound tuning, the raw-Markdown toggle, approval-alert and
+  remaining RVC prefs. Never stores the service URL / model / index.
+
+A "Reset to defaults" button in the settings panel restores defaults and clears
+both layers (best-effort on the Host file).
 
 ## Custom voice (RVC)
 
@@ -259,8 +272,9 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@dsh-external\ds
 
 ## Known limits
 
-- Voice / auto-read toggle / provider / RVC settings are persisted to
-  localStorage and survive refresh (see "Settings persistence" above); the
+- Voice / auto-read toggle / provider / RVC settings are persisted in layers
+  (Host file for service config, localStorage for UI prefs — see "Settings
+  persistence" above) and survive refresh (see "Settings persistence" above); the
   audio cache itself is in-session only (files live in the OS temp dir, cleaned
   by the OS), so a full restart re-synthesizes the first read of each text.
 - Synthesized audio is written to the OS temp dir and cleaned by the OS.

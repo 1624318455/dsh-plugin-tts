@@ -11,7 +11,7 @@
   零依赖 worker 镜像 node-edge-tts 协议（`Sec-MS-GEC`、`Path:audio` 帧、1006 重试一次）。
 - **Client**：`shell.overlay` 隐藏 `<audio>` 宿主 + 4 个 slot（shell.overlay / input.left /
   assistant-actions / settings.plugins.tab）；Web Audio `start(prevEnd)` 采样级拼接；i18n 双层持久化。
-- **自适应分块**：probe→ratio 分档(6–20s/预热2–4)→`calibration.json`(7天+设备指纹)；短文本≤12s/上传原声走单 URL。
+- **自适应分块**：probe→ratio 分档(6–20s/预热2–4)→`calibration.json`(7天+设备指纹)；短文本≤12s走单 URL（上传原声模式已下线，见 §14）。
 - **音色包生态**：manifest schema 2、sha256 校验、代理、多索引变体、卸载、便携运行时。
 - **已知限制（README）**：① 音色/自动朗读开关**内存态、不落盘**；② 音频写 OS 临时目录；③ 中英文视觉只能真机确认。
 
@@ -113,12 +113,12 @@
 - **M1 TTS Provider 抽象（基础层，已完成）**：
   - Host 引入**提供者注册表**（`registerProvider`/`getProvider`）：`edge-tts` 与 `rvc` 各自实现
     `synthesizeShort(text, voice, prosody, custom) -> 音频路径`，`/speak` 的短路径统一经注册表分发；
-    长 RVC 分块仍是 `rvc` 专属路径。行为零变更，现有 edge / rvc / upload / chunked / cancel 测试全绿（48/48）。
+    长 RVC 分块仍是 `rvc` 专属路径。行为零变更，现有 edge / rvc / chunked / cancel 测试全绿（48/48）。
   - 收益：后续新增本地后端（如 Piper/CosyVoice）只需 `registerProvider('local-piper', {...})` +
     UI 侧 provider 选项，无需改动 `/speak` 主逻辑。
 - **M1+ 本地 Piper 提供者（脚手架，已完成）**：注册第三个可插拔 provider `local-piper`，经同一抽象
-  在 `/speak` 短路径分发；配置了 `piperBinary`+`piperModel` 时 `spawn piper --model … --output_file …`，
-  未配置时返回本地化错误 `host.piperUnconfigured`（不崩溃）。`tests/smoke.mjs` 增加未配置用例（49/49）。
+   在 `/speak` 短路径分发；配置了 `piperBinary`+`piperModel` 时 `spawn piper --model … --output_file …`，
+   未配置时返回本地化错误 `host.piperUnconfigured`（不崩溃）。`tests/smoke.mjs` 增加未配置用例（49/49）。
   （真实端到端合成需用户放好 Piper 二进制与 .onnx 模型，本环境无二进制无法实跑。）
 - **F4 选区朗读（已完成）**：`setupSelectionRead` 监听 `mouseup`，在会话中出现非空文本选区时于选区上方
   显示一个「朗读选中文本」悬浮 chip（`speakText(sel, 'manual')`）；自动忽略 input/textarea 内选择，
@@ -190,3 +190,16 @@
 
 - 判定不做：回声硬伤（TTS 外放会被麦克风自采导致自打断）、mic 权限 UX 成本、仅免手场景
   有价值；键鼠场景已有打断替代（按钮/Esc/S/迷你暂停）。详见上一版评估。
+
+## 14. 原声来源（上传底噪）下线记录（2026-09-11）
+
+- 判定：伪需求——RVC 链路本质是"Edge TTS 按消息文本合成底噪 → 本地转换"，
+  对话内容时刻在变，静态上传音频与文本对不上，无意义。
+- 删除：Client `baseSource/baseAudioName/baseAudioData`（设置项、上传框、
+  `onUploadAudio`、相关 i18n×16、CSS×4）+ Host `baseSource/baseAudioName/
+  baseAudioBase64`（`rvcConfig`、指纹、`synthesizeRvc` 上传分支、分块守卫）+
+  smoke 上传用例；`baseVoice/语速/音调/音量`（作用于 Edge 底噪）保留。
+- 老用户残留的 `localStorage.rvc.baseSource` 由 `loadSettings` 的白名单循环
+  自动忽略（`for k in RVC_DEFAULTS`），Host 对残留 `custom.baseSource` 同理
+  忽略；`rvc-config-save` 的 `{version:1}` 文件不受影响。
+- 运行：`smoke 74 · patch 4 · i18n 6 · client-load 49` 全绿。

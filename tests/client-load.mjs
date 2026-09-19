@@ -125,7 +125,7 @@ try {
     // seed a "user-changed" snapshot into localStorage, then simulate a reload by
     // re-running the factory so loadSettings() applies it
     memStore.set('dsh-tts-settings', JSON.stringify({
-      autoRead: true, voice: 'zh-CN-YunyangNeural', provider: 'rvc', rvcAutoFallback: true,
+      autoRead: true, voice: 'zh-CN-YunyangNeural', provider: 'rvc', rvcAutoFallback: true, rawMarkdown: true,
       notify: { enabled: true, approval: false, approvalResult: true, voice: 'zh-CN-YunxiNeural' },
       rvc: { baseUrl: 'http://127.0.0.1:9999', model: '/x.pth', indexRate: 0.5 },
     }));
@@ -138,6 +138,18 @@ try {
     check('rvcAutoFallback loaded from localStorage', s2.rvcAutoFallback === true, 'rvcAutoFallback=' + s2.rvcAutoFallback);
     check('notify settings loaded from localStorage', s2.notify.enabled === true && s2.notify.approval === false && s2.notify.approvalResult === true && s2.notify.voice === 'zh-CN-YunxiNeural', JSON.stringify(s2.notify));
     check('rvc settings loaded from localStorage', s2.rvc.baseUrl === 'http://127.0.0.1:9999' && s2.rvc.model === '/x.pth' && s2.rvc.indexRate === 0.5, JSON.stringify(s2.rvc));
+    check('rawMarkdown loaded from localStorage', s2.rawMarkdown === true, 'rawMarkdown=' + s2.rawMarkdown);
+    // layered storage: save() must NOT persist service-class keys to localStorage
+    S2.save();
+    try {
+      const persisted = JSON.parse(memStore.get('dsh-tts-settings'));
+      const hasService = persisted && persisted.rvc &&
+        ('baseUrl' in persisted.rvc || 'model' in persisted.rvc || 'index' in persisted.rvc);
+      check('save() strips Host service keys from localStorage', hasService === false, JSON.stringify(persisted.rvc));
+      check('save() keeps UI prefs in localStorage', persisted.rawMarkdown === true && persisted.rvc.indexRate === 0.5, JSON.stringify(persisted));
+    } catch (e) {
+      check('save() strips Host service keys from localStorage', false, String(e && e.message || e));
+    }
     // reset: restore defaults + drop stored settings
     S2.reset();
     const r = S2.get();
@@ -281,6 +293,9 @@ if (!failed) {
       const node = comp.fn()({ useSession: sel => sel({ nodes: [] }), messageId: 'm1' });
       react.useState = orig.useState; react.useEffect = orig.useEffect; react.useRef = orig.useRef; react.useMemo = orig.useMemo;
       check('settings renders approval voice-alert module', allText(node).includes('事件语音提醒') && allText(node).includes('启用审批语音提醒'), undefined);
+      // P0-3B: edge provider -> RVC fully hidden, single entry CTA visible
+      check('settings shows RVC entry CTA (edge mode)', allText(node).includes('需要克隆音色'), undefined);
+      check('settings shows rawMarkdown toggle', allText(node).includes('朗读原始'), undefined);
     } catch (e) {
       check('settings renders approval voice-alert module', false, String(e && e.stack || e).slice(0, 200));
     }

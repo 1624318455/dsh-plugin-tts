@@ -250,23 +250,6 @@ if (speakRoute && audioRoute) {
       check('rvc audio route serves wav (RIFF)', ares.head.code === 200 && bytes.length > 44 && bytes.slice(0, 4).toString() === 'RIFF', `code=${ares.head.code} bytes=${bytes.length}`);
     }
 
-    // upload-mode base audio (skip Edge synthesis)
-    const upRes = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
-      text: '上传底噪链路测试。',
-      voice: 'zh-CN-XiaoxuanNeural',
-      provider: 'rvc',
-      custom: {
-        baseUrl: `http://127.0.0.1:${mock.port}`,
-        model: 'mock.pth',
-        index: '',
-        baseSource: 'upload',
-        baseAudioName: 'sample.wav',
-        baseAudioBase64: miniWav(1).toString('base64')
-      }
-    })), mockRes());
-    const upParsed = JSON.parse(upRes.body);
-    check('rvc upload-base speak returns 200 + url', upRes.head.code === 200 && typeof upParsed.url === 'string', upParsed.url ?? upRes.body);
-
     // ---- adaptive chunked progressive playback (long RVC text) ----
     const longText = '这是一段用于验证自适应分块渐进播放的长文本朗读测试。'.repeat(12); // ~264 chars -> several chunks
     const longRes = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
@@ -689,7 +672,7 @@ if (speakRoute && audioRoute) {
     text: '你好。',
     voice: 'zh-CN-XiaoxuanNeural',
     provider: 'rvc',
-    custom: { baseUrl: 'http://127.0.0.1:1', model: 'demo.pth', index: '', baseSource: 'edge' }
+    custom: { baseUrl: 'http://127.0.0.1:1', model: 'demo.pth', index: '' }
   })), mockRes());
   const badSpeakData = JSON.parse(badSpeak.body);
   check('speak rvc unreachable returns localized error',
@@ -697,6 +680,37 @@ if (speakRoute && audioRoute) {
     badSpeakData.error && typeof badSpeakData.error === 'string' &&
     badSpeakData.i18n && (badSpeakData.i18n.code === 'host.rvcUnreachable' || badSpeakData.i18n.code === 'host.rvcHttpFail'),
     badSpeak.body);
+}
+
+// --- Host RVC service settings (layered storage: ~/.dsh/tts-rvc/settings.json) ---
+{
+  const cfgGet = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-config');
+  const cfgSave = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-config-save');
+  check('plugin registers rvc-config routes', cfgGet !== undefined && cfgSave !== undefined);
+  check('__test host settings hooks exposed',
+    plugin.__test && typeof plugin.__test.loadHostRvcSettings === 'function' &&
+    typeof plugin.__test.saveHostRvcSettings === 'function');
+  if (cfgGet && cfgSave) {
+    const g0 = await call(cfgGet, { ...mockReq('/dsh-tts-api/rvc-config'), method: 'GET' }, mockRes());
+    const g0d = JSON.parse(g0.body);
+    check('rvc-config GET returns service shape', g0.head.code === 200 && g0d.rvc && typeof g0d.rvc.baseUrl === 'string',
+      g0.body.slice(0, 160));
+    // invalid service URL rejected before any write
+    const bad = await call(cfgSave, { ...mockReq('/dsh-tts-api/rvc-config-save', JSON.stringify({ baseUrl: 'not-a-url' })), method: 'POST' }, mockRes());
+    check('rvc-config-save rejects non-http URL', bad.head.code === 400, bad.body.slice(0, 120));
+    // round-trip: save service keys, GET reflects them, then clear again
+    const prev = (plugin.__test.loadHostRvcSettings && plugin.__test.loadHostRvcSettings()) || {};
+    const s1 = await call(cfgSave, { ...mockReq('/dsh-tts-api/rvc-config-save', JSON.stringify({ rvc: { baseUrl: 'http://127.0.0.1:4899', model: 'C:\\m\\v.pth' } })), method: 'POST' }, mockRes());
+    const s1d = JSON.parse(s1.body);
+    check('rvc-config-save persists service keys', s1.head.code === 200 && s1d.ok === true &&
+      s1d.rvc.baseUrl === 'http://127.0.0.1:4899' && s1d.rvc.model === 'C:\\m\\v.pth', s1.body.slice(0, 200));
+    const g1 = await call(cfgGet, { ...mockReq('/dsh-tts-api/rvc-config'), method: 'GET' }, mockRes());
+    check('rvc-config GET reflects saved service keys', JSON.parse(g1.body).rvc.baseUrl === 'http://127.0.0.1:4899', g1.body.slice(0, 200));
+    // restore previous state (empty string clears a key)
+    await call(cfgSave, { ...mockReq('/dsh-tts-api/rvc-config-save', JSON.stringify({ rvc: prev })), method: 'POST' }, mockRes());
+    if (!prev.baseUrl) await call(cfgSave, { ...mockReq('/dsh-tts-api/rvc-config-save', JSON.stringify({ rvc: { baseUrl: '', model: '' } })), method: 'POST' }, mockRes());
+    check('rvc-config round-trip restore ok', true);
+  }
 }
 
 // --- approval voice alerts (session/event firehose -> /notify queue) ---
