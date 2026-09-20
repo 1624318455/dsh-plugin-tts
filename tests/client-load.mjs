@@ -322,6 +322,15 @@ if (!failed) {
     // 4) onBarClick never throws on missing event + reads live shared.speaking
     const clickOk = /const onBarClick[\s\S]{0,600}?typeof e\.stopPropagation[\s\S]{0,200}?shared\.speaking\) togglePause\(\)/.test(src);
     check('onBarClick hardened (no-throw + live speaking)', clickOk);
+    // 5) scroll heartbeat: keepVisible interval while speaking (in-chunk drift fix)
+    check('scroll-follow heartbeat while speaking', /setInterval\(keepVisible,\s*500\)/.test(src));
+    // 6) paused bar shows 已暂停/Paused, not 朗读中/Reading
+    check('paused bar label uses overlay.paused', /shared\.paused \? t\("overlay\.paused"\) : t\("overlay\.reading"\)/.test(src));
+    // 7) box-shadow sentence highlight removed (ugly)
+    const noShadowCss = !/\.dsh-tts-sentence-active\{[^}]*box-shadow/.test(src);
+    const noAddActive = !/classList\.add\("dsh-tts-sentence-active"\)/.test(src);
+    check('sentence shadow highlight removed', noShadowCss && noAddActive,
+      `noShadowCss=${noShadowCss} noAddActive=${noAddActive}`);
   } catch (e) {
     check('single-file progress regression checks', false, String(e && e.stack || e).slice(0, 200));
   }
