@@ -22,13 +22,14 @@
 
 ---
 
-# dsh-plugin-tts — Edge TTS + RVC voice for DeepSeek Harness
+# dsh-plugin-tts — Edge TTS + RVC / Index-TTS2 / Cloud voices for DeepSeek Harness
 
 A dual-sided (Host + Web UI) DeepSeek Harness plugin that reads assistant replies
-aloud — Microsoft Edge's free online TTS out of the box, or **your own RVC voice
-models** for custom voices. Long replies stream with **gapless adaptive chunked
-playback**; voices install **one-click from a voice-pack registry**; a **portable
-RVC runtime** means no RVC WebUI install is needed.
+aloud — Microsoft Edge's free online TTS out of the box, **your own RVC voice
+models** for custom voices, **local Index-TTS2 reference-audio voices**, or
+**paid Google Cloud TTS voices** (Chinese Standard/Wavenet). Long replies stream
+with **gapless adaptive chunked playback**; voices install **one-click from a
+voice-pack registry**; a **portable RVC runtime** means no RVC WebUI install is needed.
 
 > 📖 **First time? See the [user guide (执行手册)](docs/USER-GUIDE.md)** — every step
 > covers "what / how / how to tell it worked": read-aloud, RVC voices and
@@ -44,8 +45,13 @@ RVC runtime** means no RVC WebUI install is needed.
    read aloud automatically (the toggle gets a circular highlight); when off,
    nothing is auto-read.
 3. **Voice settings panel** under 设置 → 插件 → 语音:
-   - **TTS provider**: Edge TTS (free, no API key) / custom RVC voice
-   - **Voice**: 22 live-verified Edge TTS voices (default 晓萱 zh-CN-XiaoxuanNeural)
+   - **TTS provider**: Edge TTS (free, no API key) / custom RVC voice /
+     local Index-TTS2 voice / Google Cloud TTS (paid, API key)
+   - **Voice**: 22 live-verified Edge TTS voices (default 晓萱 zh-CN-XiaoxuanNeural);
+     8 Cloud voices in the cmn-CN group (default cmn-CN-Wavenet-A, free-form id allowed)
+   - **Sound tuning**: rate / pitch / volume (0 = default, shared by Edge & Cloud)
+   - **Cloud config**: API Key (Host-file-only, write-only input) + Project ID (optional) +
+     test button + this month's local usage per tier (Standard 4M / Wavenet-Neural2-Chirp3 1M)
    - **Sound tuning**: rate / pitch / volume (0 = default)
    - **Voice packs**: one-click install of voices from a registry
    - **Preview**: type text and press the play (triangle) button — a spinning

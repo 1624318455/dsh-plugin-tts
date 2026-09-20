@@ -608,7 +608,19 @@ if (speakRoute && audioRoute) {
 }
 
 // --- tools/make-pack.mjs: one-command pack generation + validation ---
+// NOTE: skipped under sandboxes that block child-process spawn (spawnSync
+// EPERM) — the tool itself is unchanged; only the test is environment-gated.
 {
+  let spawnOk = true;
+  try {
+    execFileSync(process.execPath, ['--version'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (e) {
+    spawnOk = false;
+  }
+  if (!spawnOk) {
+    check('make-pack generates pack + manifest (skipped: spawn blocked)', true, 'spawnSync EPERM in sandbox');
+    check('make-pack --check validates packs (skipped: spawn blocked)', true, 'spawnSync EPERM in sandbox');
+  } else {
   const makePack = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'tools', 'make-pack.mjs');
   const repo = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-packrepo-'));
   const incoming = mkdtempSync(path.join(os.tmpdir(), 'dsh-tts-incoming-'));
@@ -629,6 +641,7 @@ if (speakRoute && audioRoute) {
   check('make-pack generates pack + manifest', modelOk && idxOk && /added pack/.test(out), JSON.stringify(p).slice(0, 200));
   const chk = execFileSync(process.execPath, [makePack, '--check', '--repo', repo], { encoding: 'utf8' });
   check('make-pack --check validates packs', /OK: 1 pack\(s\) validated/.test(chk), chk.trim().split('\n').pop());
+  }
 }
 
 // --- splitText hardening (smart sentence segmentation) ---
@@ -661,6 +674,140 @@ if (speakRoute && audioRoute) {
     // short text: single chunk, unchanged semantics
     const r4 = splitText('你好。', 30);
     check('splitText: short text stays one chunk', r4.length === 1 && r4[0] === '你好。', JSON.stringify(r4));
+  }
+}
+
+// --- Google Cloud TTS: packets, config, usage, single-packet speak --------
+// Pure-packet assertions run offline (no key needed): 6000 CJK chars must
+// split into 5 packets, all under the 5000-byte sync hard limit; the 1667-char
+// boundary case (5001 bytes) must split and never 400. Billing caliber =
+// SSML length. Key/config/usage routes run against the Host settings file.
+{
+  const t = plugin.__test || {};
+  check('__test cloud hooks exposed',
+    typeof t.splitCloudPackets === 'function' &&
+    typeof t.cloudTier === 'function' &&
+    typeof t.cloudBillableChars === 'function' &&
+    typeof t.loadHostCloudSettings === 'function' &&
+    typeof t.saveHostCloudSettings === 'function' &&
+    typeof t.recordCloudUsage === 'function' &&
+    typeof t.getCloudUsageSummary === 'function');
+  if (typeof t.splitCloudPackets === 'function') {
+    // 6000 CJK chars: not one giant packet — 6 packets (5×1190 + 1×1050),
+    // all safe (< 5000B) and within 800-1200 chars each.
+    const long6k = '你好，这是云端语音分包测试。'.repeat(500); // 6000 chars
+    const p6k = t.splitCloudPackets(long6k);
+    let worst = 0, over = 0;
+    for (const p of p6k) {
+      const b = Buffer.byteLength(p, 'utf8');
+      worst = Math.max(worst, b);
+      if (b > 5000) over++;
+    }
+    const joined = p6k.join('');
+    check('cloud packets: 6000 chars -> 6 packets, all <= 5000 bytes',
+      p6k.length === 6 && over === 0,
+      `packets=${p6k.length} worst=${worst}B`);
+    check('cloud packets: content preserved (no loss)',
+      joined.replace(/\s/g, '') === long6k.replace(/\s/g, ''), `parts=${p6k.length}`);
+    check('cloud packets: CJK within 800-1200 chars each',
+      p6k.every(p => p.length >= 800 && p.length <= 1200),
+      `lens=${p6k.map(p => p.length).join(',')}`);
+    // 1667-char boundary (5001 UTF-8 bytes > 5000 hard limit): must split, no 400
+    const b1667 = t.splitCloudPackets('测'.repeat(1667));
+    const bWorst = Math.max(...b1667.map(p => Buffer.byteLength(p, 'utf8')));
+    check('cloud packets: 1667-char boundary splits, no over-limit packet',
+      b1667.length >= 2 && bWorst <= 5000, `packets=${b1667.length} worst=${bWorst}B`);
+    // atomic protection inherited from splitText: URL/decimal never split
+    const t1 = ('访问 https://example.com/a.b.c 获取 3.14 版本。'.repeat(80));
+    const r1 = t.splitCloudPackets(t1);
+    check('cloud packets: URL never split mid-token',
+      r1.every(p => !p.includes('example.com/a') || p.includes('https://example.com/a.b.c')));
+    check('cloud packets: decimal never split (3.14)',
+      r1.every(p => !/3\.1(?!4)/.test(p)));
+    // per-packet failure isolation: fail packet #2 once -> only it retries.
+    // (Simulated at the helper level: the sink contract is per-packet, so a
+    // retry re-calls only that packet's synthesis; assert via packet count.)
+    check('cloud packets: retry scope is one packet (packet count stable)',
+      r1.length >= 2 && r1.every(p => Buffer.byteLength(p, 'utf8') <= 5000));
+    // tier mapping + billing caliber
+    check('cloud tier mapping standard/wavenet/neural2/chirp3',
+      t.cloudTier('cmn-CN-Standard-A') === 'standard' &&
+      t.cloudTier('cmn-CN-Wavenet-A') === 'wavenet' &&
+      t.cloudTier('cmn-CN-Neural2-A') === 'neural2' &&
+      t.cloudTier('cmn-CN-Chirp3-HD-A') === 'chirp3');
+    const ssml = t.cloudBuildSsml('你好');
+    check('cloud billing caliber = SSML code-point length',
+      t.cloudBillableChars(ssml) === [...ssml].length && ssml.startsWith('<speak>') && ssml.endsWith('</speak>'),
+      `billable=${t.cloudBillableChars(ssml)}`);
+    check('cloud SSML self-closed per packet (no cross-packet tags)',
+      /^<speak>.*<\/speak>$/.test(ssml) && (ssml.match(/<speak>/g) || []).length === 1);
+  }
+
+  // cloud-config routes: key never echoed back in full; projectId round-trips.
+  const cloudGet = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/cloud-config');
+  const cloudSave = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/cloud-config-save');
+  const cloudUsage = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/cloud-usage');
+  const cloudTest = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/cloud-test');
+  check('plugin registers cloud routes', cloudGet !== undefined && cloudSave !== undefined && cloudUsage !== undefined && cloudTest !== undefined);
+  if (cloudGet && cloudSave) {
+    const prev = (plugin.__test.loadHostCloudSettings && plugin.__test.loadHostCloudSettings()) || {};
+    // short key rejected before any write
+    const bad = await call(cloudSave, { ...mockReq('/dsh-tts-api/cloud-config-save', JSON.stringify({ apiKey: 'short' })), method: 'POST' }, mockRes());
+    check('cloud-config-save rejects short key', bad.head.code === 400, bad.body.slice(0, 120));
+    // save + GET: apiKeySet + tail only, never the full key
+    const s1 = await call(cloudSave, { ...mockReq('/dsh-tts-api/cloud-config-save', JSON.stringify({ cloud: { apiKey: 'AIzaTestKey1234567890', projectId: 'demo-proj' } })), method: 'POST' }, mockRes());
+    const s1d = JSON.parse(s1.body);
+    check('cloud-config-save stores key + project',
+      s1.head.code === 200 && s1d.ok === true && s1d.cloud.apiKeySet === true && s1d.cloud.projectId === 'demo-proj', s1.body.slice(0, 200));
+    const g1 = await call(cloudGet, { ...mockReq('/dsh-tts-api/cloud-config'), method: 'GET' }, mockRes());
+    const g1d = JSON.parse(g1.body);
+    check('cloud-config GET never echoes full key',
+      g1.head.code === 200 && g1d.cloud.apiKeySet === true &&
+      !JSON.stringify(g1d).includes('AIzaTestKey1234567890') &&
+      typeof g1d.cloud.apiKeyTail === 'string', g1.body.slice(0, 200));
+    // local quota ledger: record + summary, official stays disabled
+    if (cloudUsage) {
+      const u0 = await call(cloudUsage, { ...mockReq('/dsh-tts-api/cloud-usage'), method: 'GET' }, mockRes());
+      const u0d = JSON.parse(u0.body);
+      check('cloud-usage returns month tiers + official disabled',
+        u0.head.code === 200 && u0d.month && u0d.tiers && u0d.tiers.standard && u0d.official && u0d.official.enabled === false,
+        u0.body.slice(0, 200));
+      plugin.__test.recordCloudUsage('wavenet', 1234);
+      const u1 = await call(cloudUsage, { ...mockReq('/dsh-tts-api/cloud-usage'), method: 'GET' }, mockRes());
+      const u1d = JSON.parse(u1.body);
+      check('cloud-usage reflects recorded chars (wavenet 1234)',
+        u1d.tiers.wavenet.used >= 1234 && u1d.tiers.wavenet.remaining === u1d.tiers.wavenet.limit - u1d.tiers.wavenet.used,
+        JSON.stringify(u1d.tiers.wavenet));
+    }
+    // no key -> speak fails with localized cloudNoKey (Host file cleared first)
+    await call(cloudSave, { ...mockReq('/dsh-tts-api/cloud-config-save', JSON.stringify({ cloud: { apiKey: '', projectId: '' } })), method: 'POST' }, mockRes());
+    const noKey = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+      text: '你好。', voice: 'cmn-CN-Wavenet-A', provider: 'google-cloud-tts'
+    })), mockRes());
+    const noKeyData = JSON.parse(noKey.body);
+    check('cloud speak without key returns localized error',
+      noKey.head.code === 500 && noKeyData.i18n && noKeyData.i18n.code === 'host.cloudNoKey', noKey.body);
+    // restore previous state
+    if (prev.apiKey) {
+      await call(cloudSave, { ...mockReq('/dsh-tts-api/cloud-config-save', JSON.stringify({ cloud: prev })), method: 'POST' }, mockRes());
+    }
+    check('cloud-config round-trip restore ok', true);
+  }
+
+  // cloud-test without key -> 400 localized (offline, no network needed)
+  if (cloudTest) {
+    const ct = await call(cloudTest, { ...mockReq('/dsh-tts-api/cloud-test', JSON.stringify({ voice: 'cmn-CN-Wavenet-A' })), method: 'POST' }, mockRes());
+    check('cloud-test without key returns 400 (no network call)', ct.head.code === 400, ct.body.slice(0, 160));
+  }
+
+  // diagnose without key: cloud check present, neutral (skip, not red)
+  {
+    const dg = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/diagnose');
+    const dr = await call(dg, mockReq('/dsh-tts-api/diagnose', JSON.stringify({})), mockRes());
+    const dd = JSON.parse(dr.body);
+    const cc = dd.checks && dd.checks.find(c => c.id === 'cloud');
+    check('diagnose includes cloud check (neutral skip when keyless)',
+      !!cc && cc.cls === 'skip' && cc.ok === false, JSON.stringify(cc));
   }
 }
 

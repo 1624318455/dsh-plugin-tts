@@ -65,9 +65,10 @@ check('no CJK UI literal left outside dictionary', cjk.length === 0, cjk.length 
 // host.* keys are resolved DYNAMICALLY (hostErrText(t(i18n.code)) and
 // t("host.phase." + phaseKey)) so they won't appear as literal t("host.x")
 // calls; they are part of the host<->client i18n contract. Exclude them here.
+// cloud.usage.* tier keys are likewise dynamic (t("cloud.usage." + tier)).
 const dead = [...zhKeys].filter(k =>
   used.has(k) ? false
-  : /^voice\.|^baseVoice\.|^host\./.test(k) ? false
+  : /^voice\.|^baseVoice\.|^host\.|^cloud\.usage\.(standard|wavenet|neural2|chirp3)$/.test(k) ? false
   : true);
 check('dictionary has no dead keys (excluding voice/baseVoice/host data)', dead.length === 0, dead.length ? 'dead: ' + dead.join(',') : undefined);
 // host.* keys form a complete bi-dictionary set (already covered by the
