@@ -22,11 +22,12 @@
 
 ---
 
-# dsh-plugin-tts — Edge TTS + RVC / Index-TTS2 / Cloud voices for DeepSeek Harness
+# dsh-plugin-tts — Edge TTS + RVC / Index-TTS2 / CosyVoice / Cloud voices for DeepSeek Harness
 
 A dual-sided (Host + Web UI) DeepSeek Harness plugin that reads assistant replies
 aloud — Microsoft Edge's free online TTS out of the box, **your own RVC voice
-models** for custom voices, **local Index-TTS2 reference-audio voices**, or
+models** for custom voices, **local Index-TTS2 reference-audio voices**,
+**local CosyVoice zero-shot prompt clones** (CosyVoice-2.0-0.5B), or
 **paid Google Cloud TTS voices** (Chinese Standard/Wavenet). Long replies stream
 with **gapless adaptive chunked playback**; voices install **one-click from a
 voice-pack registry**; a **portable RVC runtime** means no RVC WebUI install is needed.
@@ -46,13 +47,14 @@ voice-pack registry**; a **portable RVC runtime** means no RVC WebUI install is 
    nothing is auto-read.
 3. **Voice settings panel** under 设置 → 插件 → 语音:
    - **TTS provider**: Edge TTS (free, no API key) / custom RVC voice /
-     local Index-TTS2 voice / Google Cloud TTS (paid, API key)
+     local Index-TTS2 voice / local CosyVoice clone / Google Cloud TTS (paid, API key)
    - **Voice**: 22 live-verified Edge TTS voices (default 晓萱 zh-CN-XiaoxuanNeural);
      8 Cloud voices in the cmn-CN group (default cmn-CN-Wavenet-A, free-form id allowed)
    - **Sound tuning**: rate / pitch / volume (0 = default, shared by Edge & Cloud)
+   - **CosyVoice config**: service URL (default 7890) + prompt-audio picker/refresh/upload +
+     speed (0.5–2.0) + seed (0 = random)
    - **Cloud config**: API Key (Host-file-only, write-only input) + Project ID (optional) +
      test button + this month's local usage per tier (Standard 4M / Wavenet-Neural2-Chirp3 1M)
-   - **Sound tuning**: rate / pitch / volume (0 = default)
    - **Voice packs**: one-click install of voices from a registry
    - **Preview**: type text and press the play (triangle) button — a spinning
      loader shows while it is synthesizing/playing (click again to stop),

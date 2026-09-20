@@ -860,6 +860,73 @@ if (speakRoute && audioRoute) {
   }
 }
 
+// --- Host CosyVoice service settings (layered storage) ---
+// Offline unit-style checks (no service needed): config shape, invalid URL
+// rejection, round-trip + restore. Live synthesis is covered by the manual
+// e2e run against cosy-server.py (mock below mirrors its /voices contract).
+{
+  const cfgGet = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/cosy-config');
+  const cfgSave = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/cosy-config-save');
+  const voicesRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/cosy-voices');
+  const uploadRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/cosy-upload');
+  check('plugin registers cosy routes', cfgGet !== undefined && cfgSave !== undefined && voicesRoute !== undefined && uploadRoute !== undefined);
+  check('__test cosy hooks exposed',
+    plugin.__test && typeof plugin.__test.cosyConfig === 'function' &&
+    typeof plugin.__test.loadHostCosySettings === 'function' &&
+    typeof plugin.__test.saveHostCosySettings === 'function');
+  if (plugin.__test && typeof plugin.__test.cosyConfig === 'function') {
+    const c0 = plugin.__test.cosyConfig(null, '');
+    check('cosyConfig defaults (7890/speed 1/seed 0)',
+      c0.baseUrl === 'http://127.0.0.1:7890' && c0.speed === 1.0 && c0.seed === 0, JSON.stringify(c0));
+    const c1 = plugin.__test.cosyConfig({ baseUrl: 'http://127.0.0.1:9999/', voice: 'demo.wav', speed: 9, seed: -3 }, 'fb.wav');
+    check('cosyConfig clamps speed/seed + trims url + fallback voice',
+      c1.baseUrl === 'http://127.0.0.1:9999' && c1.speed === 2.0 && c1.seed === 0 && c1.voice === 'demo.wav', JSON.stringify(c1));
+  }
+  if (cfgGet && cfgSave) {
+    const g0 = await call(cfgGet, { ...mockReq('/dsh-tts-api/cosy-config'), method: 'GET' }, mockRes());
+    const g0d = JSON.parse(g0.body);
+    check('cosy-config GET returns service shape', g0.head.code === 200 && g0d.cosy && typeof g0d.cosy.baseUrl === 'string',
+      g0.body.slice(0, 160));
+    const bad = await call(cfgSave, { ...mockReq('/dsh-tts-api/cosy-config-save', JSON.stringify({ baseUrl: 'not-a-url' })), method: 'POST' }, mockRes());
+    check('cosy-config-save rejects non-http URL', bad.head.code === 400, bad.body.slice(0, 120));
+    const prev = (plugin.__test.loadHostCosySettings && plugin.__test.loadHostCosySettings()) || {};
+    const s1 = await call(cfgSave, { ...mockReq('/dsh-tts-api/cosy-config-save', JSON.stringify({ cosy: { baseUrl: 'http://127.0.0.1:7899' } })), method: 'POST' }, mockRes());
+    const s1d = JSON.parse(s1.body);
+    check('cosy-config-save persists service keys', s1.head.code === 200 && s1d.ok === true &&
+      s1d.cosy.baseUrl === 'http://127.0.0.1:7899', s1.body.slice(0, 200));
+    const g1 = await call(cfgGet, { ...mockReq('/dsh-tts-api/cosy-config'), method: 'GET' }, mockRes());
+    check('cosy-config GET reflects saved service keys', JSON.parse(g1.body).cosy.baseUrl === 'http://127.0.0.1:7899', g1.body.slice(0, 200));
+    await call(cfgSave, { ...mockReq('/dsh-tts-api/cosy-config-save', JSON.stringify({ cosy: prev })), method: 'POST' }, mockRes());
+    if (!prev.baseUrl) await call(cfgSave, { ...mockReq('/dsh-tts-api/cosy-config-save', JSON.stringify({ cosy: { baseUrl: '' } })), method: 'POST' }, mockRes());
+    check('cosy-config round-trip restore ok', true);
+  }
+  // unreachable service -> actionable, localized errors (no live server needed)
+  {
+    const uv = await call(voicesRoute, mockReq('/dsh-tts-api/cosy-voices?baseUrl=http%3A%2F%2F127.0.0.1%3A1'), mockRes());
+    const uvd = JSON.parse(uv.body);
+    check('cosy-voices unreachable returns localized error',
+      uv.head.code === 502 && uvd.i18n && uvd.i18n.code === 'host.cosyNeedsServer', uv.body.slice(0, 200));
+    const badSpeak = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+      text: '你好。', voice: '', provider: 'cosyvoice',
+      custom: { baseUrl: 'http://127.0.0.1:1', voice: '', speed: 1.0 }
+    })), mockRes());
+    const bsd = JSON.parse(badSpeak.body);
+    check('speak cosyvoice unreachable returns localized error',
+      badSpeak.head.code === 500 && bsd.i18n && (bsd.i18n.code === 'host.cosyUnreachable' || bsd.i18n.code === 'host.cosyHttpFail'),
+      badSpeak.body.slice(0, 200));
+  }
+  // diagnose without service: cosy checks present, classified as connect
+  {
+    const dg = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/diagnose');
+    const dr = await call(dg, mockReq('/dsh-tts-api/diagnose', JSON.stringify({ cosyBaseUrl: 'http://127.0.0.1:1' })), mockRes());
+    const dd = JSON.parse(dr.body);
+    const cc = dd.checks && dd.checks.find(c => c.id === 'cosy-server');
+    const cv = dd.checks && dd.checks.find(c => c.id === 'cosy-voice');
+    check('diagnose includes cosy checks (connect when down)',
+      !!cc && cc.cls === 'connect' && !!cv, JSON.stringify({ cc, cv }).slice(0, 240));
+  }
+}
+
 // --- approval voice alerts (session/event firehose -> /notify queue) ---
 {
   const notifyRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/notify');

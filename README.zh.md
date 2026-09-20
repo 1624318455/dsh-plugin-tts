@@ -22,12 +22,12 @@
 
 ---
 
-# dsh-plugin-tts — Edge TTS + RVC / Index-TTS2 / Cloud 语音大集成
+# dsh-plugin-tts — Edge TTS + RVC / Index-TTS2 / CosyVoice / Cloud 语音大集成
 
 DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软免费在线音色（Edge TTS），
-也能用**你自己训练的 RVC 音色**、**本机 Index-TTS2 参考音频音色**或**谷歌 Cloud TTS
-付费音色**朗读；长回复**自适应分块渐进播放、段间无缝**；
-音色可**从音色包仓库一键安装**；还提供**免装 RVC WebUI 的便携运行时**。
+也能用**你自己训练的 RVC 音色**、**本机 Index-TTS2 参考音频音色**、**本机 CosyVoice
+提示音频零样本克隆**或**谷歌 Cloud TTS 付费音色**朗读；长回复**自适应分块渐进播放、
+段间无缝**；音色可**从音色包仓库一键安装**；还提供**免装 RVC WebUI 的便携运行时**。
 
 > 📖 **第一次用？看[《使用手册（执行手册）》](docs/USER-GUIDE.md)**——每一步都有
 > "做什么 / 怎么做 / 怎么算成功"，从朗读、RVC 音色到音色包下载全覆盖。
@@ -53,10 +53,11 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软�
 2. **自动朗读开关**：输入框左下角的喇叭按钮；开启后每条新完成的 AI 回复自动朗读
    （按钮带圆形高亮），关闭则不自动朗读。
 3. **语音设置面板**：侧边栏「设置 → 插件」新增「语音」标签页：
-   - **TTS提供者**：Edge TTS（免费在线）/ 自定义音色（RVC）/ 本地音色（Index-TTS2）/ Cloud TTS（谷歌付费）
+   - **TTS提供者**：Edge TTS（免费在线）/ 自定义音色（RVC）/ 本地音色（Index-TTS2）/ 本地克隆（CosyVoice）/ Cloud TTS（谷歌付费）
    - **朗读音色**：22 个经实测可用的 Edge TTS 音色（默认 晓萱 zh-CN-XiaoxuanNeural）；
      Cloud 组 8 个 cmn-CN 音色（默认 cmn-CN-Wavenet-A，也可手输 voice id）
    - **声音调节**：语速 / 音调 / 音量（0 = 默认，Edge 与 Cloud 共用）
+   - **CosyVoice 配置**：服务地址（默认 7890）+ 提示音频选择/刷新/上传 + 语速（0.5–2.0）+ 随机种子（0 = 随机）
    - **Cloud 配置**：API Key（只存本机 Host 文件，输入框写后即清）+ Project ID（可选）+
      测试连接 + 本月分档用量（Standard 400 万 / Wavenet·Neural2·Chirp3 各 100 万）
    - **音色包**：从音色包仓库一键下载安装音色
