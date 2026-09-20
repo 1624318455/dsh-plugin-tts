@@ -293,8 +293,8 @@ if (!failed) {
       const node = comp.fn()({ useSession: sel => sel({ nodes: [] }), messageId: 'm1' });
       react.useState = orig.useState; react.useEffect = orig.useEffect; react.useRef = orig.useRef; react.useMemo = orig.useMemo;
       check('settings renders approval voice-alert module', allText(node).includes('事件语音提醒') && allText(node).includes('启用审批语音提醒'), undefined);
-      // P0-3B: edge provider -> RVC fully hidden, single entry CTA visible
-      check('settings shows RVC entry CTA (edge mode)', allText(node).includes('需要克隆音色'), undefined);
+      // Entry CTAs removed: provider switch is the only entry (no shortcut cards)
+      check('settings hides removed entry CTAs (edge mode)', !allText(node).includes('需要克隆音色') && !allText(node).includes('Index-TTS2 音色'), undefined);
       check('settings shows rawMarkdown toggle', allText(node).includes('朗读原始'), undefined);
     } catch (e) {
       check('settings renders approval voice-alert module', false, String(e && e.stack || e).slice(0, 200));
