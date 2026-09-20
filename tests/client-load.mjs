@@ -302,6 +302,31 @@ if (!failed) {
   }
 }
 
+// Single-file (short-text) reads must seed chunkProgress/readingIndex so the
+// overlay, scroll-follow and click-to-pause activate without the chunked path.
+// Regression test for "朗读高度跟随有时不生效 / 点击朗读中按钮无反应".
+{
+  try {
+    const src = globalThis.__dshTtsClientSrc || '';
+    // 1) speakText seeds 1/1 progress right after readingSentenceIdx reset
+    const seedOk = /shared\.readingSentenceIdx\s*=\s*0;[\s\S]{0,1200}?shared\.chunkProgress\s*=\s*\{\s*index:\s*1,\s*total:\s*1\s*\}[\s\S]{0,200}?shared\.readingIndex\s*=\s*1;/.test(src);
+    check('speakText seeds 1/1 progress for single-file reads', seedOk);
+    // 2) overlay visible gate accepts total >= 1 (not > 1)
+    check('overlay visible accepts total >= 1', /cp\s*&&\s*cp\.total\s*>=\s*1/.test(src));
+    // 3) hidden bar must not intercept clicks: pointer-events:none by default,
+    //    auto only under [data-visible]
+    const barDefaultNone = /\.dsh-tts-reading-bar\{[^}]*pointer-events:none/.test(src);
+    const barVisibleAuto = /\.dsh-tts-reading-overlay\[data-visible\][^{]*\.dsh-tts-reading-bar\{[^}]*pointer-events:auto/.test(src);
+    check('hidden bar does not intercept clicks', barDefaultNone && barVisibleAuto,
+      `defaultNone=${barDefaultNone} visibleAuto=${barVisibleAuto}`);
+    // 4) onBarClick never throws on missing event + reads live shared.speaking
+    const clickOk = /const onBarClick[\s\S]{0,600}?typeof e\.stopPropagation[\s\S]{0,200}?shared\.speaking\) togglePause\(\)/.test(src);
+    check('onBarClick hardened (no-throw + live speaking)', clickOk);
+  } catch (e) {
+    check('single-file progress regression checks', false, String(e && e.stack || e).slice(0, 200));
+  }
+}
+
 const failedCount = results.filter(r => !r.ok).length;
 console.log(`\n${results.length - failedCount}/${results.length} client-load checks passed`);
 process.exit(failedCount === 0 ? 0 : 1);
