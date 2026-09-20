@@ -335,6 +335,11 @@ if (!failed) {
     const needleOk = /fullNeedle\.length \* Math\.min\(0\.99/.test(src);
     check('follow not frozen by own scroll + live needle', selfOk && needleOk,
       `self=${selfOk} needle=${needleOk}`);
+    // 5c) message anchor: button click climbs to the message root (WeakRef),
+    // text-resolved anchors are cached for auto-read reuse.
+    const anchorOk = /shared\.readingMsgEl = new WeakRef\(best\)/.test(src) &&
+      /shared\.readingMsgEl \? shared\.readingMsgEl\.deref\(\) : null/.test(src);
+    check('follow uses anchored message element', anchorOk);
     // 6) compact bar: no "n / total" counter in bar text (tooltip only)
     const noCounter = !/overlay\.reading"\)\) \+ "  " \+ idx/.test(src) && !/\("overlay\.paused"\) : t\("overlay\.reading"\)\) \+/.test(src);
     const pausedOk = /shared\.paused \? t\("overlay\.paused"\) : t\("overlay\.reading"\)(?!\) \+)/.test(src);
