@@ -322,10 +322,17 @@ if (!failed) {
     // 4) onBarClick never throws on missing event + reads live shared.speaking
     const clickOk = /const onBarClick[\s\S]{0,600}?typeof e\.stopPropagation[\s\S]{0,200}?shared\.speaking\) togglePause\(\)/.test(src);
     check('onBarClick hardened (no-throw + live speaking)', clickOk);
-    // 5) scroll heartbeat: keepVisible interval while speaking (in-chunk drift fix)
-    check('scroll-follow heartbeat while speaking', /setInterval\(keepVisible,\s*500\)/.test(src));
-    // 6) paused bar shows 已暂停/Paused, not 朗读中/Reading
-    check('paused bar label uses overlay.paused', /shared\.paused \? t\("overlay\.paused"\) : t\("overlay\.reading"\)/.test(src));
+    // 5) live scroll-follow: continuous ratio + 250ms heartbeat + user yield
+    const liveOk = /ttsLiveRatio/.test(src) && /el\.currentTime \/ el\.duration/.test(src) && /chunkStartedAt/.test(src);
+    const beatOk = /setInterval\(keepVisible,\s*250\)/.test(src);
+    const yieldOk = /ttsUserScrollAt\.t\s*=\s*Date\.now\(\)/.test(src) && /Date\.now\(\) - ttsUserScrollAt\.t < 5000/.test(src);
+    check('scroll-follow tracks live ratio', liveOk && beatOk && yieldOk,
+      `live=${liveOk} beat=${beatOk} yield=${yieldOk}`);
+    // 6) compact bar: no "n / total" counter in bar text (tooltip only)
+    const noCounter = !/overlay\.reading"\)\) \+ "  " \+ idx/.test(src) && !/\("overlay\.paused"\) : t\("overlay\.reading"\)\) \+/.test(src);
+    const pausedOk = /shared\.paused \? t\("overlay\.paused"\) : t\("overlay\.reading"\)(?!\) \+)/.test(src);
+    check('bar compact: paused/reading text only, no counter', noCounter && pausedOk,
+      `noCounter=${noCounter} pausedOk=${pausedOk}`);
     // 7) box-shadow sentence highlight removed (ugly)
     const noShadowCss = !/\.dsh-tts-sentence-active\{[^}]*box-shadow/.test(src);
     const noAddActive = !/classList\.add\("dsh-tts-sentence-active"\)/.test(src);
