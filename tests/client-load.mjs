@@ -340,6 +340,12 @@ if (!failed) {
     const anchorOk = /shared\.readingMsgEl = new WeakRef\(best\)/.test(src) &&
       /shared\.readingMsgEl \? shared\.readingMsgEl\.deref\(\) : null/.test(src);
     check('follow uses anchored message element', anchorOk);
+    // 5d) anchor survives re-render (fingerprint relocate) + wrong-element
+    // guard (never rubber-band to top on a fragment hit).
+    const relocOk = /shared\.readingMsgKey = \{ head/.test(src) && /mark\("relocated"\)/.test(src);
+    const guardOk = /mark\("bad-target"\)/.test(src);
+    check('anchor relocates + bad target skipped', relocOk && guardOk,
+      `reloc=${relocOk} guard=${guardOk}`);
     // 6) compact bar: no "n / total" counter in bar text (tooltip only)
     const noCounter = !/overlay\.reading"\)\) \+ "  " \+ idx/.test(src) && !/\("overlay\.paused"\) : t\("overlay\.reading"\)\) \+/.test(src);
     const pausedOk = /shared\.paused \? t\("overlay\.paused"\) : t\("overlay\.reading"\)(?!\) \+)/.test(src);
