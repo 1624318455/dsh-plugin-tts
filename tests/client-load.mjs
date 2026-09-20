@@ -328,6 +328,13 @@ if (!failed) {
     const yieldOk = /ttsUserScrollAt\.t\s*=\s*Date\.now\(\)/.test(src) && /Date\.now\(\) - ttsUserScrollAt\.t < 5000/.test(src);
     check('scroll-follow tracks live ratio', liveOk && beatOk && yieldOk,
       `live=${liveOk} beat=${beatOk} yield=${yieldOk}`);
+    // 5b) self-scroll guard: our own scrollTo() must not refresh the user
+    // yield window (that froze follow after the first nudge), and the needle
+    // must track the live ratio (not the fixed text head).
+    const selfOk = /ttsSelfScroll\.on = true/.test(src) && /if \(ttsSelfScroll\.on\) return/.test(src);
+    const needleOk = /fullNeedle\.length \* Math\.min\(0\.99/.test(src);
+    check('follow not frozen by own scroll + live needle', selfOk && needleOk,
+      `self=${selfOk} needle=${needleOk}`);
     // 6) compact bar: no "n / total" counter in bar text (tooltip only)
     const noCounter = !/overlay\.reading"\)\) \+ "  " \+ idx/.test(src) && !/\("overlay\.paused"\) : t\("overlay\.reading"\)\) \+/.test(src);
     const pausedOk = /shared\.paused \? t\("overlay\.paused"\) : t\("overlay\.reading"\)(?!\) \+)/.test(src);
