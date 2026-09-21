@@ -811,6 +811,30 @@ if (speakRoute && audioRoute) {
   }
 }
 
+// --- chunk policy: fastFirst only for edge/cloud (pure, offline) ---------
+// Edge/Cloud (ratio ~0.1): chunk 1 returns immediately, rest warm behind.
+// Local synthesis (rvc/index/cosy): full prewarm, playback never starves.
+{
+  const t = plugin.__test || {};
+  check('__test.chunkCal exposed', typeof t.chunkCal === 'function');
+  if (typeof t.chunkCal === 'function') {
+    // chunkCal covers the FIXED-policy providers; rvc uses live getCalibration
+    // (probe), so it is intentionally absent here.
+    const e = t.chunkCal('edge-tts');
+    const c = t.chunkCal('google-cloud-tts');
+    const i = t.chunkCal('index-tts2');
+    const v = t.chunkCal('cosyvoice');
+    const u = t.chunkCal('unknown-provider');
+    check('chunkCal: edge/cloud fastFirst, local full prewarm',
+      e.fastFirst === true && e.prewarm === 2 &&
+      c.fastFirst === true && c.prewarm === 2 &&
+      !i.fastFirst && i.prewarm === 2 &&
+      !v.fastFirst && v.prewarm === 2 &&
+      u.fastFirst === true,
+      `edge=${JSON.stringify(e)} cloud=${JSON.stringify(c)} index=${JSON.stringify(i)} cosy=${JSON.stringify(v)}`);
+  }
+}
+
 // --- /speak with unreachable RVC service -> localized, action-ready error ---
 // The client turns this i18n-tagged error into a toast (+ one-click Edge
 // fallback); verify the host response shape.
