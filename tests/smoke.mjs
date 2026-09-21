@@ -114,7 +114,7 @@ if (speakRoute && audioRoute) {
   {
     const res2 = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({ text: '你好，这是一个冒烟测试。', voice: 'zh-CN-XiaoxuanNeural' })), mockRes());
     const parsed2 = JSON.parse(res2.body);
-    check('repeated speak reuses cached URL (no re-synthesize)', res2.head.code === 200 && parsed2.url === parsed.url, `first=${parsed.url} second=${parsed2.url}`);
+    check('repeated speak reuses cached URL (no re-synthesize)', res2.head.code === 200 && parsed2.url === parsed.url && parsed2.cached === true, `first=${parsed.url} second=${parsed2.url} cached=${parsed2.cached}`);
   }
 
   // ?download=1 forces a Content-Disposition attachment on the audio asset
@@ -867,6 +867,12 @@ if (speakRoute && audioRoute) {
     check('diagnose exposes plugin identity for the log bundle',
       dd.plugin && typeof dd.plugin.version === 'string' && dd.plugin.version !== 'unknown',
       JSON.stringify(dd.plugin));
+    check('rvc long read recorded calibration info (no message text)',
+      Array.isArray(dd.recent) && dd.recent.find((e) => e && e.kind === 'info' && e.stage === 'calibration' && !('text' in e)),
+      JSON.stringify((dd.recent || []).filter((e) => e && e.kind === 'info')));
+    check('diagnose exposes activeJobs snapshot (counts only)',
+      Array.isArray(dd.activeJobs),
+      JSON.stringify(dd.activeJobs));
   }
 }
 
