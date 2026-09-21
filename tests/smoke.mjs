@@ -870,6 +870,9 @@ if (speakRoute && audioRoute) {
     check('rvc long read recorded calibration info (no message text)',
       Array.isArray(dd.recent) && dd.recent.find((e) => e && e.kind === 'info' && e.stage === 'calibration' && !('text' in e)),
       JSON.stringify((dd.recent || []).filter((e) => e && e.kind === 'info')));
+    check('rvc failure recorded stage breakdown (failedAt=load, no message text)',
+      Array.isArray(dd.recent) && dd.recent.find((e) => e && e.stage === 'rvc-stages' && /failedAt=load/.test(e.error || '') && !('text' in e)),
+      JSON.stringify((dd.recent || []).filter((e) => e && e.stage === 'rvc-stages')));
     check('diagnose exposes activeJobs snapshot (counts only)',
       Array.isArray(dd.activeJobs),
       JSON.stringify(dd.activeJobs));
