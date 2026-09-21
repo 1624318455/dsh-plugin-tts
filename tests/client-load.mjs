@@ -356,6 +356,19 @@ if (!failed) {
     const noAddActive = !/classList\.add\("dsh-tts-sentence-active"\)/.test(src);
     check('sentence shadow highlight removed', noShadowCss && noAddActive,
       `noShadowCss=${noShadowCss} noAddActive=${noAddActive}`);
+    // 8) playback mutual exclusion: playSeq generation guards all audio
+    // callbacks; stop hard-aborts decode via load(); chunk queue is indexed
+    // (no push-on-resolve reorder).
+    const seqBump = /shared\.playSeq = \(shared\.playSeq \|\| 0\) \+ 1/.test(src);
+    const seqGuard = (src.match(/shared\.playSeq === mySeq/g) || []).length >= 4;
+    const loadAbort = /el\.load\(\);/.test(src);
+    const indexedQ = /const queue = new Array\(total\)/.test(src) && /queue\[want\] = r\.url/.test(src) && /queue\[cursor\]/.test(src);
+    const noPush = !/queue\.push\(r\.url\)/.test(src);
+    check('playback generation guards callbacks (no overlap)', seqBump && seqGuard,
+      `bump=${seqBump} guards=${(src.match(/shared\.playSeq === mySeq/g) || []).length}`);
+    check('stop aborts decode via load()', loadAbort);
+    check('chunk queue indexed by chunk idx (no reorder)', indexedQ && noPush,
+      `indexed=${indexedQ} noPush=${noPush}`);
   } catch (e) {
     check('single-file progress regression checks', false, String(e && e.stack || e).slice(0, 200));
   }
