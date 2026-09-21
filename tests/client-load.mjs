@@ -369,11 +369,13 @@ if (!failed) {
     check('stop aborts decode via load()', loadAbort);
     check('chunk queue indexed by chunk idx (no reorder)', indexedQ && noPush,
       `indexed=${indexedQ} noPush=${noPush}`);
-    // 9) fluency trio: skipped-slot advance, stall watchdog + stretch, stalling text
+    // 9) fluency trio: skipped-slot advance, stall watchdog (text-only,
+    // never touches playbackRate — varispeed would deepen the timbre).
     const skipSlot = /queue\[want\] = false/.test(src) && /queue\[cursor\] === false/.test(src);
-    const stallDog = /shared\.stallStretch = true/.test(src) && /0\.85/.test(src) && /chunk\.stalling/.test(src);
+    const stallDog = /shared\.stalling = true/.test(src) && /chunk\.stalling/.test(src)
+      && !/stallStretch/.test(src) && !/\*\s*0\.85/.test(src);
     check('skipped chunks advance without gap', skipSlot);
-    check('stall watchdog stretches + shows synthesizing', stallDog);
+    check('stall watchdog shows synthesizing, rate untouched', stallDog);
   } catch (e) {
     check('single-file progress regression checks', false, String(e && e.stack || e).slice(0, 200));
   }
