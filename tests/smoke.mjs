@@ -861,10 +861,33 @@ if (speakRoute && audioRoute) {
     const dr = await call(dgErr, mockReq('/dsh-tts-api/diagnose', JSON.stringify({})), mockRes());
     const dd = JSON.parse(dr.body);
     const hit = Array.isArray(dd.recent) && dd.recent.find((e) => e && e.provider === 'rvc' && e.stage === 'speak');
-    check('failed speak recorded in diagnose.recent (no message text)',
-      !!hit && hit.textLen === 3 && !('text' in hit),
+    check('failed speak recorded in diagnose.recent (kind + no message text)',
+      !!hit && hit.textLen === 3 && !('text' in hit) && hit.kind === 'service',
       JSON.stringify((dd.recent || []).slice(-3)));
+    check('diagnose exposes plugin identity for the log bundle',
+      dd.plugin && typeof dd.plugin.version === 'string' && dd.plugin.version !== 'unknown',
+      JSON.stringify(dd.plugin));
   }
+}
+
+// --- error kind classifier for the exported diagnostic log ---
+{
+  const f = plugin.__test && plugin.__test.classifyHostError;
+  const cases = [
+    ['closed early code=1007 reason=Unsupported voice x', 'voice'],
+    ['TTS worker exited 1: ERR HTTP 403', 'auth'],
+    ['未配置 RVC 模型路径', 'config'],
+    ['无法连接本地 RVC 推理服务（http://127.0.0.1:1）：fetch failed', 'service'],
+    ['timeout after 20000ms without turn.end', 'timeout'],
+    ['websocket error (type=error url=speech.platform.bing.com/edge/v1) closed code=1006 reason=', 'network'],
+    ['首段合成失败', 'chunk'],
+    ['TTS worker timeout (45s)', 'timeout'],
+    ['TTS spawn failed: something', 'spawn'],
+    ['something completely unexpected', 'unknown'],
+  ];
+  const bad = typeof f === 'function' ? cases.filter(([msg, want]) => f(msg) !== want) : cases;
+  check('classifyHostError kinds for the log bundle', bad.length === 0,
+    bad.length ? JSON.stringify(bad.slice(0, 3)) : cases.length + ' cases');
 }
 
 // --- Host RVC service settings (layered storage: ~/.dsh/tts-rvc/settings.json) ---
