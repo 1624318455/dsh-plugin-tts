@@ -899,6 +899,16 @@ if (speakRoute && audioRoute) {
     bad.length ? JSON.stringify(bad.slice(0, 3)) : cases.length + ' cases');
 }
 
+// --- worker RETRY side-channel parsing (redo visibility in the log) ---
+{
+  const f = plugin.__test && plugin.__test.countWorkerRetries;
+  const r0 = f ? f('OK /tmp/x.mp3\nSIZE 123\n') : null;
+  const r1 = f ? f('RETRY websocket error (type=error) closed code=1006 reason=\nOK /tmp/x.mp3\nSIZE 123\n') : null;
+  check('countWorkerRetries parses retry side-channel',
+    !!f && r0 && r0.count === 0 && r1 && r1.count === 1 && /1006/.test(r1.last),
+    JSON.stringify({ r0, r1 }));
+}
+
 // --- Host RVC service settings (layered storage: ~/.dsh/tts-rvc/settings.json) ---
 {
   const cfgGet = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-config');
