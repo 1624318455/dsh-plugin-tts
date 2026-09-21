@@ -297,6 +297,7 @@ if (!failed) {
       // Entry CTAs removed: provider switch is the only entry (no shortcut cards)
       check('settings hides removed entry CTAs (edge mode)', !allText(node).includes('需要克隆音色') && !allText(node).includes('Index-TTS2 音色'), undefined);
       check('settings shows rawMarkdown toggle', allText(node).includes('朗读原始'), undefined);
+      check('settings bottom shows bug-report hint', allText(node).includes('导出诊断日志') && allText(node).includes('红色报错'), undefined);
     } catch (e) {
       check('settings renders approval voice-alert module', false, String(e && e.stack || e).slice(0, 200));
     }
