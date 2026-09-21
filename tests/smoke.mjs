@@ -356,6 +356,10 @@ if (speakRoute && audioRoute) {
     const model = dgData.checks.find(c => c.id === 'rvc-model');
     check('diagnose: edge synthesis ok', dg.head.code === 200 && edge && edge.ok === true, JSON.stringify(edge));
     check('diagnose: rvc server + model ok (mock)', rvc && rvc.ok === true && model && model.ok === true, JSON.stringify({ rvc, model }));
+    check('diagnose exposes worker meta for the log bundle',
+      dgData.worker && dgData.worker.chromium === '143.0.3650.75' && dgData.worker.singleTimeoutMs === 20000 && dgData.worker.spawnTimeoutMs === 45000,
+      JSON.stringify(dgData.worker));
+    check('diagnose exposes recent host errors array', Array.isArray(dgData.recent), JSON.stringify(dgData.recent));
     const dgBad = await call(diagnoseRoute, mockReq('/dsh-tts-api/diagnose', JSON.stringify({
       rvcBaseUrl: 'http://127.0.0.1:1'
     })), mockRes());
@@ -851,6 +855,16 @@ if (speakRoute && audioRoute) {
     badSpeakData.error && typeof badSpeakData.error === 'string' &&
     badSpeakData.i18n && (badSpeakData.i18n.code === 'host.rvcUnreachable' || badSpeakData.i18n.code === 'host.rvcHttpFail'),
     badSpeak.body);
+  // the failed speak above must land in the host recent-error buffer (diag log)
+  {
+    const dgErr = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/diagnose');
+    const dr = await call(dgErr, mockReq('/dsh-tts-api/diagnose', JSON.stringify({})), mockRes());
+    const dd = JSON.parse(dr.body);
+    const hit = Array.isArray(dd.recent) && dd.recent.find((e) => e && e.provider === 'rvc' && e.stage === 'speak');
+    check('failed speak recorded in diagnose.recent (no message text)',
+      !!hit && hit.textLen === 3 && !('text' in hit),
+      JSON.stringify((dd.recent || []).slice(-3)));
+  }
 }
 
 // --- Host RVC service settings (layered storage: ~/.dsh/tts-rvc/settings.json) ---
