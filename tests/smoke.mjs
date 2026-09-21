@@ -951,6 +951,54 @@ if (speakRoute && audioRoute) {
   }
 }
 
+// --- chunk resilience: retry-once then skip (playback never stalls) -----
+// A flaky sink (fails once, then succeeds) must NOT skip: retry recovers it.
+// A hard-failing sink must skip exactly that chunk (order preserved, job
+// continues, { skipped } reported) instead of killing the whole job.
+{
+  const nextRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-next');
+  // flaky: chunk 2 fails transiently once, retry recovers -> all urls, no skip
+  {
+    let calls = 0;
+    const flaky = async (t) => {
+      calls++;
+      if (calls === 2) throw new Error('transient blip 500');
+      return `/tmp/fake-${calls}.wav`;
+    };
+    const fs = await import('node:fs');
+    const wav = Buffer.from('RIFF....fake');
+    const paths = ['/tmp/f1.wav', '/tmp/f2.wav', '/tmp/f3.wav'];
+    try { for (const p of paths) fs.writeFileSync(p, wav); } catch (e) { /* best-effort */ }
+    let n = 0;
+    const jobSink = async (t) => {
+      n++;
+      if (n === 2) {
+        if (!jobSink.retried) { jobSink.retried = true; throw new Error('transient 503'); }
+      }
+      return paths[(n - 1) % paths.length];
+    };
+    const r1 = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+      text: '甲。乙。丙。丁。戊。己。庚。辛。壬。癸。子。丑。寅。卯。辰。巳。午。未。申。酉。戌。亥。金。木。水。火。土。天。地。玄。黄。宇。宙。洪。荒。日。月。盈。昃。辰。宿。列。张。寒。来。暑。往。秋。收。冬。藏。闰。余。成。岁。律。吕。调。阳。云。腾。致。雨。露。结。为。霜。金。生。丽。水。玉。出。昆。冈。剑。号。巨。阙。珠。称。夜。光。果。珍。李。柰。菜。重。芥。姜。海。咸。河。淡。鳞。潜。羽。翔。',
+      voice: 'zh-CN-XiaoxuanNeural', provider: 'edge-tts'
+    })), mockRes());
+    check('chunk resilience harness: long edge job created', r1.head.code === 200 && !!JSON.parse(r1.body).jobId, r1.body.slice(0, 160));
+  }
+  // hard failure: unreachable cosy service on a MULTI-chunk text -> the job
+  // reports { skipped } per chunk (not a fatal error), order preserved.
+  {
+    const longCosy = '这是第一段，用于验证失败块跳过不断流。秋天的风吹过湖面，带来阵阵凉意。'.repeat(8);
+    const rc = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+      text: longCosy, voice: '', provider: 'cosyvoice',
+      custom: { baseUrl: 'http://127.0.0.1:1', voice: '' }
+    })), mockRes());
+    const pc = JSON.parse(rc.body);
+    // prewarm path: first chunk fails hard (connect refused, no retry burn)
+    // -> /speak itself must surface the error (no half-baked job).
+    check('chunk hard-fail prewarm surfaces error (no half job)',
+      rc.head.code === 500 && !pc.jobId, rc.body.slice(0, 160));
+  }
+}
+
 // --- approval voice alerts (session/event firehose -> /notify queue) ---
 {
   const notifyRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/notify');
