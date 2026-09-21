@@ -378,6 +378,11 @@ if (!failed) {
       && !/stallStretch/.test(src) && !/\*\s*0\.85/.test(src);
     check('skipped chunks advance without gap', skipSlot);
     check('stall watchdog shows synthesizing, rate untouched', stallDog);
+    // 10) starvation clamp: a chunk decoded late must start at now, never in
+    // the past (past start plays immediately while bookkeeping lags, so the
+    // next chunk overlaps the tail — sustained RTF > 1, e.g. local CosyVoice).
+    const starveClamp = /Math\.max\(nextStart,\s*ctx\.currentTime/.test(src);
+    check('starved chunk clamps to now (no tail overlap)', starveClamp);
   } catch (e) {
     check('single-file progress regression checks', false, String(e && e.stack || e).slice(0, 200));
   }
