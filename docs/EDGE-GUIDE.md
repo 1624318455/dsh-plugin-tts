@@ -2,6 +2,9 @@
 
 > dsh-plugin-tts 的 Edge TTS 能力专册。Edge TTS 是插件的默认提供者，开箱即用，无需本地服务与模型。
 > 主 README：[中文](../README.zh.md) / [English](../README.md) · 使用手册：[《执行手册》](USER-GUIDE.md)
+>
+> 🤖 **给 AI Agent 的说明**：本文档可直接喂给 AI Agent 照着落地。如果觉得晦涩难懂，或想直接脱手实现，
+> 把本文档全文粘贴给你的 AI Agent，让它按文末「给 AI Agent 的落地附录」一步步执行验证即可。
 
 **目录**
 - [Edge TTS 是什么](#edge-tts-是什么)
@@ -11,6 +14,7 @@
 - [设置项详解](#设置项详解)
 - [Edge TTS 疑难排查](#edge-tts-疑难排查)
 - [隐私与使用提示](#隐私与使用提示)
+- [给 AI Agent 的落地附录](#给-ai-agent-的落地附录)
 - [English](#english)
 
 ---
@@ -114,6 +118,23 @@ Edge TTS 是微软提供的免费在线合成端点：把要朗读的文本发�
 
 Edge TTS 会把要朗读的文本发送到微软在线端点作合成（个人使用没问题；商用 / 高并发请留意微软服务条款）。
 合成音频写入系统临时目录，由系统自动清理；同一会话内的重复朗读会复用缓存，重启后首次朗读会重新合成。
+
+---
+
+<a name="给-ai-agent-的落地附录"></a>
+## 给 AI Agent 的落地附录
+
+> 以下契约对所有机器通用，不含任何个人路径。按顺序执行即可打通。
+
+- **provider id**：`edge-tts`（`/speak` 的 `provider` 字段就填这个；缺省也按它处理）。
+- **无需本地服务**：没有 `baseUrl`，没有模型文件，跳过一切“启动服务”步骤。
+- **合成调用**（经插件 Host 中转，前端不直连微软端点）：
+  `POST /dsh-tts-api/speak` body `{ text, voice, provider: "edge-tts", prosody: { rate, pitch, volume } }`
+  → 短文本返回 `{ url }`，长文本返回 `{ jobId, chunks, total }`（后续块用 `GET /dsh-tts-api/rvc-next?job=<jobId>` 逐块拉取）。
+- **音频播放**：`GET /dsh-tts-audio/<id>`（`id` 取自返回的 `url` 尾段）。
+- **诊断验证**：`POST /dsh-tts-api/diagnose` body `{}` → 看 `checks` 里 `id === "edge"` 一项；
+  `ok: true` 即联通，`cls === "voice"` 换音色，`cls === "protocol"/"connect"` 查网络。
+- **验收标准**：任选列表内音色合成一句短文本能播；一句长文本能出 `chunks` 且首块可播。
 
 ---
 

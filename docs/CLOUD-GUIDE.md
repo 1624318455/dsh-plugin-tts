@@ -2,6 +2,9 @@
 
 > dsh-plugin-tts 的 Cloud TTS 能力专册。Cloud TTS 是谷歌付费在线合成：音质与语种覆盖最好，但需要自备 API Key 并按量计费。
 > 主 README：[中文](../README.zh.md) / [English](../README.md) · 使用手册：[《执行手册》](USER-GUIDE.md)
+>
+> 🤖 **给 AI Agent 的说明**：本文档可直接喂给 AI Agent 照着落地。如果觉得晦涩难懂，或想直接脱手实现，
+> 把本文档全文粘贴给你的 AI Agent，让它按文末「给 AI Agent 的落地附录」一步步执行验证即可。
 
 **目录**
 - [Cloud TTS 是什么](#cloud-tts-是什么)
@@ -13,6 +16,7 @@
 - [设置项详解](#设置项详解)
 - [Cloud TTS 疑难排查](#cloud-tts-疑难排查)
 - [安全与隐私提示](#安全与隐私提示)
+- [给 AI Agent 的落地附录](#给-ai-agent-的落地附录)
 - [English](#english)
 
 ---
@@ -153,6 +157,28 @@ Cloud TTS 的同步接口对单包大小有硬上限，长回复会被自动切�
   反馈问题时也**不要**把 Key 发给任何人；
 - Cloud TTS 会把要朗读的文本发送到谷歌端点合成，涉密文本请评估后再用；
 - 合成音频写入系统临时目录，由系统自动清理；同文本 + 同音色在同一会话内会复用缓存。
+
+---
+
+<a name="给-ai-agent-的落地附录"></a>
+## 给 AI Agent 的落地附录
+
+> 以下契约对所有机器通用，不含任何个人路径与 Key 明文。按顺序执行即可打通。
+
+- **provider id**：`google-cloud-tts`（`/speak` 的 `provider` 字段就填这个）。
+- **无需本地服务**：没有 `baseUrl`， disparity 只在云端；网络需能到达谷歌端点。
+- **Key 存放**：当前用户主目录下的 Host 配置文件（`tts-rvc` 目录下的 `settings.json`，`cloud.apiKey` 字段），
+  只写不回显；面板经 `GET /dsh-tts-api/cloud-config` 只返回“是否已存 + 尾部提示”，
+  经 `POST /dsh-tts-api/cloud-config-save` 写入，`POST /dsh-tts-api/cloud-test` 实测合成一句。
+- **合成调用**（经插件 Host 中转，前端不直连谷歌端点）：
+  `POST /dsh-tts-api/speak` body `{ text, provider: "google-cloud-tts", custom: { voice }, prosody }`
+  → 短文本 `{ url }`，长文本 `{ jobId, chunks, total }`（后续包 `GET /dsh-tts-api/rvc-next?job=<jobId>`）。
+- **档位归档**（与用量口径一致）：voice 名含 `chirp` → chirp3，`neural2` → neural2，
+  `wavenet` → wavenet，其余 → standard；用量经 `GET /dsh-tts-api/cloud-usage` 查询（本地计数，每月 1 号清零）。
+- **诊断验证**：`POST /dsh-tts-api/diagnose` body `{ cloudProbe: "1", cloudVoice }` → 看 `checks` 里
+  `id === "cloud"` 一项；`skip = 未配 Key`，`ok = 联通`，`401/403 = Key 或 API 未启用`。
+- **验收标准**：保存 Key → 测试连接通过 → 任选云音色合成一句短文本能播 → 用量接口对应档位 +1。
+- **红线**：任何日志、截图、粘贴都要脱敏 Key；不要把 Key 写进文档、环境变量示例或聊天记录。
 
 ---
 

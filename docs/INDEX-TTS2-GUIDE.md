@@ -2,6 +2,9 @@
 
 > dsh-plugin-tts 的 Index-TTS2 能力专册。Index-TTS2 是纯本地合成：音色来自参考音频，不需要 Edge TTS 原声。
 > 主 README：[中文](../README.zh.md) / [English](../README.md) · 使用手册：[《执行手册》](USER-GUIDE.md)
+>
+> 🤖 **给 AI Agent 的说明**：本文档可直接喂给 AI Agent 照着落地。如果觉得晦涩难懂，或想直接脱手实现，
+> 把本文档全文粘贴给你的 AI Agent，让它按文末「给 AI Agent 的落地附录」一步步执行验证即可。
 
 **目录**
 - [Index-TTS2 是什么](#index-tts2-是什么)
@@ -13,6 +16,7 @@
 - [设置项详解](#设置项详解)
 - [Index-TTS2 疑难排查](#index-tts2-疑难排查)
 - [隐私与版权提示](#隐私与版权提示)
+- [给 AI Agent 的落地附录](#给-ai-agent-的落地附录)
 - [English](#english)
 
 ---
@@ -143,6 +147,28 @@ Index-TTS2 是本地运行的文本转语音服务：输入文本 + 一段参考
 
 Index-TTS2 全程本地合成，音频与文本不上传。只使用你有权使用的参考音频（自己录制的、
 或已获授权的）；未经同意克隆他人声音可能涉及法律与平台规则问题。
+
+---
+
+<a name="给-ai-agent-的落地附录"></a>
+## 给 AI Agent 的落地附录
+
+> 以下契约对所有机器通用，不含任何个人路径。按顺序执行即可打通本地服务与 dsh 的联通。
+
+- **provider id**：`index-tts2`（`/speak` 的 `provider` 字段就填这个）。
+- **默认服务地址**：`http://127.0.0.1:7880`（回环地址 + 默认端口；只有改过端口 / 远端部署才改）。
+- **本地服务最小接口**（插件只依赖这三个，目录位置不重要）：
+  `GET /health`（存活）、`GET /api/v1/voices` → `{ voices: [] }`（参考音频列表）、
+  `POST /api/v1/tts/tasks`（合成，body 含 `text` / `prompt_audio` 及清洗与采样参数，返回 wav 字节）。
+- **经插件 Host 中转的调用**（前端不直连本地服务）：
+  音色列表 `GET /dsh-tts-api/index-voices?baseUrl=<服务地址>`；
+  上传参考音频 `POST /dsh-tts-api/index-upload`；
+  服务地址持久化 `GET /dsh-tts-api/index-config` / `POST /dsh-tts-api/index-config-save`；
+  合成 `POST /dsh-tts-api/speak` body `{ text, provider: "index-tts2", custom: { baseUrl, voice } }`
+  → 短文本 `{ url }`，长文本 `{ jobId, chunks, total }`（后续块 `GET /dsh-tts-api/rvc-next?job=<jobId>`）。
+- **诊断验证**：`POST /dsh-tts-api/diagnose` body `{ indexBaseUrl }` → 看 `checks` 里
+  `index-server`（服务是否在线）与 `index-voice`（参考音频是否非空）；`warn = 空列表`，补音频再刷新。
+- **验收标准**：音色列表非空 → 任选一段合成一句短文本能播 → 一句长文本能出 `chunks` 且首块可播。
 
 ---
 

@@ -2,6 +2,9 @@
 
 > dsh-plugin-tts 的 CosyVoice 能力专册。CosyVoice 是纯本地零样本克隆：用一段提示音频 + 它的文字稿，直接按该音色朗读任意新文本。
 > 主 README：[中文](../README.zh.md) / [English](../README.md) · 使用手册：[《执行手册》](USER-GUIDE.md)
+>
+> 🤖 **给 AI Agent 的说明**：本文档可直接喂给 AI Agent 照着落地。如果觉得晦涩难懂，或想直接脱手实现，
+> 把本文档全文粘贴给你的 AI Agent，让它按文末「给 AI Agent 的落地附录」一步步执行验证即可。
 
 **目录**
 - [CosyVoice 是什么](#cosyvoice-是什么)
@@ -13,6 +16,7 @@
 - [设置项详解](#设置项详解)
 - [CosyVoice 疑难排查](#cosyvoice-疑难排查)
 - [隐私与版权提示](#隐私与版权提示)
+- [给 AI Agent 的落地附录](#给-ai-agent-的落地附录)
 - [English](#english)
 
 ---
@@ -146,6 +150,31 @@ CosyVoice 是本地运行的零样本语音克隆：给它一段提示音频（�
 
 CosyVoice 全程本地合成，音频与文本不上传。只使用你有权使用的提示音频（自己录制的、
 或已获授权的）；未经同意克隆他人声音可能涉及法律与平台规则问题。
+
+---
+
+<a name="给-ai-agent-的落地附录"></a>
+## 给 AI Agent 的落地附录
+
+> 以下契约对所有机器通用，不含任何个人路径。按顺序执行即可打通本地服务与 dsh 的联通。
+
+- **provider id**：`cosyvoice`（`/speak` 的 `provider` 字段就填这个）。
+- **默认服务地址**：`http://127.0.0.1:7890`（回环地址 + 默认端口；只有改过端口 / 远端部署才改）。
+- **本地服务最小接口**（插件只依赖这四个，目录位置不重要）：
+  `GET /health`（存活）、`GET /voices` → `{ voices: [] }`（提示音频列表）、
+  `POST /upload`（上传提示音频）、`POST /tts`（合成，body 含 `text` / `prompt` / `prompt_text` / `speed` / `seed`，
+  返回 `{ audio_base64 }`）。
+- **经插件 Host 中转的调用**（前端不直连本地服务）：
+  提示音频列表 `GET /dsh-tts-api/cosy-voices?baseUrl=<服务地址>`；
+  上传提示音频 `POST /dsh-tts-api/cosy-upload`；
+  服务地址持久化 `GET /dsh-tts-api/cosy-config` / `POST /dsh-tts-api/cosy-config-save`；
+  合成 `POST /dsh-tts-api/speak` body `{ text, provider: "cosyvoice", custom: { baseUrl, voice, promptText, speed, seed } }`
+  → 短文本 `{ url }`，长文本 `{ jobId, chunks, total }`（后续块 `GET /dsh-tts-api/rvc-next?job=<jobId>`）。
+- **文字稿必填校验**：`promptText` 必须与所选提示音频的内容按序全文一致；多语提示音频缺任一段都会复读，
+  这是联通成功但“读错”的头号原因，先查它再查服务。
+- **诊断验证**：`POST /dsh-tts-api/diagnose` body `{ cosyBaseUrl }` → 看 `checks` 里
+  `cosy-server`（服务是否在线）与 `cosy-voice`（提示音频是否非空）。
+- **验收标准**：提示音频列表非空 → 任选一段 + 写对文字稿合成一句短文本能播 → 一句长文本能出 `chunks` 且首块可播。
 
 ---
 
