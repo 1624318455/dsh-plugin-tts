@@ -421,6 +421,17 @@ if (speakRoute && audioRoute) {
           && skipParsed.chunks.length >= 2 && skipParsed.chunks[0] && skipParsed.chunks[1] === false
           && Array.isArray(skipParsed.skipped) && skipParsed.skipped.length === 1 && skipParsed.skipped[0] === 2,
           skipRes.body.slice(0, 200));
+        // P1-3 spans ride the same response: count matches total and the span
+        // slices rebuild the sent text (whitespace-insensitive).
+        {
+          const sps = skipParsed.spans;
+          const rebuilt = Array.isArray(sps)
+            ? sps.map(([a, b]) => skipText.slice(a, b)).join('').replace(/\s/g, '')
+            : null;
+          check('chunked /speak carries exact block spans',
+            Array.isArray(sps) && sps.length === skipParsed.total && rebuilt === skipText.replace(/\s/g, ''),
+            `spans=${sps && sps.length} total=${skipParsed.total}`);
+        }
         if (typeof skipParsed.jobId === 'string' && Array.isArray(skipParsed.chunks)) {
           const nextRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-next');
           // serveIdx starts past prewarm; the on-demand serves must be the
@@ -817,6 +828,33 @@ if (speakRoute && audioRoute) {
     // short text: single chunk, unchanged semantics
     const r4 = splitText('你好。', 30);
     check('splitText: short text stays one chunk', r4.length === 1 && r4[0] === '你好。', JSON.stringify(r4));
+
+    // spanParts (scroll-follow P1-3): per-part char spans walk the source in
+    // order; concatenated span slices reproduce the text minus whitespace.
+    const spanOf = plugin.__test.spanParts;
+    check('__test.spanParts exposed', typeof spanOf === 'function');
+    if (typeof spanOf === 'function') {
+      const st = '第一句。第二句很长很长，需要切块 Parece que sí。第三句。';
+      const sp = splitText(st, 12);
+      const ssp = spanOf(st, sp);
+      const rebuilt = Array.isArray(ssp)
+        ? ssp.map(([a, b]) => st.slice(a, b)).join('').replace(/\s/g, '')
+        : null;
+      check('spanParts: spans walk in order and rebuild the text',
+        Array.isArray(ssp) && ssp.length === sp.length &&
+        rebuilt === st.replace(/\s/g, ''),
+        `parts=${sp.length} spans=${JSON.stringify(ssp)}`);
+      // Cloud synthetic join gaps (latin alnum boundary spaces) match zero
+      // source whitespace instead of failing the walk.
+      const cl = 'Visit https://example.com/a.b.c now please ok。'.repeat(6);
+      const cp = plugin.__test.splitCloudPackets(cl);
+      const csp = spanOf(cl, cp);
+      check('spanParts: cloud packets walk despite synthetic gaps',
+        Array.isArray(csp) && csp.length === cp.length,
+        `packets=${cp.length} spans=${csp && csp.length}`);
+      check('spanParts: unwalkable parts return null (fallback signal)',
+        spanOf('abc', ['zzz']) === null);
+    }
   }
 }
 

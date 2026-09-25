@@ -324,40 +324,53 @@ if (!failed) {
     // 4) onBarClick never throws on missing event + reads live shared.speaking
     const clickOk = /const onBarClick[\s\S]{0,600}?typeof e\.stopPropagation[\s\S]{0,200}?shared\.speaking\) togglePause\(\)/.test(src);
     check('onBarClick hardened (no-throw + live speaking)', clickOk);
-    // 5) live scroll-follow: continuous ratio + 250ms heartbeat + user yield
-    const liveOk = /ttsLiveRatio/.test(src) && /el\.currentTime \/ el\.duration/.test(src) && /chunkStartedAt/.test(src);
-    const beatOk = /setInterval\(keepVisible,\s*250\)/.test(src);
-    const yieldOk = /ttsUserScrollAt\.t\s*=\s*Date\.now\(\)/.test(src) && /Date\.now\(\) - ttsUserScrollAt\.t < 5000/.test(src);
-    check('scroll-follow tracks live ratio', liveOk && beatOk && yieldOk,
-      `live=${liveOk} beat=${beatOk} yield=${yieldOk}`);
-    // 5b) self-scroll guard: our own scrollTo() must not refresh the user
-    // yield window (that froze follow after the first nudge), and the needle
-    // must track the live ratio (not the fixed text head).
-    const selfOk = /ttsSelfScroll\.on = true/.test(src) && /if \(ttsSelfScroll\.on\) return/.test(src);
-    const needleOk = /fullNeedle\.length \* Math\.min\(0\.99/.test(src);
-    check('follow not frozen by own scroll + live needle', selfOk && needleOk,
-      `self=${selfOk} needle=${needleOk}`);
+    // 5) scroll-follow v2: block-index stepwise signal, visibility-driven
+    // minimal scrolling (no polling loop), latch-off with manual resume.
+    const stepOk = /const ttsBlockIdx = \(\) =>/.test(src) && /ttsBlockHead/.test(src) &&
+      !/ttsLiveRatio/.test(src) && !/chunkStartedAt \|\| Date\.now\(\)\)\) \/ 1000/.test(src);
+    const noPoll = !/setInterval\(keepVisible/.test(src) && !/setInterval\(ttsFollowTick/.test(src);
+    const latchOk = /ttsFollow\.latched = false/.test(src) && /follow\.resume/.test(src) &&
+      !/ttsUserScrollAt\.t < 5000/.test(src);
+    check('scroll-follow v2 stepwise signal, no poll, latch-off resume', stepOk && noPoll && latchOk,
+      `step=${stepOk} noPoll=${noPoll} latch=${latchOk}`);
+    // 5b) self-scroll fence via timestamp + scrollend (covers smooth-scroll
+    // duration); takeover sources are wheel/touchmove/pointer-drag only, so
+    // host autoscroll during streaming never latches follow off.
+    const selfOk = /ttsFollow\.selfUntil = Date\.now\(\) \+ 600/.test(src) && /scrollend/.test(src);
+    const takeOk = /onTouchMove/.test(src) && /onPointerMove/.test(src) && /onWheel/.test(src);
+    check('follow self-fence + gesture takeover sources', selfOk && takeOk,
+      `self=${selfOk} take=${takeOk}`);
     // 5c) message anchor: button click climbs to the message root (WeakRef),
-    // text-resolved anchors are cached for auto-read reuse.
+    // fingerprint relocate survives re-renders; paragraph hits are never
+    // cached as anchors (fragile, single-tick use).
     const anchorOk = /shared\.readingMsgEl = new WeakRef\(best\)/.test(src) &&
       /shared\.readingMsgEl \? shared\.readingMsgEl\.deref\(\) : null/.test(src);
     check('follow uses anchored message element', anchorOk);
     // 5d) anchor survives re-render (fingerprint relocate) + wrong-element
-    // guard (never rubber-band to top on a fragment hit).
+    // guard (never rubber-band on an absurd hit) + nearest-scroll.
     const relocOk = /shared\.readingMsgKey = \{ head/.test(src) && /mark\("relocated"\)/.test(src);
-    const guardOk = /mark\("bad-target"\)/.test(src);
+    const guardOk = /mark\("bad-target"\)/.test(src) && /block:"nearest"/.test(src);
     check('anchor relocates + bad target skipped', relocOk && guardOk,
       `reloc=${relocOk} guard=${guardOk}`);
+    // 5e) reduced-motion respected: follow bails before touching the view.
+    check('follow respects prefers-reduced-motion', /ttsReducedMotion\(\)/.test(src) && /mark\("reduced-motion"\)/.test(src));
+    // 5f) exact server spans feed the block locator when present (P1-3),
+    // equal-division fallback otherwise; spans reset per utterance.
+    const spansOk = /shared\.chunkSpans = Array\.isArray\(result\.spans\)/.test(src) &&
+      /shared\.chunkSpans = null/.test(src) && /sp\[idx - 1\]\[0\]/.test(src);
+    check('follow consumes server block spans with fallback', spansOk);
     // 6) compact bar: no "n / total" counter in bar text (tooltip only)
     const noCounter = !/overlay\.reading"\)\) \+ "  " \+ idx/.test(src) && !/\("overlay\.paused"\) : t\("overlay\.reading"\)\) \+/.test(src);
     const pausedOk = /shared\.paused \? t\("overlay\.paused"\) : t\("overlay\.reading"\)(?!\) \+)/.test(src);
     check('bar compact: paused/reading text only, no counter', noCounter && pausedOk,
       `noCounter=${noCounter} pausedOk=${pausedOk}`);
-    // 7) box-shadow sentence highlight removed (ugly)
+    // 7) v2 block highlight restored as the visual anchor for follow: soft
+    // background, never the old box-shadow style.
+    const hlCss = /\.dsh-tts-sentence-active\{[^}]*background/.test(src);
     const noShadowCss = !/\.dsh-tts-sentence-active\{[^}]*box-shadow/.test(src);
-    const noAddActive = !/classList\.add\("dsh-tts-sentence-active"\)/.test(src);
-    check('sentence shadow highlight removed', noShadowCss && noAddActive,
-      `noShadowCss=${noShadowCss} noAddActive=${noAddActive}`);
+    const addActive = /classList\.add\("dsh-tts-sentence-active"\)/.test(src);
+    check('block highlight restored (soft bg, no shadow)', hlCss && noShadowCss && addActive,
+      `css=${hlCss} noShadow=${noShadowCss} add=${addActive}`);
     // 8) playback mutual exclusion: playSeq generation guards all audio
     // callbacks; stop hard-aborts decode via load(); chunk queue is indexed
     // (no push-on-resolve reorder).
