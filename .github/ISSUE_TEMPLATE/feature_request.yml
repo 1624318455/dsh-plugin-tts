@@ -1,0 +1,28 @@
+name: 功能建议
+description: 给插件提新功能或改进想法
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: scene
+    attributes:
+      label: 使用场景
+      description: 你在什么情况下需要这个功能，现在是怎么凑合的
+      placeholder: "比如：开车时想听长回复，但当前只能手动点朗读……"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+      description: 你希望做成什么样，越具体越好
+      placeholder: "比如：加一个超过 200 字自动朗读的开关……"
+    validations:
+      required: true
+  - type: textarea
+    id: alt
+    attributes:
+      label: 替代方案（选填）
+      description: 有没有退而求其次也能接受的做法
+    validations:
+      required: false

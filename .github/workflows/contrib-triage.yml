@@ -1,0 +1,63 @@
+# 内容初筛：正文过薄的 issue / PR 自动索要信息（只提醒不关闭）。
+# 关闭逻辑在 stale.yml（7 天提醒 + 7 天关闭）。不 checkout 任何代码，
+# pull_request_target 在此是安全的。
+name: contrib-triage
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+  pull_request_target:
+    types: [opened, edited, reopened, ready_for_review]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const isPR = !!context.payload.pull_request;
+            const target = isPR ? context.payload.pull_request : context.payload.issue;
+            const assoc = context.payload.sender?.author_association ?? "";
+
+            // 自己人、机器人、草稿 PR 直接放行
+            if (["OWNER", "MEMBER", "COLLABORATOR"].includes(assoc)) return;
+            if (context.payload.sender?.type === "Bot") return;
+            if (isPR && target.draft) return;
+
+            // 去掉标题行/空行/注释后看有效字数
+            const effective = (target.body ?? "")
+              .split("\n")
+              .map((l) => l.trim())
+              .filter((l) => l && !l.startsWith("#") && !l.startsWith("<!--") && l !== "---")
+              .join("\n");
+            const thin = effective.length < (isPR ? 30 : 50);
+
+            const labels = target.labels.map((l) => l.name);
+            const hasFlag = labels.includes("needs:info");
+
+            if (thin && !hasFlag) {
+              await github.rest.issues.addLabels({
+                ...context.repo,
+                issue_number: target.number,
+                labels: ["needs:info"],
+              });
+              const msg = isPR
+                ? "感谢贡献！这个 PR 描述有点简单，维护者可能看不懂改了什么，麻烦按模板补一下：关联哪个 issue、改了什么为什么、怎么验证的。直接编辑 PR 正文即可，补好后标记会自动摘掉。"
+                : "感谢反馈！这个 issue 信息有点少，维护者可能无法定位问题，麻烦补充一下：1）复现步骤；2）期望结果 vs 实际结果；3）日志或报错信息。直接编辑 issue 正文补上就行，补好后标记会自动摘掉。";
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: target.number,
+                body: msg,
+              });
+            } else if (!thin && hasFlag) {
+              await github.rest.issues.removeLabel({
+                ...context.repo,
+                issue_number: target.number,
+                name: "needs:info",
+              });
+            }
