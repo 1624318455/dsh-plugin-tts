@@ -7,14 +7,14 @@ on:
     types: [opened, edited, reopened, ready_for_review, labeled, unlabeled]
 
 permissions:
-  pull-requests: read
-  issues: write
+  issues: read
+  pull-requests: write
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: nearform/github-action-check-linked-issues@v1.8.3
+      - uses: nearform-actions/github-action-check-linked-issues@v1.8.3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           exclude-branches: "dependabot/**"
