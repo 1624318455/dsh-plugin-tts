@@ -1,8 +1,8 @@
-# dsh-plugin-tts 本轮优化 · 验收标准与操作过程
+# dsh-plugin-tts 功能验收基线（常驻）
 
 > 验收对象：**toast 报错落地点（组 A）· RVC 降级（组 B）· 智能分句硬化（组 C）· 建议 #2 回归（组 D）· 审批语音提醒（组 E）**
-> 基线：`npm run test:all` 全绿（smoke 68 · live 18 · patch 4 · i18n 6 · client-load 43）
-> 适用版本：本地 `lib/` 为本次改动后的代码（见 §0 代码同步）
+> 基线：`npm run test:all` 全绿（实测：smoke 126 · client-load 71 · i18n 6；live / patch 以各自套件实际输出为准）
+> 适用版本：本地 `lib/` 为最新代码（见 §0 代码同步）
 
 ---
 

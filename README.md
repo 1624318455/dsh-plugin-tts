@@ -8,16 +8,20 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license"></a>
   <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin"><img src="https://awesome-dsh-plugin.com/badge.svg" alt="Awesome"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-22%2B-blue" alt="node"></a>
-  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-68%20passed-success" alt="tests"></a>
+  <a href="tests/smoke.mjs"><img src="https://img.shields.io/badge/tests-126%20passed-success" alt="tests"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts"><img src="https://img.shields.io/github/stars/1624318455/dsh-plugin-tts" alt="stars"></a>
   <a href="https://github.com/1624318455/dsh-plugin-tts/commits/main"><img src="https://img.shields.io/github/last-commit/1624318455/dsh-plugin-tts" alt="last commit"></a>
 </p>
 
 ## Links
 
-- **[中文 README](README.zh.md)**（简体中文）
-- **[RVC Custom Voice Guide](docs/RVC-GUIDE.md)** — custom voices · chunked progressive playback · compact index · voice packs · portable runtime
+- **[中文 README](README.zh.md)**（简体中文，与本页逐节对应）
 - **[User Guide (执行手册)](docs/USER-GUIDE.md)** — step-by-step, for first-time users
+- **[RVC Custom Voice Guide](docs/RVC-GUIDE.md)** — custom voices · chunked progressive playback · compact index · voice packs · portable runtime
+- **[Index-TTS2 Guide](docs/INDEX-TTS2-GUIDE.md)** — local reference-audio voices
+- **[CosyVoice Guide](docs/COSYVOICE-GUIDE.md)** — local zero-shot prompt cloning (CosyVoice-2.0-0.5B)
+- **[Cloud TTS Guide](docs/CLOUD-GUIDE.md)** — paid Google voices · API key · usage & billing caliber
+- **[Edge TTS Guide](docs/EDGE-GUIDE.md)** — default online reading
 - **[Adaptive chunked playback design](docs/adaptive-chunked-playback.md)** — how gapless long reads work
 
 ---
@@ -46,15 +50,22 @@ voice-pack registry**; a **portable RVC runtime** means no RVC WebUI install is 
    read aloud automatically (the toggle gets a circular highlight); when off,
    nothing is auto-read.
 3. **Voice settings panel** under 设置 → 插件 → 语音:
-   - **TTS provider**: Edge TTS (free, no API key) / custom RVC voice /
-     local Index-TTS2 voice / local CosyVoice clone / Google Cloud TTS (paid, API key)
-   - **Voice**: 22 live-verified Edge TTS voices (default 晓萱 zh-CN-XiaoxuanNeural);
-     8 Cloud voices in the cmn-CN group (default cmn-CN-Wavenet-A, free-form id allowed)
-   - **Sound tuning**: rate / pitch / volume (0 = default, shared by Edge & Cloud)
-   - **CosyVoice config**: service URL (default 7890) + prompt-audio picker/refresh/upload +
-     speed (0.5–2.0) + seed (0 = random)
-   - **Cloud config**: API Key (Host-file-only, write-only input) + Project ID (optional) +
-     test button + this month's local usage per tier (Standard 4M / Wavenet-Neural2-Chirp3 1M)
+    - **TTS provider**: Edge TTS (free, no API key) / custom RVC voice /
+      local Index-TTS2 voice / local CosyVoice clone / Google Cloud TTS (paid, API key)
+    - **Voice**: 22 live-verified Edge TTS voices (default 晓萱 zh-CN-XiaoxuanNeural);
+      8 Cloud voices in the cmn-CN group (default cmn-CN-Wavenet-A, free-form id allowed)
+    - **Sound tuning**: rate / pitch / volume (0 = default, shared by Edge & Cloud)
+    - **RVC config**: service URL + model (.pth) / index (.index) picker, base voice,
+      voice tuning and advanced params — see the [RVC Guide](docs/RVC-GUIDE.md)
+    - **Index-TTS2 config**: service URL (default 7880) + reference-voice
+      picker/refresh/upload + clean-text toggle + emotion control + sampling
+      params — see the [Index-TTS2 Guide](docs/INDEX-TTS2-GUIDE.md)
+    - **CosyVoice config**: service URL (default 7890) + prompt-audio picker/refresh/upload +
+      prompt transcript (required, in order and in full) + speed (0.5–2.0) + seed (0 = random) —
+      see the [CosyVoice Guide](docs/COSYVOICE-GUIDE.md)
+    - **Cloud config**: API Key (Host-file-only, write-only input) + Project ID (optional) +
+      test button + this month's local usage per tier (Standard 4M / Wavenet-Neural2-Chirp3 1M) —
+      see the [Cloud Guide](docs/CLOUD-GUIDE.md)
    - **Voice packs**: one-click install of voices from a registry
    - **Preview**: type text and press the play (triangle) button — a spinning
      loader shows while it is synthesizing/playing (click again to stop),
@@ -72,8 +83,10 @@ voice-pack registry**; a **portable RVC runtime** means no RVC WebUI install is 
    tokens (`--dsw-*`); the RVC panel opens with a first-time 3-step guide
    (per-OS startup commands + one-click diagnostics).
 8. **Download audio**: a download button on each message saves the synthesized
-   audio (Edge base or RVC-converted) as an MP3 — reuses the in-session cache so
-   a just-read message downloads instantly.
+    audio — MP3 for Edge/Cloud reads, WAV for local (RVC/Index-TTS2/CosyVoice)
+    reads — reusing the in-session cache so a just-read message downloads
+    instantly. Long chunked reads have no single output file yet and report
+    "not supported" instead of starting a wasteful re-synthesis.
 9. **Read selected text**: selecting text in a message shows a floating
    "朗读选中" chip — click it to read just that selection.
 10. **Streaming long reads (Edge too)**: long plain-Edge reads also stream
@@ -97,21 +110,36 @@ voice-pack registry**; a **portable RVC runtime** means no RVC WebUI install is 
 
 - DeepSeek Harness `web` profile (`dsh web`)
 - Node.js >= 22 (the worker uses the native `WebSocket`)
-- For **RVC custom voices only**: a local RVC inference environment (an RVC WebUI
-  or the portable runtime) and a running `rvc-server.py`. macOS users: see the
-  [RVC Guide](docs/RVC-GUIDE.md) → "启动本地 RVC 服务" and the
-  [User Guide](docs/USER-GUIDE.md) §4.2.
+- For **local-voice providers only** (nothing to install for Edge/Cloud):
+  - **RVC custom voices**: a local RVC inference environment (an RVC WebUI
+    or the portable runtime) and a running `rvc-server.py` — see the
+    [RVC Guide](docs/RVC-GUIDE.md) → "启动本地 RVC 服务" and the
+    [User Guide](docs/USER-GUIDE.md) §4.2. macOS users start there too.
+  - **Index-TTS2 voices**: the local `index-tts2-nvidia` bundle's API service
+    (`启动api服务.bat`, default port 7880) — see the
+    [Index-TTS2 Guide](docs/INDEX-TTS2-GUIDE.md).
+  - **CosyVoice clones**: the local CosyVoice-2.0-0.5B bundle's `cosy-server.py`
+    (`启动cosy服务.bat`, default port 7890) — see the
+    [CosyVoice Guide](docs/COSYVOICE-GUIDE.md).
 
 ## Install
 
+Four equivalent ways (pick any one):
+
 ```sh
-# published form:
+# dsh-market UI: search the market for the plugin name and install
+# npm package:
+dsh plugin --profile web add "@memef1f1y/dsh-plugin-tts"
+# GitHub source:
 dsh plugin --profile web add "github:1624318455/dsh-plugin-tts#main"
 # or local development:
-dsh plugin --profile web add "file:/path/to/dsh-plugin-tts"
+dsh plugin --profile web add "file:/path/to/dsh-plugin-tts/plugin"
 ```
 
 Restart `dsh web`; the plugin then loads automatically as a profile bundle.
+Uninstalling any one of the above first is required before installing another:
+they all register the same loader entry id (`tts`), and the installer refuses
+duplicates (it rolls back instead of overwriting).
 
 ## Voices (live-verified, Edge TTS)
 
@@ -130,8 +158,8 @@ Restart `dsh web`; the plugin then loads automatically as a profile bundle.
 
 | Layer | Location | Role |
 |---|---|---|
-| Host | `lib/index.mjs` | Registers `/dsh-tts-api/speak` (synthesis / chunk queue), `/dsh-tts-audio/<id>` (audio), `/dsh-tts-api/rvc-*` (RVC inference / files / compact index / voice packs) webServer routes; runs a zero-dependency worker via `node -e` |
-| Client | `lib/client.js` | Hidden `<audio>` host in `shell.overlay` + the UI entries (read-aloud button / auto-read toggle / settings panel); talks to the Host through `fetch` |
+| Host | `lib/index.mjs` | Registers webServer routes: `/dsh-tts-api/speak` (synthesis / chunk queue, all providers), `/dsh-tts-audio/<id>` (audio bytes), `/dsh-tts-api/rvc-next` (next chunk / job cancel), `/dsh-tts-api/rvc-files` + `/rvc-compact-index` + `/rvc-packs*` (RVC service proxy / packs), `/dsh-tts-api/index-*` and `/dsh-tts-api/cosy-*` (local service proxy + config), `/dsh-tts-api/cloud-*` (Cloud key/usage/test), `/dsh-tts-api/notify` (approval-alert queue), `/dsh-tts-api/diagnose` (one-click diagnostics); runs a zero-dependency Edge worker via `node -e` |
+| Client | `lib/client.js` | Web Audio chunk player (sample-accurate joins, `<audio>` fallback) in `shell.overlay` + the UI entries (read-aloud button / auto-read toggle / settings panel); talks to the Host through `fetch` |
 
 The TTS worker mirrors [node-edge-tts@1.2.10](https://github.com/SchneeHertz/node-edge-tts):
 `Sec-MS-GEC` query params (ticks rounded to the 5-minute boundary),
@@ -177,11 +205,14 @@ derived from the voice locale, one retry on abnormal (1006) closures. Audio is
 
 Layered storage:
 
-- **Host file** (`~/.dsh/tts-rvc/settings.json`, `{ version: 1, rvc: … }`):
-  service-class RVC config — service URL, model and index paths. Shared across
+- **Host file** (`~/.dsh/tts-rvc/settings.json`,
+  `{ version: 1, rvc: …, index: …, cosy: …, cloud: … }`):
+  service-class config — RVC service URL/model/index paths, Index-TTS2 and
+  CosyVoice service URLs, Cloud API key (+ optional project ID). Shared across
   browsers, survives browser-data clears and incognito. Served/updated through
   `GET /dsh-tts-api/rvc-config` + `POST /dsh-tts-api/rvc-config-save`
-  (legacy `localStorage` values migrate up once, then the file wins).
+  (and the matching `index-config`, `cosy-config`, `cloud-config` routes;
+  legacy `localStorage` values migrate up once, then the file wins).
 - **localStorage** (`dsh-tts-settings`): UI prefs only — voice, auto-read
   toggle, provider, sound tuning, the raw-Markdown toggle, approval-alert and
   remaining RVC prefs. Never stores the service URL / model / index.
@@ -227,21 +258,30 @@ portable runtime, settings reference and troubleshooting — lives in the
   | Windows (CPU-minimal) | ~1–2 GB | ~2–3 GB |
   | Windows (with NVIDIA GPU) | ~6 GB | ~7 GB |
 - These are self-contained runtimes; the **full RVC WebUI is 7.8 GB** — we don't ship the WebUI / training / realtime parts this plugin doesn't need.
+- Index-TTS2 / CosyVoice also ship as local bundles (sizes vary by release — see the [Index-TTS2 Guide](docs/INDEX-TTS2-GUIDE.md) / [CosyVoice Guide](docs/COSYVOICE-GUIDE.md) preparation sections).
 
 **Q: Are the dependencies big?**
 - The runtime is heavy but **you don't install anything**: the portable package bundles Python, ffmpeg (Windows) / PyAV (macOS), and all inference deps. Unzip and run — no compile, no env setup.
 - The plugin itself has minimal deps and only loads what it actually uses.
 
 **Q: Do I need a local TTS model?**
-- With the default Edge TTS: **no** — it synthesizes online (free).
+- With the default Edge TTS or Cloud TTS: **no** — they synthesize online.
 - With custom voices (RVC): you need **your own** RVC voice model (`.pth`), optionally a `.index`; the pretrained hubert / rmvpe are already bundled — you only provide your trained model.
+- With Index-TTS2 / CosyVoice: no training needed — you provide **reference/prompt audio** (a few seconds of clear speech) to the local bundle and pick it in the panel; see the [Index-TTS2 Guide](docs/INDEX-TTS2-GUIDE.md) and [CosyVoice Guide](docs/COSYVOICE-GUIDE.md).
 
 **Q: Is it easy to install?**
 - Install the plugin normally, then for RVC: download the portable package for your platform → unzip → run the launcher (double-click `.command` on macOS, `.bat` on Windows) → drop your `.pth` into `assets/weights` → pick it in the plugin panel.
+- Index-TTS2 / CosyVoice follow the same three steps (bundle → keep its service running → pick a voice in the panel); Cloud TTS only needs an API key pasted into settings. Each provider guide walks through it.
 - No compile, no manual Python/ffmpeg install. Note: **the first macOS launch is slow (tens of seconds)** while macOS scans the extracted runtimes (one-time); later launches take a few seconds.
 
 **Q: Do I need a paid API?**
-- No. Edge TTS is free (no API key) and RVC runs fully locally and free.
+- No for Edge TTS (free, no API key) and RVC / Index-TTS2 / CosyVoice (fully
+  local and free — but each needs its local service package running, see
+  Requirements above).
+- Google Cloud TTS is pay-as-you-go and needs your own API key: Chinese
+  Standard voices are free for the first 4M chars/month, Wavenet/Neural2/Chirp
+  for the first 1M chars/month (local counters; Google Cloud Billing is
+  authoritative). See the [Cloud Guide](docs/CLOUD-GUIDE.md).
 - Note: Edge TTS is Microsoft's public client-side, free capability — fine for personal use; check Microsoft's terms for commercial / heavy usage.
 
 **Q: Did this modify the DSH core?**
