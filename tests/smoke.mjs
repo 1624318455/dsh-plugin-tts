@@ -330,6 +330,23 @@ if (speakRoute && audioRoute) {
         drained++;
       }
       check('rvc-next drains to total chunks', fetched === longParsed.total && more === false, `fetched=${fetched} total=${longParsed.total}`);
+      // Job-completion summary: draining to the end must leave exactly one
+      // stage=job outcome=drained entry (served==total) in the diagnose log —
+      // the trace a serve-order incident would previously have left none of.
+      {
+        const dgJob = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/diagnose');
+        const drJob = await call(dgJob, mockReq('/dsh-tts-api/diagnose', JSON.stringify({})), mockRes());
+        const ddJob = JSON.parse(drJob.body);
+        const jobHit = Array.isArray(ddJob.recent) && ddJob.recent.find((e) =>
+          e && e.stage === 'job' && /outcome=drained/.test(e.error || '') &&
+          e.total === longParsed.total && e.served === longParsed.total &&
+          Array.isArray(e.skipped) && e.skipped.length === 0);
+        check('drained job leaves a served==total summary in diagnose.recent',
+          !!jobHit, JSON.stringify((ddJob.recent || []).filter((e) => e && e.stage === 'job')));
+        check('diagnose exposes hostBuild tag (which Host code ran)',
+          typeof ddJob.hostBuild === 'string' && ddJob.hostBuild.length > 0,
+          JSON.stringify(ddJob.hostBuild));
+      }
       check('rvc-next done for unknown job', (await call(nextRoute, mockReq('/dsh-tts-api/rvc-next?job=unknown'), mockRes())).body === JSON.stringify({ done: true, gone: true }));
       // a prewarmed chunk url must serve wav through the audio route
       const cRes = await call(audioRoute, mockReq(longParsed.chunks[0]), mockRes());
