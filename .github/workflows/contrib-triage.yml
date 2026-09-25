@@ -25,10 +25,12 @@ jobs:
             // 注意：author_association 在 sender 上没有，要从 issue / PR 对象上取
             const assoc = target.author_association ?? "";
 
-            // 自己人、机器人、草稿 PR 直接放行
-            if (["OWNER", "MEMBER", "COLLABORATOR"].includes(assoc)) return;
-            if (context.payload.sender?.type === "Bot") return;
-            if (isPR && target.draft) return;
+            // 豁免只管"打标"不管"摘标"：自己人补了信息也要清标记，
+            // 否则标记永远烂在自己人手里，最后被 stale 误关
+            const privileged =
+              ["OWNER", "MEMBER", "COLLABORATOR"].includes(assoc) ||
+              context.payload.sender?.type === "Bot" ||
+              (isPR && target.draft);
 
             // 去掉标题行/空行/注释后看有效字数
             const effective = (target.body ?? "")
@@ -41,7 +43,13 @@ jobs:
             const labels = target.labels.map((l) => l.name);
             const hasFlag = labels.includes("needs:info");
 
-            if (thin && !hasFlag) {
+            if (!thin && hasFlag) {
+              await github.rest.issues.removeLabel({
+                ...context.repo,
+                issue_number: target.number,
+                name: "needs:info",
+              });
+            } else if (thin && !hasFlag && !privileged) {
               await github.rest.issues.addLabels({
                 ...context.repo,
                 issue_number: target.number,
@@ -54,11 +62,5 @@ jobs:
                 ...context.repo,
                 issue_number: target.number,
                 body: msg,
-              });
-            } else if (!thin && hasFlag) {
-              await github.rest.issues.removeLabel({
-                ...context.repo,
-                issue_number: target.number,
-                name: "needs:info",
               });
             }
