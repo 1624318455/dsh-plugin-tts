@@ -11,7 +11,7 @@
 | 项 | 要求 |
 |---|---|
 | 环境 | Node ≥ 22；`dsh web` 已启动并加载本插件；浏览器打开 dsh 页面 |
-| 代码同步 | 若用 `file:` 本地安装：Windows 先 `Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@dsh-external\dsh-plugin-tts\lib\ -Recurse -Force` 再刷新页面；改完 lib/ 后建议重启一次 `dsh web` |
+| 代码同步 | 若用 `file:` 本地安装：Windows 先 `Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@memef1f1y\dsh-plugin-tts\lib\ -Recurse -Force` 再刷新页面；改完 lib/ 后建议重启一次 `dsh web` |
 | 快速确认新代码 | 设置 → 插件 → 语音 → RVC 配置 顶部出现「**RVC 失败时自动改用 Edge TTS**」勾选项 = 已是新版本 |
 | 音频 | 系统有声、浏览器非静音；先与页面交互一次（自动播放解锁） |
 | RVC（可选但建议） | 本地模型 .pth + `rvc-server.py`（默认 127.0.0.1:4892）——失败场景需要它「在场但可停止」 |

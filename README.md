@@ -274,7 +274,7 @@ Hot-reload after editing `lib/` (on Windows a `file:` install is a COPY, not a
 symlink, so the running dsh reads the profile copy):
 
 ```powershell
-Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@dsh-external\dsh-plugin-tts\lib\ -Recurse -Force
+Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@memef1f1y\dsh-plugin-tts\lib\ -Recurse -Force
 # then refresh the browser (bundles are re-read from disk per request; never use pnpm install --force)
 ```
 

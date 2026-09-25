@@ -244,7 +244,7 @@ npm run test:all       # 全量：smoke + live + patch + i18n + client-load
 运行中的 dsh 读的是 profile 副本）：
 
 ```powershell
-Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@dsh-external\dsh-plugin-tts\lib\ -Recurse -Force
+Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@memef1f1y\dsh-plugin-tts\lib\ -Recurse -Force
 # 然后刷新浏览器即可（bundle 每次请求重新读盘；勿用 pnpm install --force 覆盖）
 ```
 

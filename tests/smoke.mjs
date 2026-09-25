@@ -1,4 +1,4 @@
-// Smoke test for the Host half of @dsh-external/dsh-plugin-tts.
+// Smoke test for the Host half of @memef1f1y/dsh-plugin-tts.
 // Uses a fake ctx (webServer captures the routes) and exercises the real
 // Edge TTS synthesis over the network, the RVC chain against a mock local
 // RVC inference server, plus the voice-pack registry (mock static server).
@@ -96,6 +96,24 @@ const speakRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts
 const audioRoute = routes.find((r) => r.kind === 'prefix' && r.path === '/dsh-tts-audio');
 
 check('plugin registers two routes', speakRoute !== undefined && audioRoute !== undefined);
+
+// Package identity consistency: the loader entry name (cordis.patch.yml)
+// and the browser bundle id (lib/client.js) must both equal package.json's
+// name. A stale name here ships a package that crashes dsh web at boot
+// (loader imports a package name that isn't installed) — exactly the 0.6.1
+// market-install boot failure.
+{
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const pkgName = JSON.parse(readFileSync(path.join(repoRoot, 'package.json'), 'utf8')).name;
+  const patchText = readFileSync(path.join(repoRoot, 'cordis.patch.yml'), 'utf8');
+  const patchName = (patchText.match(/name:\s*['"]([^'"]+)['"]/m) || [])[1] || '';
+  const clientText = readFileSync(path.join(repoRoot, 'lib', 'client.js'), 'utf8');
+  const clientId = (clientText.match(/^\s*id:\s*"([^"]+)"/m) || [])[1] || '';
+  check('cordis.patch.yml entry name matches package.json name',
+    patchName === pkgName, `patch=${patchName} pkg=${pkgName}`);
+  check('client bundle id matches package.json name',
+    clientId === pkgName, `client=${clientId} pkg=${pkgName}`);
+}
 
 if (speakRoute && audioRoute) {
   const res = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({ text: '你好，这是一个冒烟测试。', voice: 'zh-CN-XiaoxuanNeural' })), mockRes());
