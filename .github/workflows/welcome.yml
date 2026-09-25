@@ -1,0 +1,22 @@
+# 首次贡献者欢迎（每人只打扰一次）。不 checkout 代码。
+name: welcome
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  greet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: "欢迎第一次提 issue！如果还没填过信息模板，麻烦按表单把复现步骤和日志补一下，定位会快很多。"
+          pr-message: "欢迎第一次贡献代码！麻烦确认 PR 描述里写了关联 issue、改动原因和验证方式，review 会顺利很多。"

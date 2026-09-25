@@ -1,0 +1,51 @@
+name: Bug 反馈
+description: 报告插件使用中遇到的问题
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: 让维护者能复现问题的最简操作，1-2-3 列出来
+      placeholder: |
+        1. 打开 ……
+        2. 点击 ……
+        3. 出现报错 ……
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 期望结果 vs 实际结果
+      description: 你期望发生什么，实际发生了什么
+      placeholder: |
+        期望： assistant 回复后自动朗读
+        实际： 没有任何声音，也没有报错
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: 环境
+      description: 插件版本 / opencode 版本 / 操作系统
+      placeholder: "插件 v0.3.0 / opencode 1.18.x / Windows 11"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或报错信息
+      description: 相关报错、控制台输出贴进来；确认没有请填"无"
+      render: shell
+      placeholder: "把报错堆栈粘在这里，没有请填 无"
+    validations:
+      required: true
+  - type: input
+    id: code
+    attributes:
+      label: 相关代码 / 文件（选填）
+      description: 出问题的文件路径、配置片段
+      placeholder: "如 hooks/useEdgeSpeech.ts，或相关配置"
+    validations:
+      required: false

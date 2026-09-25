@@ -1,0 +1,21 @@
+# PR 必须关联 issue（描述里写 Closes #x / Fixes #x）。
+# 贴 no-issue 标签可豁免（如纯文档、发版类 PR）。不 checkout 代码。
+name: linked-issue
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, ready_for_review, labeled, unlabeled]
+
+permissions:
+  pull-requests: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: nearform/github-action-check-linked-issues@v1.8.3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          exclude-branches: "dependabot/**"
+          custom-body-comment: "这个 PR 还没有关联 issue，请在描述里加上 `Closes #xxx`（把 xxx 换成 issue 号）。纯文档/发版类 PR 可贴 `no-issue` 标签跳过此检查。"

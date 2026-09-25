@@ -1,0 +1,30 @@
+# 只处理被 needs:info 标记的 issue / PR：7 天无更新提醒，再 7 天无更新关闭。
+# 任何回复/编辑都会自动摘标并重启计时。
+name: stale-guard
+
+on:
+  schedule:
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v10
+        with:
+          only-issue-labels: "needs:info"
+          only-pr-labels: "needs:info"
+          days-before-stale: 7
+          days-before-close: 7
+          stale-issue-label: "needs:info"
+          stale-pr-label: "needs:info"
+          exempt-draft-pr: true
+          stale-issue-message: "这个 issue 已 7 天没有补充信息，再过 7 天仍无更新将自动关闭。直接编辑正文或回复补充即可（随时可重开）。"
+          stale-pr-message: "这个 PR 已 7 天没有补充信息，再过 7 天仍无更新将自动关闭。直接编辑正文或回复补充即可（随时可重开）。"
+          close-issue-message: "因长期缺少定位信息自动关闭。如仍有问题，补充信息后可随时重开。"
+          close-pr-message: "因长期缺少信息自动关闭。补齐描述后可随时重开。"
