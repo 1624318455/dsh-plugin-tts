@@ -140,6 +140,40 @@ if (speakRoute && audioRoute) {
       ep.jobId ? `jobId=${ep.jobId} chunks=${ep.chunks.length} total=${ep.total}` : er.body);
   }
 
+  // Regression: fastFirst 1/3/2 chunk-swap. After /speak returns chunk 0, the
+  // background prewarm of chunk 1 is still in flight — the old shared-nextIdx
+  // code served parts[2] as want=1 (or orphaned parts[1] in ready with
+  // more=false). Draining immediately must yield indices strictly 0..N-1.
+  {
+    const orderText = '第一段测试文本，用于验证分段顺序是否正确。'.repeat(9); // ~180 chars -> 3 parts
+    const or = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+      text: orderText, voice: 'zh-CN-XiaoxuanNeural', provider: 'edge-tts'
+    })), mockRes());
+    const op = JSON.parse(or.body);
+    const orderNext = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-next');
+    if (or.head.code === 200 && typeof op.jobId === 'string' && op.total > 2 && orderNext) {
+      const seenIdx = [0];
+      const seenUrls = [op.chunks[0]];
+      let oMore = true;
+      let oGuard = 0;
+      while (oMore && oGuard++ < 20) {
+        const nr = await call(orderNext, mockReq(`/dsh-tts-api/rvc-next?job=${op.jobId}`), mockRes());
+        const np = JSON.parse(nr.body);
+        if (np.url || np.skipped) { seenIdx.push(np.index); if (np.url) seenUrls.push(np.url); }
+        oMore = !!np.more;
+        if (np.done) break;
+      }
+      const expectIdx = seenIdx.map((_, i) => i);
+      check('edge chunked job serves indices strictly 0..N-1 (no swap/drop)',
+        JSON.stringify(seenIdx) === JSON.stringify(expectIdx) && seenIdx.length === op.total && oMore === false,
+        `got [${seenIdx}] total=${op.total}`);
+      check('edge chunked job serves distinct URLs',
+        new Set(seenUrls).size === seenUrls.length, `distinct=${new Set(seenUrls).size}/${seenUrls.length}`);
+    } else {
+      check('edge ordering regression precondition: short chunked job', false, or.body.slice(0, 160));
+    }
+  }
+
   // M1+ local-piper provider: registered in the abstraction; unconfigured -> graceful
   // localized error (not a crash)
   {
@@ -304,6 +338,76 @@ if (speakRoute && audioRoute) {
         check('cancelled job no longer servable (gone)', c2.head.code === 200 && c2p.done === true && c2p.gone === true, c2.body);
       } else {
         check('cancel test precondition: long rvc speak returns jobId', false, spRes.body);
+      }
+    }
+
+    // ---- prewarm skip surfacing: a prewarm chunk that exhausts retries must
+    // be reported (not walked over silently). index-tts2 is used because it
+    // has no calibration probe (absolute /tts-task call counting is exact). The mock fails task calls #2 and #3 (= chunk idx1's two
+    // attempts), so /speak must return chunks [url, false] + skipped [2],
+    // and draining must serve the skip at index 1 in order before continuing.
+    {
+      let taskCalls = 0;
+      const failServer = createServer((req, res) => {
+        let body = '';
+        req.on('data', (d) => (body += d));
+        req.on('end', () => {
+          if (req.url === '/health' || req.url === '/api/v1/voices') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true, voices: ['demo.wav'], count: 1 }));
+          } else if (req.url === '/api/v1/tts/tasks') {
+            taskCalls++;
+            if (taskCalls === 2 || taskCalls === 3) {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ detail: 'mock tts boom' }));
+              return;
+            }
+            res.writeHead(200, { 'Content-Type': 'audio/wav' });
+            res.end(miniWav());
+          } else {
+            res.writeHead(404);
+            res.end();
+          }
+        });
+      });
+      await new Promise((r) => failServer.listen(0, '127.0.0.1', r));
+      try {
+        const failPort = failServer.address().port;
+        const skipText = '这是一段用于验证预热跳段上报的长文本朗读测试。'.repeat(12);
+        const skipRes = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+          text: skipText,
+          voice: 'zh-CN-XiaoxuanNeural',
+          provider: 'index-tts2',
+          custom: { baseUrl: `http://127.0.0.1:${failPort}`, voice: 'demo.wav' }
+        })), mockRes());
+        const skipParsed = JSON.parse(skipRes.body);
+        check('prewarm skip reported in /speak (chunks[1] hole + skipped [2])',
+          skipRes.head.code === 200 && Array.isArray(skipParsed.chunks)
+          && skipParsed.chunks.length >= 2 && skipParsed.chunks[0] && skipParsed.chunks[1] === false
+          && Array.isArray(skipParsed.skipped) && skipParsed.skipped.length === 1 && skipParsed.skipped[0] === 2,
+          skipRes.body.slice(0, 200));
+        if (typeof skipParsed.jobId === 'string' && Array.isArray(skipParsed.chunks)) {
+          const nextRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/rvc-next');
+          // serveIdx starts past prewarm; the on-demand serves must be the
+          // remaining indices strictly in order through to total.
+          const seen = [];
+          let sMore = true;
+          let sGuard = 0;
+          while (sMore && sGuard++ < 100) {
+            const nr = await call(nextRoute, mockReq(`/dsh-tts-api/rvc-next?job=${skipParsed.jobId}`), mockRes());
+            const np = JSON.parse(nr.body);
+            if (np.url || np.skipped) seen.push(np.index);
+            sMore = !!np.more;
+            if (np.done) break;
+          }
+          const expect = [];
+          for (let i = skipParsed.chunks.length; i < skipParsed.total; i++) expect.push(i);
+          check('post-prewarm serves continue strictly in order to total',
+            JSON.stringify(seen) === JSON.stringify(expect) && sMore === false,
+            `got [${seen}] expect [${expect}] total=${skipParsed.total}`);
+        }
+      } finally {
+        await new Promise((r) => failServer.close(r));
       }
     }
 
