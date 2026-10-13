@@ -24,6 +24,15 @@
 - [x] CI：`.github/workflows/test.yml` 已加（Node 22/24，跑 smoke/i18n/client-load/patch；
       注：Edge TTS worker 依赖原生 `WebSocket`，需 Node ≥ 22，故矩阵不含 20）。
 
+## 发版流程（2026-10-13 起：tag 自动发 npm，无 token）
+
+- `npm version patch`（或 minor/major）→ `git push` → `git push origin vX.Y.Z` → 等 `publish` Action 全绿。
+- 注意：`git tag vX.Y.Z` 建的是轻量 tag，`git push --follow-tags` 带不上它，必须显式 `git push origin vX.Y.Z`
+  （否则远端没 tag，`publish` workflow 不触发；2026-10-13 已踩过一次）。
+- 重跑失败：Actions → 红的 `publish` → 右上 Re-run jobs → Re-run failed jobs（不用升版本）。
+- npm 侧：Trusted Publisher 已绑 `1624318455/dsh-plugin-tts + publish.yml`；publish job 用 Node 24 +
+  `npm install -g npm@latest`（trusted publishing 要求 npm ≥ 11.5.1，Node 22 自带 npm 10 不行）。
+
 ## 后续功能（按需启动）
 
 - [ ] 校准文件（calibration.json）多机同步/备份。
