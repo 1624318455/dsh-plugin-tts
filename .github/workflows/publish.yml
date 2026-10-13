@@ -44,8 +44,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Trusted publishing 需要 npm >= 11.5.1（见 npm 文档）；
+          # Node 22 自带 npm 10 不支持 OIDC，所以这里用 Node 24 并再显式升级 npm。
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
+
+      - name: Upgrade npm for OIDC support
+        run: npm install -g npm@latest && npm --version
 
       - name: Install deps
         run: npm install --no-audit --no-fund
