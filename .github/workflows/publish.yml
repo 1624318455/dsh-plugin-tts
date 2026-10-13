@@ -1,0 +1,58 @@
+name: publish
+
+# GitHub -> npm 自动发布：打 tag 即发包（先跑测试，绿了才 publish）。
+# 用法：npm version patch && git push --follow-tags
+#   或：git tag v0.6.6 && git push --tags
+# 前置：在 GitHub 仓库 Settings -> Secrets and variables -> Actions 里加 NPM_TOKEN
+#   （npm Access Tokens 里建一个 Granular token，只给本包读写权限）。
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write # npm provenance 需要
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install deps
+        run: npm install --no-audit --no-fund
+
+      - name: Smoke + i18n + client-load + patch
+        run: npm test && npm run test:i18n && npm run test:client && npm run test:patch
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install deps
+        run: npm install --no-audit --no-fund
+
+      - name: Tag matches package.json version
+        run: |
+          node -e "const fs=require('fs');const v=require('./package.json').version;const tag=process.env.GITHUB_REF_NAME.replace(/^v/,'');if(v!==tag){console.error('tag '+process.env.GITHUB_REF_NAME+' != package.json '+v);process.exit(1)}else{console.log('version ok: '+v)}"
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
