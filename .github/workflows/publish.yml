@@ -2,9 +2,11 @@ name: publish
 
 # GitHub -> npm 自动发布：打 tag 即发包（先跑测试，绿了才 publish）。
 # 用法：npm version patch && git push --follow-tags
-#   或：git tag v0.6.6 && git push --tags
-# 前置：在 GitHub 仓库 Settings -> Secrets and variables -> Actions 里加 NPM_TOKEN
-#   （npm Access Tokens 里建一个 Granular token，只给本包读写权限）。
+#   或：git tag v0.6.7 && git push --tags
+# 前置（一次即可）：npmjs.com 打开本包 Settings -> Trusted Publisher，
+#   选 GitHub Actions，填组织/用户 1624318455、仓库 dsh-plugin-tts、
+#   workflow 文件名 publish.yml（environment 留空）。配好后无需任何 secret，
+#   发布靠 OIDC 身份 + provenance 直发。
 
 on:
   push:
@@ -54,5 +56,3 @@ jobs:
 
       - name: Publish to npm
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
