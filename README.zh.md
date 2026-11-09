@@ -274,13 +274,17 @@ macOS/Windows/Linux 的启动命令见 [《RVC 指南》](docs/RVC-GUIDE.md) 或
 设置面板里的控件是自绘的，规格逐条抄自 DSH 的 `Button` / `Input` / `Menu` / `Switch` /
 `PermissionPresets` / `AgentPreset` / `SettingsGeneral` 源码，不是照截图仿制。
 
-**两种下拉形态。** 设置行上的选择器是一枚 *seat*：28px 高、无边框、无底色，hover 才出现
-`interactive-bg-hover`，13px/500 次级墨色，圆角 `--dsw-radius-sm` —— 与
-`PermissionPresets` 的 trigger 和 `AgentPreset` 的 seat 完全一致。只有表单字段行里的选择器才
-变成 *field*：和旁边的 `Input` 同盒（32px / `--dsw-radius-md` / 0.5px `border-l4` / `bg-layer-1`）。
-两种形态混用，正是「面板看着像嵌了个表单」的原因。菜单浮层用官方材质（`--dsw-menu-surface-fill`
-半透明底、`blur(40px) saturate(150%)`、`--dsw-elevation-prominent` 三层阴影、12px 圆角选项、
-选中项右侧打勾），支持 `Esc` / 点外部关闭 / `↑↓` + `Enter` 选择，空间不足时自动上翻。
+**两种下拉形态，别把位置搞混。** `dsh-client-ui-permission-presets` 里有两个同名「下拉」：
+设置行右侧的是 `PermissionRow.module.css` 的 `.oY77xG_selector` —— 36px 高、`--dsw-radius-md`
+圆角、**无边框但默认态就有 `--dsw-alias-bg-module-platform` 浅灰底**（浅色实测
+`rgb(245,246,247)`）、14px/400 主墨色、`padding 0 14px`、与箭头 `gap 12px`，hover 换
+`interactive-bg-hover`，禁用只改光标、不去掉底色；而 composer 里切换当前会话的
+`PermissionSelect.trigger` / `AgentPresetSeat` 才是透明 28px seat，我们面板里没有这个位置。
+只有表单字段行里的选择器才变成 *field*：和旁边的 `Input` 同盒（32px / `--dsw-radius-md` /
+0.5px `border-l4` / `bg-layer-1`），并把 selector 的 12px 间距复位成 4px。菜单浮层用官方材质
+（`--dsw-menu-surface-fill` 半透明底、`blur(40px) saturate(150%)`、`--dsw-elevation-prominent`
+三层阴影、12px 圆角选项、选中项右侧打勾），设置行浮层按官方 `align:"end"` 右缘对齐触发器、
+向左展开（长选项不会顶出弹窗），支持 `Esc` / 点外部关闭 / `↑↓` + `Enter` 选择，空间不足时自动上翻。
 
 **行节奏抄设置页。** 每行 `padding:16px 0`、`0.5px border-l2` 细分隔、`gap:24px`，标题 14/20、
 说明 12/18 次级墨色；成组的模块标题升到 16/24/500。

@@ -369,14 +369,40 @@ if (!failed) {
       const ctlClasses = ['ctl', 'dd-trigger', 'dd-item', 'dd-menu', 'rvc-input', 'preview-input', 'browse'];
       const ctlRules = ctlClasses.map(c => (clientSrc.match(new RegExp('\\.dsh-tts-' + c + '\\{[^}]*\\}')) || [''])[0]).filter(Boolean);
       check('controls take their radius from --dsw-radius-* tokens', ctlRules.length === ctlClasses.length && ctlRules.every(r => /border-radius:var\(--dsw-radius-/.test(r)), `rules=${ctlRules.length}`);
-      // A picker on a settings row is a seat (PermissionPresets trigger), not a field:
-      // 28px, no border, no fill until hover. The bordered 32px version reads as a form
-      // bolted onto the shell and has been rejected twice — pin the shape in source.
-      const seatRule = (clientSrc.match(/\.dsh-tts-dd-trigger\{[^}]*\}/) || [''])[0];
-      check('settings-row picker is a borderless 28px seat', seatRule.includes('height:28px') && seatRule.includes('border:none') && seatRule.includes('background:0 0') && seatRule.includes('border-radius:var(--dsw-radius-sm)'), seatRule.slice(0, 56));
+      // A picker on a settings row is PermissionRow's .selector, NOT the
+      // composer's transparent 28px .trigger / AgentPresetSeat. The shell's
+      // settings selector has a default --dsw-alias-bg-module-platform fill
+      // (the light-grey block in the permission row), 36px height, radius-md,
+      // 14px primary ink, padding 0 14px and a 12px label/chevron gap.
+      // Copying the composer seat here made our picker read as bare text —
+      // that regression is invisible to a DOM assertion, so pin it in source.
+      const pickerRule = (clientSrc.match(/\.dsh-tts-dd-trigger\{[^}]*\}/) || [''])[0];
+      check('settings-row picker copies PermissionRow.selector (filled 36px)',
+        pickerRule.includes('height:36px') && pickerRule.includes('border:none') &&
+        pickerRule.includes('background:var(--dsw-alias-bg-module-platform)') &&
+        pickerRule.includes('border-radius:var(--dsw-radius-md)') &&
+        pickerRule.includes('font-size:14px') && pickerRule.includes('gap:12px') &&
+        pickerRule.includes('padding:0 14px') && !pickerRule.includes('background:0 0'),
+        pickerRule.slice(0, 72));
+      // :disabled only changes the cursor in the shell; clearing the fill there
+      // (or on hover) is how the transparent seat crept back in twice.
+      const disabledRule = (clientSrc.match(/\.dsh-tts-dd-trigger:disabled\{[^}]*\}/) || [''])[0];
+      const hoverRule = (clientSrc.match(/\.dsh-tts-dd-trigger:hover:not\(:disabled\)\{[^}]*\}/) || [''])[0];
+      check('picker keeps its fill when disabled and on hover',
+        disabledRule.includes('cursor:default') && !disabledRule.includes('background:0 0') &&
+        hoverRule.includes('background:var(--dsw-alias-interactive-bg-hover)'),
+        `disabled=${disabledRule.slice(0, 48)} hover=${hoverRule.slice(0, 48)}`);
+      // PermissionRow's PopupSelect uses align:"end": the surface grows left from
+      // the trigger's right edge. left:0 made long option labels spill out of the
+      // settings dialog on the right.
+      const alignRule = (clientSrc.match(/\.dsh-tts-module>\.dsh-tts-dd \.dsh-tts-dd-menu\{[^}]*\}/) || [''])[0];
+      check('settings-row menu is end-aligned like PopupSelect',
+        alignRule.includes('left:auto') && alignRule.includes('right:0'), alignRule);
       // ...while a picker inside a form field must keep the input's box, or the row
-      // loses its shared baseline.
-      check('field-row picker shares the input box', /\.dsh-tts-rvc-row \.dsh-tts-dd-trigger\{[^}]*height:32px/.test(clientSrc), undefined);
+      // loses its shared baseline. Both field selectors also reset the selector's
+      // roomy 12px gap back to the field's 4px.
+      check('field-row picker shares the input box', /\.dsh-tts-rvc-row \.dsh-tts-dd-trigger\{[^}]*height:32px[^}]*gap:4px/.test(clientSrc) &&
+        /\.dsh-tts-path \.dsh-tts-dd-trigger\{[^}]*height:32px[^}]*gap:4px/.test(clientSrc), undefined);
       // A path row holds only inputs / pickers / buttons, so every child takes the
       // field box. The previous rule targeted .dsh-tts-rvc-row, where no button
       // ever sits — it was dead CSS and the buttons stayed 28px beside a 32px

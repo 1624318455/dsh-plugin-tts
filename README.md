@@ -319,15 +319,22 @@ Every control is transcribed from the shell's own `Button` / `Input` / `Menu` /
 `Switch` / `PermissionPresets` / `AgentPreset` / `SettingsGeneral` sources rather
 than copied from screenshots.
 
-**Two picker shapes.** On a settings row the picker is a *seat*: 28px, no border,
-no fill until hover, 13px/500 in secondary ink, `--dsw-radius-sm` — identical to
-the `PermissionPresets` trigger and the `AgentPreset` seat. Only inside a form
-field does it become a *field*: the same box as the `Input` beside it (32px,
-`--dsw-radius-md`, 0.5px `border-l4`, `bg-layer-1`). Using one shape for both is
-what made the panel read as a form bolted onto the product. The menu surface is
-the shell's own material — `--dsw-menu-surface-fill`, `blur(40px) saturate(150%)`,
-`--dsw-elevation-prominent`, 12px rows and a trailing check — with `Esc` /
-click-outside / `↑↓` + `Enter` support and automatic flip-up when space runs out.
+**Two picker shapes — and two different shell locations.** The same npm package
+ships two things called a picker: on a settings row it is `PermissionRow`'s
+`.oY77xG_selector` — 36px tall, `--dsw-radius-md`, **no border but a default
+`--dsw-alias-bg-module-platform` light-grey fill** (`rgb(245,246,247)` in the
+light theme), 14px/400 primary ink, `padding 0 14px`, a 12px label/chevron gap,
+`interactive-bg-hover` on hover; `:disabled` only changes the cursor and keeps
+the fill. The transparent 28px `PermissionSelect.trigger` / `AgentPresetSeat` is
+the composer's *current-session* control and has no place in our panel. Only
+inside a form field does a picker become a *field*: the same box as the `Input`
+beside it (32px, `--dsw-radius-md`, 0.5px `border-l4`, `bg-layer-1`), with the
+selector's 12px gap reset to 4px. The menu surface is the shell's own material —
+`--dsw-menu-surface-fill`, `blur(40px) saturate(150%)`,
+`--dsw-elevation-prominent`, 12px rows and a trailing check — and on a settings
+row it opens with the shell's `align:"end"`, growing left from the trigger's
+right edge so long labels never spill out of the dialog. `Esc` / click-outside /
+`↑↓` + `Enter` are supported, with automatic flip-up when space runs out.
 
 **Row rhythm** follows the settings page: `padding:16px 0`, a half-pixel
 `border-l2` rule, `gap:24px`, 14/20 titles and 12/18 secondary descriptions; a

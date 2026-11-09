@@ -282,12 +282,12 @@ box-shadow: var(--dsw-elevation-prominent);   /* 0 0 0 .5px + 3px 8px + 0 0 20px
 |---|---|---|
 | 1 | 开关轨道 | 36×20 / `border-box` / 999px / `corner-shape: round` / `rgba(0,0,0,.122)` |
 | 2 | 开关开态 | `rgb(15,17,21)`，拇指 `translateX(16px)`，白底 |
-| 3 | 下拉触发器 | 32px 高 / radius 12px / `0.5px rgba(0,0,0,.16)` / `rgb(255,255,255)` / 14px / `padding-left 8px`（**设置行上的形态见 §5.5，已改为 28px 无边框 seat**） |
+| 3 | 下拉触发器 | 32px 高 / radius 12px / `0.5px rgba(0,0,0,.16)` / `rgb(255,255,255)` / 14px / `padding-left 8px`（**设置行上的最终形态见 §5.5：36px 无边框、默认态 `bg-module-platform` 浅灰底**） |
 | 4 | RVC 输入框 + 浏览按钮 | 均 32px 高 / radius 12px，底部对齐（§5.5 把这条从「只对 RVC 行生效」扩到所有路径行） |
 | 5 | 下拉浮层 | radius 16px / padding 4px / `rgba(248,249,250,.58)` / `blur(40px) saturate(1.5)` / 三层阴影 |
 | 6 | 菜单项 | `min-height 34px` / `padding 6px 8px` / radius 12px / `gap 6px` / 13px |
 | 7 | Index-TTS2 面板开关 | 36×20 / border-box / round，与 Edge 面板一致 |
-| 8 | 回归 | smoke 160 / i18n 6 / client-load 98 / archive 14 / patch 4 / contract 105 / live-ui 11 全绿 |
+| 8 | 回归 | smoke 160 / i18n 6 / client-load 100 / archive 14 / patch 4 / contract 105 / live-ui 12 全绿 |
 
 `client-load` 新增 2 条源码级断言（DOM 断言看不出这两类回归）：
 - `.dsh-tts-switch` 规则必须同时含 `box-sizing:border-box` + `corner-shape:round` + 36/20；
@@ -306,22 +306,38 @@ box-shadow: var(--dsw-elevation-prominent);   /* 0 0 0 .5px + 3px 8px + 0 0 20px
 | 包 | 读到的文件 | 取出什么 |
 |---|---|---|
 | `dsh-client-ui-primitives` | `Button/Input/Menu/MenuSurface/Pill/SegmentedControl.module.css` | 按钮三变体、输入框盒、菜单材质、Pill 胶囊 |
-| `dsh-client-ui-permission-presets` | `.iWlSmW_trigger` | 设置行下拉的 **seat** 形态（28px 无边框） |
-| `dsh-client-ui-agent-preset` | `.cubgiG_seat` | 同上，另一处独立实现，规格一致 |
+| `dsh-client-ui-permission-presets` | `PermissionRow.module.css` `.oY77xG_selector` | **设置行**下拉：36px / `radius-md` / 默认态 `bg-module-platform` 浅灰底 / 14px primary |
+| 同上 | `PermissionSelect.module.css` `.iWlSmW_trigger` | **composer 当前会话**选择器：透明 28px seat，不是设置行规格 |
+| `dsh-client-ui-agent-preset` | `.cubgiG_seat` | 同上，composer seat 的另一处独立实现 |
 | `dsh-client-ui-settings-general` | `.Pt1bsG_row / _title / _description` | 设置行节奏：16px 0 / `0.5px border-l2` / gap 24 / 12px 说明 |
 | `dsh-client-ui-theme` | 令牌表 | `--dsw-radius-*`、`--dsw-alias-*`、`--dsw-shadow-lv3` |
 
-#### 关键修正：下拉有**两种**形态，不是一种
+#### 关键修正：一个包里有两个「下拉」，位置不同、规格相反
 
-之前把插件里所有下拉都做成「带边框 32px 输入框」，所以在设置行上看着像嵌了个表单。
+`dsh-client-ui-permission-presets` 里同时存在两个下拉触发器：
+
+- `PermissionRow.module.css` 的 `.oY77xG_selector` —— 通用设置里「未来会话默认预设」行右侧，
+  **默认态就有浅灰底**（`--dsw-alias-bg-module-platform`）；
+- `PermissionSelect.module.css` 的 `.iWlSmW_trigger` —— composer / `/permission` 切换**当前会话**
+  的透明 28px seat。
+
+第一轮把两者弄反了：把 composer 的透明 seat 套到了设置行，用户直接指出「dsh 官方的下拉默认态
+就是有背景色的 我们的现在没有」。回到 `PermissionRow.module.css` 逐条复核后改回，并新增两条源码
+断言把「默认态必须有填充」钉死。
 
 | 形态 | 用在哪 | 规格 |
 |---|---|---|
-| **seat** | 设置行（标题 + 右侧选择器） | `height:28px` / `border:none` / `background:0 0` / `radius-sm` / `padding:0 4px 0 8px` / `gap:4px` / 13px 500 / `label-secondary` / hover `interactive-bg-hover` / focus `0 0 0 2px focus-ring` |
-| **field** | 表单字段行（和输入框同排） | 与 `Input.wrap` 同盒：32px / `radius-md` / `0.5px border-l4` / `bg-layer-1` / 14px |
+| **selector** | 设置行（标题 + 右侧选择器） | `height:36px` / `border:none` / `background:var(--dsw-alias-bg-module-platform)`（浅色实测 `rgb(245,246,247)`）/ `radius-md` 12px / `padding:0 14px` / `gap:12px` / 14px 400 / `label-primary` / hover `interactive-bg-hover` / `:disabled` 只改 cursor、保留底色 / chevron 继承 primary |
+| **field** | 表单字段行（和输入框同排） | 与 `Input.wrap` 同盒：32px / `radius-md` / `0.5px border-l4` / `bg-layer-1` / 14px；并把 selector 的 12px gap 复位成 4px |
+| ~~seat~~ | composer 当前会话控件 | 28px / 透明 / radius-sm / 13px 500 —— **我们面板里没有这个位置，不得套用** |
 
 `.dsh-tts-path`（路径行）里的选择器也算 field：一行里只要有输入框，全部子元素统一 32px 高，
 否则一行出现 32 + 28 两个基线、两种字号。
+
+浮层方向同样要抄：`PermissionRow` 的 `PopupSelect` 传了 `align:"end", portal:true`，即浮层右缘
+对齐触发器右缘、向左展开。我们原来写死 `left:0`，长选项（如「OpenAI 兼容（自定义接口）」）会
+顶出设置弹窗右边界。现在只对 `.dsh-tts-module>.dsh-tts-dd` 的下拉加 `left:auto;right:0`，
+字段行仍左对齐到所属输入框；真机实测浮层右缘 1176 = 触发器右缘 1176，弹窗右缘 1200。
 
 #### 同步落地的其它项
 
@@ -353,7 +369,14 @@ JS 字符串，`//"//"` 成为行注释，**其后的全部规则被静默丢弃
 `client-load.mjs` 现在会让 `ctx.effect('…: styles')` 真跑一遍 `insertCss`，再对捕获到的
 `<style>` 断言长度 / 花括号配平 / 末条规则存在。
 
-#### 新增自动化断言（client-load 90 → 98）
+**「下拉」不是一种组件。** `PermissionRow.selector`（设置行，36px 带底）和
+`PermissionSelect.trigger`（composer，28px 透明）在同一个 npm 包里，名字都叫 picker。
+只搜关键词、不看组件挂在哪个 slot，就会把 composer 的规格抄进设置页。判断依据是
+`PermissionRow` 的 JSX：`anchor` 那个 `<button className={...selector}>` 明确挂在设置行右侧，
+而 `conversation.input.permission` slot 才是 composer seat。后续所有控件都先确认「用在哪」，
+再抄「长什么样」。
+
+#### 源码级断言清单（client-load 共 100 条，节选设计语言相关项）
 
 | # | 断言 | 防的是什么 |
 |---|---|---|
@@ -365,8 +388,12 @@ JS 字符串，`//"//"` 成为行注释，**其后的全部规则被静默丢弃
 | 6 | `.dsh-tts-path .dsh-tts-browse` 是 32px + `radius-md` | 路径行基线漂移回 28px |
 | 7 | 不存在 `.dsh-tts-rvc-row .dsh-tts-browse` | 死规则回归（RVC 行里根本没有按钮，这条曾写了但从未命中） |
 | 8 | 说明缩进 = 标签宽 + 行 gap（120 = 110 + 10） | 说明文字比输入框左缘偏 10px |
+| 9 | 设置行 picker 抄 `PermissionRow.selector`：36px / 默认 `bg-module-platform` / 14px / gap 12 / 无边框 | 把 composer 透明 seat 套到设置行（本轮用户指出的回归） |
+| 10 | `:disabled` 与 `:hover:not(:disabled)` 都不清空填充 | 透明底从状态规则悄悄回流 |
+| 11 | 两条 field 覆盖规则都把 gap 复位成 4px | selector 的 12px 间距污染字段行 |
+| 12 | `.dsh-tts-module>.dsh-tts-dd .dsh-tts-dd-menu` 是 `left:auto;right:0` | 浮层向右溢出设置弹窗（官方 `align:"end"`） |
 
-#### 真机复测（`tests/live-ui-audit.mjs`，11/11 通过）
+#### 真机复测（`tests/live-ui-audit.mjs`，12/12 通过；selector 修正后已重跑）
 
 不需要 token：`dsh web` 的 launch token 是进程内随机值（WeakMap，只在启动时打印），但浏览器会话
 cookie 是用 `~/.dsh/.credentials.yaml` 里持久化的签名密钥做的 HMAC-SHA256。脚本按
@@ -379,8 +406,9 @@ cookie 是用 `~/.dsh/.credentials.yaml` 里持久化的签名密钥做的 HMAC-
 
 | # | 实测 | 结果 |
 |---|---|---|
-| 1 | 注入样式表 | 28671 字符、`{` / `}` 各 240、尾部末条规则在 |
-| 2 | 三个设置行 seat | 均 28px / `0px` 边框 / radius 8px / 13px 500 / 透明底 |
+| 1 | 注入样式表 | 28713 字符、`{` / `}` 各 241、尾部末条规则在 |
+| 2 | 三个设置行 selector | 均 36px / `0px` 边框 / radius 12px / 14px 400 / `rgb(245,246,247)` 填充 / gap 12px（computed 背景非透明） |
+| 2a | 展开一个设置行下拉 | 浮层右缘 1176 = 触发器右缘 1176，左缘 996，弹窗右缘 1200 —— `align:"end"` 生效，长选项不再溢出 |
 | 3 | 设置行节奏 | 4 行 `16px/16px` + gap 24；2 个 stack 容器 column + gap 10 |
 | 4 | hairline | 源码 `0.5px`，DPR=1 下 computed 归一为 `1px`（官方同理）——断言读 CSSOM 原文，不读 computed |
 | 5 | 独立按钮 / 开关 | 28px；36×20 `border-box` + `corner-shape:round` |
@@ -397,6 +425,9 @@ CHROME_PATH="C:/Users/<you>/AppData/Local/ms-playwright/chromium-1223/chrome-win
   node tests/live-ui-audit.mjs [base] [token]
 # AUDIT_SHOT=/abs/path.png 可附带截图
 ```
+
+脚本会从 `~/.npm-global/node_modules/@playwright/mcp/node_modules` 回退加载 playwright /
+playwright-core（该全局包不在本仓库的解析路径上），`PLAYWRIGHT_PATH` 可显式覆盖。
 
 ---
 

@@ -14,17 +14,25 @@
 //   1. stylesheet truncation — the injected <style> must carry the whole sheet
 //      (a stray quote inside `content:""` silently drops every later rule)
 //   2. baseline drift — inputs, pickers and buttons in one row must share a
-//      height, and a picker on a settings row must be a 28px seat, not a field
+//      height, and a picker on a settings row must be the shell's filled 36px
+//      PermissionRow selector, not a transparent composer seat or a field box
 import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import { createHash, createHmac } from 'node:crypto';
 import path from 'node:path';
 
 function loadPlaywright() {
+  const home = process.env.USERPROFILE || process.env.HOME || '';
+  const mcp = path.join(home, '.npm-global', 'node_modules', '@playwright', 'mcp', 'node_modules');
   const candidates = [
     process.env.PLAYWRIGHT_PATH,
     'playwright',
-    // Set PLAYWRIGHT_PATH if playwright is not resolvable from this repo.
+    'playwright-core',
+    // The npm-global @playwright/mcp install is not resolvable from this repo,
+    // but ships a perfectly good playwright-core. Fall back to it explicitly so
+    // the audit does not depend on whichever shell environment launched it.
+    path.join(mcp, 'playwright'),
+    path.join(mcp, 'playwright-core'),
   ].filter(Boolean);
   for (const spec of candidates) {
     try {
@@ -130,9 +138,9 @@ const boxes = await page.evaluate(() => {
     };
   };
   const triggers = [...document.querySelectorAll('.dsh-tts-dd-trigger')];
-  const classify = el => (el.closest('.dsh-tts-rvc-row') || el.closest('.dsh-tts-path')) ? 'field' : 'seat';
+  const classify = el => (el.closest('.dsh-tts-rvc-row') || el.closest('.dsh-tts-path')) ? 'field' : 'selector';
   return {
-    seats: triggers.filter(el => classify(el) === 'seat').map(box),
+    selectors: triggers.filter(el => classify(el) === 'selector').map(box),
     fields: triggers.filter(el => classify(el) === 'field').map(box),
     rows: [...document.querySelectorAll('.dsh-tts-module')].slice(0, 6).map(el => {
       const s = cs(el);
@@ -167,11 +175,37 @@ const boxes = await page.evaluate(() => {
 console.log('--- measured boxes (Edge provider) ---');
 console.log(JSON.stringify(boxes, null, 2));
 
-const seatsOk = boxes.seats.length > 0 && boxes.seats.every(s =>
-  s.h === 28 && num(s.border) === 0 && num(s.radius) === 8 && num(s.font) === 13 &&
-  /500/.test(s.font) && /rgba\(0, 0, 0, 0\)|transparent/.test(s.bg));
-check('settings-row pickers are 28px borderless seats', seatsOk,
-  boxes.seats.map(s => `${s.text}:${s.h}px/${s.border}/${s.radius}`).join(' '));
+// PermissionRow.module.css .oY77xG_selector: 36px / radius-md / no border /
+// default --dsw-alias-bg-module-platform fill (rgb(249,250,251) in light
+// theme) / 14px-400 primary ink / 12px gap / padding 0 14px. The composer's
+// transparent 28px .iWlSmW_trigger is a DIFFERENT control and must not appear
+// on a settings row — check the computed background, not just the geometry.
+const filled = s => /^rgb\(/.test(s.bg) && !/rgba\(0, 0, 0, 0\)|transparent/.test(s.bg);
+const selectorsOk = boxes.selectors.length > 0 && boxes.selectors.every(s =>
+  s.h === 36 && num(s.border) === 0 && num(s.radius) === 12 &&
+  num(s.font) === 14 && /\/400$/.test(s.font) && s.gap === '12px' &&
+  s.pad === '0px/0px' && filled(s));
+check('settings-row pickers are filled 36px PermissionRow selectors', selectorsOk,
+  boxes.selectors.map(s => `${s.text}:${s.h}px/${s.bg}/${s.radius}/${s.font}/gap:${s.gap}`).join(' '));
+
+// PermissionRow's PopupSelect is opened with align:"end". Open a real picker
+// and verify its surface grows left from the trigger's right edge instead of
+// spilling past the settings dialog (long option labels used to overflow).
+await page.locator('.dsh-tts-module > .dsh-tts-dd .dsh-tts-dd-trigger').first().click();
+await page.waitForTimeout(250);
+const align = await page.evaluate(() => {
+  const trig = document.querySelector('.dsh-tts-module > .dsh-tts-dd .dsh-tts-dd-trigger');
+  const menu = trig && trig.parentElement.querySelector('.dsh-tts-dd-menu');
+  const dialog = document.querySelector('[role="dialog"]');
+  if (!trig || !menu || !dialog) return null;
+  const t = trig.getBoundingClientRect(), m = menu.getBoundingClientRect(), d = dialog.getBoundingClientRect();
+  return { trigRight: Math.round(t.right), menuRight: Math.round(m.right), menuLeft: Math.round(m.left), dialogRight: Math.round(d.right) };
+});
+check('settings-row menu is end-aligned and stays inside the dialog',
+  !!align && Math.abs(align.menuRight - align.trigRight) <= 2 && align.menuRight <= align.dialogRight + 1,
+  JSON.stringify(align));
+await page.keyboard.press('Escape');
+await page.waitForTimeout(150);
 
 // Hairline borders are authored as 0.5px (the shell's own value) but Chrome
 // rounds the *computed* value to 1px at DPR 1 — the shell's rows measure 1px
