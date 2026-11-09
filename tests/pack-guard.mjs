@@ -21,6 +21,21 @@ function check(name, ok, detail) {
 }
 
 // Windows 的 npm 是 npm.cmd，必须走 shell 才能被 execFile 找到。
+// npm <= 10 输出 [{ files: [...] }]；npm >= 11 改成
+// { "<package>": { files: [...] } }。CI 会装 npm@latest，两种都要能读，
+// 否则升级 npm 后守卫会在发布前一步误判失败。
+function packFilesFromJson(raw) {
+  const entry = Array.isArray(raw) ? raw[0] : Object.values(raw || {})[0];
+  if (!entry || !Array.isArray(entry.files)) {
+    throw new Error('npm pack --dry-run --json 输出缺少 files 列表');
+  }
+  return entry.files.map(f => f.path);
+}
+check('兼容 npm 10 的包清单数组格式',
+  JSON.stringify(packFilesFromJson([{ files: [{ path: 'a' }] }])) === '["a"]');
+check('兼容 npm 11+ 的包清单对象格式',
+  JSON.stringify(packFilesFromJson({ pkg: { files: [{ path: 'b' }] } })) === '["b"]');
+
 let packed;
 try {
   const stdout = execFileSync(
@@ -28,7 +43,7 @@ try {
     ['pack', '--dry-run', '--json'],
     { cwd: root, encoding: 'utf8', shell: true, stdio: ['ignore', 'pipe', 'pipe'] }
   );
-  packed = JSON.parse(stdout.trim())[0].files.map(f => f.path);
+  packed = packFilesFromJson(JSON.parse(stdout.trim()));
 } catch (e) {
   console.error('FAIL  npm pack --dry-run --json 执行失败：' + (e.message || e));
   process.exit(1);
