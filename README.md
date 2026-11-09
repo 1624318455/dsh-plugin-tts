@@ -69,7 +69,7 @@ voice-pack registry**; a **portable RVC runtime** means no RVC WebUI install is 
     - **Cloud config**: API Key (Host-file-only, write-only input) + Project ID (optional) +
       test button + this month's local usage per tier (Standard 4M / Wavenet-Neural2-Chirp3 1M) —
       see the [Cloud Guide](docs/CLOUD-GUIDE.md)
-   - **GPT-SoVITS config**: service URL (default 9880, Host-file-only) + reference audio (required) + prompt transcript / language + text language + media type + speed + split method + advanced params (a JSON object flattened into `/tts`) + "Test one line"; **no API key, no gateway** — see the [GPT-SoVITS Guide](docs/GPT-SOVITS-GUIDE.md)
+   - **GPT-SoVITS config**: service URL (default 9880, Host-file-only) + reference audio (required) + prompt transcript / language + text language + media type + speed + split method + advanced params (a collapsed panel, one control per knob) + "Test one line"; **no API key, no gateway** — see the [GPT-SoVITS Guide](docs/GPT-SOVITS-GUIDE.md)
    - **Voice packs**: one-click install of voices from a registry
    - **Preview**: type text and press the play (triangle) button — a spinning
      loader shows while it is synthesizing/playing (click again to stop),

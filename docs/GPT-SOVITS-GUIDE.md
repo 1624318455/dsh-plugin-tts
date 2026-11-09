@@ -82,7 +82,7 @@ media_type · speed_factor · text_split_method · top_k / top_p / temperature �
 | 输出格式 | — | `wav` | `api_v2.py` 的 `media_type`；**mp3 不被支持**，见下方踩坑 |
 | 语速 | — | `1.0` | `0.25–4.0`，对应 `speed_factor` |
 | 切分方式 | — | `auto` | 按每段长度自动选，见下 |
-| 高级参数 | — | 空 | JSON 对象，平铺进 `/tts` 请求体 |
+| 高级参数（展开） | — | 引擎默认 | 逐项调节：采样参数用滑块、种子用数字框、并行推理用开关 |
 
 **切分方式**：插件已经把长文按约 15 秒切好块了，再按标点细切就是二次切分，
 会把句尾气口切断。所以 `auto` 按每段内容选：单句 `cut0`（整句合成）、多句 `cut1`（按句切、
@@ -107,28 +107,39 @@ media_type · speed_factor · text_split_method · top_k / top_p / temperature �
 | 输出格式 | `media_type` |
 | 语速 | `speed_factor` |
 | 切分方式 | `text_split_method` |
-| 高级参数里的键 | 原样并入（可覆盖上面任何一项） |
+| 高级参数里改动过的项 | 原样并入（可覆盖上面任何一项） |
 
 插件另附一组标准采样参数（`top_k: 15`、`top_p: 1`、`temperature: 1`、`batch_size: 1`、
-`seed: 42`、`parallel_infer: true`、`repetition_penalty: 1.35`、`streaming_mode: false`），
-都可以在「高级参数」里覆盖。
+`seed: 42`、`parallel_infer: true`、`repetition_penalty: 1.35`、`streaming_mode: false`）。
+展开「高级参数」即可逐项调节；**只把改动过的项写进请求体**，没动过的面板等价于不传采样参数。
 
 ---
 
 <a name="高级参数"></a>
 ## 高级参数
 
-一个 JSON **对象**（数组 / 字符串 / 数字都不接受），平铺进请求体：
+面板底部「**高级参数（一般不用改）**」默认收起，展开后**每一项一个控件**，
+不用再手写 JSON：
 
-```json
-{"top_k": 10, "temperature": 0.9, "text_split_method": "cut1"}
-```
+| 控件 | `/tts` 字段 | 默认 | 范围 |
+|---|---|---|---|
+| Top-K 采样数（滑块） | `top_k` | 15 | 1–50 |
+| Top-P 采样（滑块） | `top_p` | 1.0 | 0–1 |
+| 随机性（滑块） | `temperature` | 1.0 | 0–1.5 |
+| 重复惩罚（滑块） | `repetition_penalty` | 1.35 | 0.5–2 |
+| 批大小（滑块） | `batch_size` | 1 | 1–20 |
+| 随机种子（数字框） | `seed` | 42 | -1–999999 |
+| 并行推理（开关） | `parallel_infer` | 开 | 开 / 关 |
 
-注意两点：
+语速也是滑块（0.25–4.0，步长 0.05）。这些值只改动时才写入请求体，其余沿用
+引擎默认；之前手填过 JSON 的话，表里没有的键会原样保留，不会被覆盖掉。
 
-1. `api_v2.py` 对未知字段是**静默忽略**的（实测 `{"not_a_real_param":123}` 返回 200）。
-   所以「参数没生效」时先对照 `/tts` 字段名逐个核对，不要先怀疑插件。
-2. 键名写错不会报错，但写错类型可能让引擎返回 400；诊断会把上游原文一起显示。
+两点提醒：
+
+1. `api_v2.py` 对未知字段**静默忽略**（实测返回 200）。某个旋钮看起来没反应时，
+   先确认整合包版本是否支持该字段，别先怀疑插件。
+2. `seed` / `temperature` 在部分整合包里会被推理配置覆盖，改了听不出差别属正常，
+   详见[真机实测踩到的坑](#真机实测踩到的坑)。
 
 ---
 
@@ -214,10 +225,14 @@ take over 10 seconds.
 
 The request body uses the engine's native names: `text`, `text_lang`,
 `ref_audio_path`, `prompt_text`, `prompt_lang`, `media_type`, `speed_factor`,
-`text_split_method`, plus the standard sampling knobs. **Advanced** accepts a JSON
-object flattened into that payload, so `top_k`, `temperature` or
-`repetition_penalty` can be overridden. Unknown keys are silently ignored by
-`api_v2.py`, so double-check names before assuming a bug in the plugin.
+`text_split_method`, plus the standard sampling knobs. Speed is a slider
+(0.25-4.0). **Advanced** is a collapsed panel with one control per knob:
+sliders for `top_k` / `top_p` / `temperature` / `repetition_penalty` /
+`batch_size`, a number field for `seed` and a switch for `parallel_infer`.
+Only fields you actually change are added to the payload; anything else keeps
+the engine default, and custom keys from an older hand-written JSON survive.
+Unknown keys are silently ignored by `api_v2.py`, so check your bundle version
+before assuming a bug in the plugin.
 
 The host already chunks long reads into ~15s packets; `auto` therefore picks
 `cut0` for a single sentence, `cut1` for several and `cut5` only for very long

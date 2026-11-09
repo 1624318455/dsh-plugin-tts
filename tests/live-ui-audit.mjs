@@ -414,6 +414,64 @@ check('toast is painted above the settings dialog and hit-testable', !!toast && 
 check('toast uses the shell dark surface', !!toast && num(toast.border) === 0 && num(toast.radius) === 16,
   toast ? `radius=${toast.radius} border=${toast.border} bg=${toast.bg}` : '');
 
+// ---- 5. GPT-SoVITS panel: separated steps / collapsed advanced / sliders ----
+// client-load.mjs asserts the source; here we verify what the browser really
+// renders after switching to the provider and unfolding both disclosures.
+await page.locator('.dsh-tts-dd-provider .dsh-tts-dd-trigger').first().click();
+await page.waitForTimeout(250);
+await page.locator('.dsh-tts-dd-provider .dsh-tts-dd-item')
+  .filter({ hasText: 'GPT-SoVITS' }).first().click();
+await page.waitForFunction(() => !!document.querySelector('.dsh-tts-steps'), { timeout: 15000 });
+await page.waitForTimeout(350);
+
+await page.locator('.dsh-tts-help > summary').first().click();
+await page.waitForTimeout(200);
+const gsvClosed = await page.evaluate(() => {
+  const adv = document.querySelector('.dsh-tts-advanced');
+  const items = [...document.querySelectorAll('.dsh-tts-steps li')];
+  const speedRow = [...document.querySelectorAll('.dsh-tts-field')]
+    .find(el => (el.querySelector('.dsh-tts-rvc-label')?.textContent || '').includes('语速'));
+  return {
+    helpOpen: !!document.querySelector('.dsh-tts-help[open]'),
+    itemCount: items.length,
+    itemTops: items.map(el => Math.round(el.getBoundingClientRect().top)),
+    badge: items.length ? getComputedStyle(items[0], '::before').borderTopLeftRadius : null,
+    advOpen: adv ? adv.open : null,
+    advFields: adv ? adv.querySelectorAll('.dsh-tts-field').length : 0,
+    advRanges: adv ? adv.querySelectorAll('input[type=range]').length : 0,
+    advNums: adv ? adv.querySelectorAll('input[type=number]').length : 0,
+    advSwitches: adv ? adv.querySelectorAll('.dsh-tts-switch').length : 0,
+    speedIsRange: !!(speedRow && speedRow.querySelector('input[type=range]')),
+    pageRanges: document.querySelectorAll('.dsh-tts-slider input[type=range]').length,
+  };
+});
+check('setup steps are four distinct rows, each on its own line',
+  gsvClosed.helpOpen && gsvClosed.itemCount === 4 && new Set(gsvClosed.itemTops).size === 4 &&
+  gsvClosed.itemTops.every((t, i) => i === 0 || t > gsvClosed.itemTops[i - 1]),
+  JSON.stringify({ count: gsvClosed.itemCount, tops: gsvClosed.itemTops, badge: gsvClosed.badge }));
+check('advanced panel is collapsed by default and holds 7 discrete fields',
+  gsvClosed.advOpen === false && gsvClosed.advFields === 7 && gsvClosed.advRanges === 5 &&
+  gsvClosed.advNums === 1 && gsvClosed.advSwitches === 1,
+  JSON.stringify({ open: gsvClosed.advOpen, fields: gsvClosed.advFields, ranges: gsvClosed.advRanges,
+    nums: gsvClosed.advNums, switches: gsvClosed.advSwitches }));
+check('bounded numeric fields are real sliders in the browser',
+  gsvClosed.speedIsRange && gsvClosed.pageRanges >= 6 && gsvClosed.advRanges === 5,
+  gsvClosed.pageRanges + ' range inputs on the panel');
+await page.locator('.dsh-tts-advanced > summary').first().click();
+await page.waitForTimeout(200);
+const gsvOpen = await page.evaluate(() => {
+  const adv = document.querySelector('.dsh-tts-advanced');
+  const fields = adv ? [...adv.querySelectorAll('.dsh-tts-field')] : [];
+  return {
+    open: adv ? adv.open : null,
+    visible: fields.filter(el => el.getBoundingClientRect().height > 0).length,
+    labels: fields.map(el => (el.querySelector('.dsh-tts-rvc-label')?.textContent || '').trim()),
+  };
+});
+check('expanding advanced reveals every field as its own row',
+  gsvOpen.open === true && gsvOpen.visible === 7 && new Set(gsvOpen.labels).size === 7,
+  gsvOpen.labels.join(' | '));
+
 if (process.env.AUDIT_SHOT) {
   await page.screenshot({ path: process.env.AUDIT_SHOT });
   console.log('screenshot: ' + process.env.AUDIT_SHOT);

@@ -58,7 +58,7 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软�
      提示文字稿（必填，按顺序全文填写）+ 语速（0.5–2.0）+ 随机种子（0 = 随机）——详见[《CosyVoice 指南》](docs/COSYVOICE-GUIDE.md)
    - **Cloud 配置**：API Key（只存本机 Host 文件，输入框写后即清）+ Project ID（可选）+
      测试连接 + 本月分档用量（Standard 400 万 / Wavenet·Neural2·Chirp3 各 100 万）——详见[《Cloud 指南》](docs/CLOUD-GUIDE.md)
-   - **GPT-SoVITS 配置**：服务地址（默认 9880，只存本机 Host 文件）+ 参考音频（必填）+ 参考文本 / 语言 + 合成文本语言 + 输出格式 + 语速 + 切分方式 + 高级参数（JSON 平铺进 `/tts`）+「试听一句」；**无需 API Key、无需网关**——详见[《GPT-SoVITS 指南》](docs/GPT-SOVITS-GUIDE.md)
+   - **GPT-SoVITS 配置**：服务地址（默认 9880，只存本机 Host 文件）+ 参考音频（必填）+ 参考文本 / 语言 + 合成文本语言 + 输出格式 + 语速 + 切分方式 + 高级参数（展开面板逐项调节）+「试听一句」；**无需 API Key、无需网关**——详见[《GPT-SoVITS 指南》](docs/GPT-SOVITS-GUIDE.md)
    - **音色包**：从音色包仓库一键下载安装音色
    - **试听测试**：输入文本 + 播放按钮（播放中显示旋转 loading，可点击停止；失败时红字提示）
 4. **RVC 自定义音色**：用你自己训练的 RVC 模型朗读，全程本机计算，支持

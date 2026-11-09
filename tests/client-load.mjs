@@ -580,6 +580,62 @@ if (!failed) {
   }
 }
 
+// ---- GPT-SoVITS settings polish: source-level contract ----
+// Asserted on source + the ASSEMBLED stylesheet, so a later edit cannot
+// silently re-merge the setup steps, restore the JSON blob, or copy a
+// third-party slider spec back in.
+{
+  const src = globalThis.__dshTtsClientSrc || '';
+  const cssText = String((injectedStyles[0] && injectedStyles[0].textContent) || '');
+
+  check('setup steps are separate list rows, not one newline-joined paragraph',
+    src.includes('className: "dsh-tts-steps"') &&
+    src.includes('t("gsv.help.step1")') && src.includes('t("gsv.help.step4")') &&
+    !src.includes('gsv.help.body') &&
+    /\.dsh-tts-steps\{[^}]*flex-direction:column;gap:8px/.test(cssText) &&
+    /\.dsh-tts-steps li::before\{[^}]*counter\(dsh-step\)[^}]*corner-shape:round/.test(cssText),
+    'ol/li + numbered badge + 8px row gap');
+
+  check('advanced params are a collapsible panel with one control per native /tts field',
+    /"details",\s*\{ className: "dsh-tts-advanced" \},\s*react\.createElement\("summary", null, t\("section\.advanced"\)\)/.test(src) &&
+    ['top_k', 'top_p', 'temperature', 'repetition_penalty', 'batch_size', 'seed', 'parallel_infer']
+      .every(k => src.includes('"' + k + '"')) &&
+    !src.includes('gsv.field.extra') && !src.includes('rows: 4'),
+    '7 discrete fields, no JSON textarea');
+
+  check('advanced panel keeps the host extraBody string contract intact',
+    src.includes('setGsv("extraBody", JSON.stringify(o))') &&
+    src.includes('JSON.parse(shared.gsv.extraBody || "{}")') &&
+    src.includes('o[nativeKey] = value;'),
+    'unknown keys survive; host /tts payload unchanged');
+
+  const rangeCalls = (src.match(/rangeControl\(/g) || []).length;
+  check('all four providers render the same rangeControl slider DOM',
+    src.includes('const rangeControl = (value, onChange, min, max, step, fmt) =>') &&
+    /const slider = \(key, min, max, step, fmt\) =>\s*rangeControl\(shared\.rvc\[key\]/.test(src) &&
+    /const cosySlider = \(key, min, max, step, fmt\) =>\s*rangeControl\(shared\.cosy\[key\]/.test(src) &&
+    /const indexSlider = \(key, min, max, step, fmt\) =>\s*rangeControl\(shared\.index\[key\]/.test(src) &&
+    rangeCalls >= 6,
+    rangeCalls + ' call sites, one DOM shape');
+
+  check('speed and Index maxSeg are sliders, not number inputs',
+    /t\("gsv\.field\.speed"\),\s*rangeControl\(/.test(src) &&
+    /t\("index\.field\.maxSeg"\),\s*rangeControl\(/.test(src) &&
+    !src.includes('indexNum("maxTextTokensPerSegment"'),
+    'bounded numeric fields use sliders');
+
+  check('slider round parts use official radius tokens and corner-shape:round',
+    /\.dsh-tts-slider input\[type=range\]\{[^}]*corner-shape:round/.test(cssText) &&
+    /::-webkit-slider-thumb\{[^}]*corner-shape:round/.test(cssText) &&
+    /::-moz-range-thumb\{[^}]*corner-shape:round/.test(cssText) &&
+    /\.dsh-tts-slider-value\{[^}]*border-radius:var\(--dsw-radius-sm\)/.test(cssText),
+    'round parts opt out of the shell squircle');
+
+  check('no third-party slider spec leaked into the design system',
+    !src.includes('linxin666') && !src.includes('TJMolG_'),
+    'only first-party @deepseek-ai tokens are referenced');
+}
+
 const failedCount = results.filter(r => !r.ok).length;
 console.log(`\n${results.length - failedCount}/${results.length} client-load checks passed`);
 process.exit(failedCount === 0 ? 0 : 1);
