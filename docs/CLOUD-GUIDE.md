@@ -75,7 +75,7 @@ Cloud TTS（Google Cloud Text-to-Speech）是谷歌的在线合成服务：把�
 
 打开 **设置 → 插件 → 语音**：
 
-- **TTS提供者** 选「**Cloud TTS（谷歌付费）**」；
+- **TTS提供者** 选「**Cloud TTS**」；
 - **Cloud 音色**：从中文组下拉选择（默认推荐波形档），或直接输入完整的 voice id
   （如其他语种 / Neural2 / Chirp 系）；
 - **API Key**：粘贴后点「**保存配置**」；输入框会清空，这是正常的——Key 只存本机 Host 文件，

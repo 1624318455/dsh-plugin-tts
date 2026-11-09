@@ -258,12 +258,31 @@ const providerItems = await page.evaluate(() => {
   const menu = wrap && wrap.querySelector('.dsh-tts-dd-menu');
   return menu ? [...menu.querySelectorAll('.dsh-tts-dd-item-text')].map(e => (e.textContent || '').trim()) : [];
 });
-check('provider menu is the six dedicated providers, GPT-SoVITS included, no OpenAI entry',
+const EXPECTED_PROVIDERS = ['Edge TTS', 'RVC', 'IndexTTS-2', 'CosyVoice2.0', 'Cloud TTS', 'GPT-SoVITS'];
+check('provider menu lists six bare engine names in UI order, no legacy labels or OpenAI entry',
   providerItems.length === 6 &&
-  providerItems.some(x => x.includes('GPT-SoVITS')) &&
-  providerItems.some(x => x.includes('CosyVoice')) &&
+  providerItems.every((x, i) => x === EXPECTED_PROVIDERS[i]) &&
+  providerItems.every(x => !/[（）()]/.test(x)) &&
   providerItems.every(x => !/OpenAI/i.test(x)),
   providerItems.join(' | ') || 'menu items not found');
+const providerHints = await page.evaluate(() => {
+  const wrap = document.querySelector('.dsh-tts-dd-provider');
+  const menu = wrap && wrap.querySelector('.dsh-tts-dd-menu');
+  return menu ? [...menu.querySelectorAll('.dsh-tts-dd-item')].map(e => {
+    const hint = e.querySelector('.dsh-tts-dd-item-hint');
+    return {
+      right: hint ? Math.round(hint.getBoundingClientRect().right * 10) / 10 : null,
+      // The selected row carries a 16px checkmark after the hint, so its hint
+      // legitimately sits one icon to the left. Compare the plain rows only.
+      checked: !!e.querySelector('.dsh-tts-dd-check'),
+    };
+  }) : [];
+});
+const plainHints = providerHints.filter(x => !x.checked && x.right !== null);
+check('provider hint column stays right-aligned with short labels',
+  providerHints.length === 6 && plainHints.length >= 5 &&
+  new Set(plainHints.map(x => x.right)).size === 1,
+  JSON.stringify(providerHints));
 await page.keyboard.press('Escape');
 await page.waitForTimeout(150);
 
@@ -298,7 +317,8 @@ check('switches are 36x20 border-box round capsules', boxes.switches.length > 0 
 // empty set would "pass" without ever exercising the rule we just fixed.
 await page.getByText('Edge TTS', { exact: true }).first().click();
 await page.waitForTimeout(300);
-await page.getByText('自定义音色（RVC）', { exact: true }).first().click();
+await page.locator('.dsh-tts-dd-provider .dsh-tts-dd-item-text')
+  .filter({ hasText: /^RVC$/ }).first().click();
 await page.waitForFunction(() => document.querySelectorAll('.dsh-tts-path').length > 0, { timeout: 15000 });
 await page.waitForTimeout(450);
 const fieldBoxes = await page.evaluate(() => {
@@ -474,6 +494,7 @@ const gsvClosed = await page.evaluate(() => {
     advSwitches: adv ? adv.querySelectorAll('.dsh-tts-switch').length : 0,
     speedIsRange: !!(speedRow && speedRow.querySelector('input[type=range]')),
     pageRanges: document.querySelectorAll('.dsh-tts-slider input[type=range]').length,
+    triggerLabel: (document.querySelector('.dsh-tts-dd-provider .dsh-tts-dd-label')?.textContent || '').trim(),
     formatGeom: geom(fieldByLabel('输出格式')),
     speedGeom: geom(speedRow),
   };
@@ -482,6 +503,9 @@ check('setup steps are four distinct rows, each on its own line',
   gsvClosed.helpOpen && gsvClosed.itemCount === 4 && new Set(gsvClosed.itemTops).size === 4 &&
   gsvClosed.itemTops.every((t, i) => i === 0 || t > gsvClosed.itemTops[i - 1]),
   JSON.stringify({ count: gsvClosed.itemCount, tops: gsvClosed.itemTops, badge: gsvClosed.badge }));
+check('selected provider trigger shows the bare engine name',
+  gsvClosed.triggerLabel === 'GPT-SoVITS',
+  gsvClosed.triggerLabel);
 check('advanced panel is collapsed by default and holds 7 discrete fields',
   gsvClosed.advOpen === false && gsvClosed.advFields === 7 && gsvClosed.advRanges === 5 &&
   gsvClosed.advNums === 1 && gsvClosed.advSwitches === 1,

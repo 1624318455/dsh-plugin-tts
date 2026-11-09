@@ -48,7 +48,7 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软�
    > 输入框左下角，开启时喇叭按钮带圆形高亮。逐项说明见[《使用手册》](docs/USER-GUIDE.md)。
 
 3. **语音设置面板**：侧边栏「设置 → 插件」新增「语音」标签页：
-   - **TTS提供者**：Edge TTS（免费在线）/ 自定义音色（RVC）/ 本地音色（Index-TTS2）/ 本地克隆（CosyVoice）/ 本地音色（GPT-SoVITS）/ Cloud TTS（谷歌付费）
+   - **TTS提供者**：Edge TTS / RVC / IndexTTS-2 / CosyVoice2.0 / Cloud TTS / GPT-SoVITS
    - **朗读音色**：22 个经实测可用的 Edge TTS 音色（默认 晓萱 zh-CN-XiaoxuanNeural）；
      Cloud 组 8 个 cmn-CN 音色（默认 cmn-CN-Wavenet-A，也可手输 voice id）
    - **声音调节**：语速 / 音调 / 音量（0 = 默认，Edge 与 Cloud 共用）
@@ -192,7 +192,7 @@ TTS 引擎：worker 协议镜像 [node-edge-tts@1.2.10](https://github.com/Schne
 
 ## RVC 自定义音色
 
-用你本地训练的 **RVC 模型**做音色转换：设置面板把 TTS提供者切到「自定义音色（RVC）」
+用你本地训练的 **RVC 模型**做音色转换：设置面板把 TTS提供者切到「RVC」
 即可。**第一次用 RVC 先做两件事**：①准备模型文件（.pth）；②启动本地 RVC 服务——
 macOS/Windows/Linux 的启动命令见 [《RVC 指南》](docs/RVC-GUIDE.md) 或
 [《使用手册》](docs/USER-GUIDE.md) §4.2。涵盖**服务启动、面板配置、长文无缝播放、紧凑索引、
@@ -227,7 +227,7 @@ macOS/Windows/Linux 的启动命令见 [《RVC 指南》](docs/RVC-GUIDE.md) 或
 
 **Q：体积大吗？**
 - 默认体验（Edge TTS）：插件本体很小（MB 级），**不需要下载任何服务或模型**。
-- 想用自定义音色（RVC）才需要本地 RVC 便携包，体积主要来自**自带的离线 Python 运行时 + 推理依赖 + 预训练模型**：
+- 想用RVC才需要本地 RVC 便携包，体积主要来自**自带的离线 Python 运行时 + 推理依赖 + 预训练模型**：
   | 平台 | 压缩包 | 解压后 |
   |---|---:|---:|
   | macOS（Apple Silicon） | ~660 MB | ~1.3 GB |
@@ -242,7 +242,7 @@ macOS/Windows/Linux 的启动命令见 [《RVC 指南》](docs/RVC-GUIDE.md) 或
 
 **Q：需要本地 TTS 模型吗？**
 - 用默认 Edge TTS 或 Cloud TTS：**不需要本地模型**（在线合成）。
-- 用自定义音色（RVC）：需要**你自己的** RVC 音色模型（`.pth`），可选加一个 `.index` 索引；预训练的 hubert / rmvpe 已随便携包带好，你只需提供自己训练的模型。
+- 用RVC：需要**你自己的** RVC 音色模型（`.pth`），可选加一个 `.index` 索引；预训练的 hubert / rmvpe 已随便携包带好，你只需提供自己训练的模型。
 - 用 Index-TTS2 / CosyVoice / GPT-SoVITS：不用训练——给本地包准备**参考/提示音频**（几秒清晰人声）并在面板里填路径即可，详见[《Index-TTS2 指南》](docs/INDEX-TTS2-GUIDE.md)、[《CosyVoice 指南》](docs/COSYVOICE-GUIDE.md)与[《GPT-SoVITS 指南》](docs/GPT-SOVITS-GUIDE.md)。
 
 **Q：好装吗？**

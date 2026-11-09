@@ -645,6 +645,36 @@ if (!failed) {
     'only first-party @deepseek-ai tokens are referenced');
 }
 
+// ---- provider labels: one bare engine name per entry, in both locales ----
+// The menu used to mix a Chinese description, full-width parentheses and an
+// engine name (自定义音色（RVC）/ 本地音色（Index-TTS2）/ …). Now the label is
+// just the engine name and the hint column (在线 / 本地) is the only secondary
+// text, so six rows read as one list instead of six differently-shaped phrases.
+{
+  const src = globalThis.__dshTtsClientSrc || '';
+  const expected = {
+    'provider.rvc': 'RVC',
+    'provider.index': 'IndexTTS-2',
+    'provider.cosy': 'CosyVoice2.0',
+    'provider.cloud': 'Cloud TTS',
+    'provider.gsv': 'GPT-SoVITS',
+  };
+  const found = {};
+  for (const key of Object.keys(expected)) {
+    const re = new RegExp('"' + key.replace('.', '\\.') + '"\\s*:\\s*"([^"]*)"', 'g');
+    found[key] = [...src.matchAll(re)].map(m => m[1]);
+  }
+  check('provider labels are bare engine names in zh and en',
+    Object.entries(expected).every(([k, v]) =>
+      found[k].length === 2 && found[k].every(x => x === v)) &&
+    /\["edge-tts", "Edge TTS", t\("provider\.kind\.online"\)\]/.test(src),
+    JSON.stringify(found));
+  check('no legacy verbose provider label survives in client source',
+    !/自定义音色（RVC）|本地音色（Index-TTS2）|本地克隆（CosyVoice）|Cloud TTS（谷歌付费）|本地音色（GPT-SoVITS）/.test(src) &&
+    !/Custom voice \(RVC\)|Local voice \(Index-TTS2\)|Local clone \(CosyVoice\)|Cloud TTS \(Google, paid\)|Local voice \(GPT-SoVITS\)/.test(src),
+    'descriptions stay in provider.help.*, not in the label');
+}
+
 const failedCount = results.filter(r => !r.ok).length;
 console.log(`\n${results.length - failedCount}/${results.length} client-load checks passed`);
 process.exit(failedCount === 0 ? 0 : 1);

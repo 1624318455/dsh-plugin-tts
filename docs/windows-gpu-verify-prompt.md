@@ -14,7 +14,7 @@
 
 # 被测对象
 
-`dsh-plugin-tts`：一个文本转语音插件，「自定义音色（RVC）」模式：
+`dsh-plugin-tts`：一个文本转语音插件，「RVC」模式：
 1. 本地 HTTP 服务 `rvc-server.py` 包装 RVC 推理核心（`infer/` 目录，通常来自一套 RVC WebUI 安装）；
 2. 插件把文字用 Edge TTS 读成原声，再 POST 给该服务做音色转换，拿回转好的 wav。
 

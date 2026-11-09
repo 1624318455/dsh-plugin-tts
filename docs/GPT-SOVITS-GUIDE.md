@@ -1,6 +1,6 @@
 # GPT-SoVITS 指南（GPT-SoVITS Guide）
 
-> dsh-plugin-tts 的「本地音色（GPT-SoVITS）」提供者专册。
+> dsh-plugin-tts 的「GPT-SoVITS」提供者专册。
 > 插件**直接调用**本机 `api_v2.py` 的 `/tts`，用参考音频的音色朗读 —— 不需要网关、不需要 OpenAI 协议、不需要 API Key。
 > 主 README：[中文](../README.zh.md) / [English](../README.md) · 使用手册：[《执行手册》](USER-GUIDE.md)
 
@@ -34,7 +34,7 @@ runtime\python.exe api_v2.py -a 127.0.0.1 -p 9880 -c GPT_SoVITS\configs\tts_infe
 
 **② 在插件里填两项必填内容**
 
-设置 → 内置插件 → 语音 → TTS提供者选「**本地音色（GPT-SoVITS）**」：
+设置 → 内置插件 → 语音 → TTS提供者选「**GPT-SoVITS**」：
 
 | 字段 | 填什么 |
 |---|---|
@@ -209,13 +209,13 @@ UnicodeDecodeError: 'utf-8' codec can't decode byte 0xbd in position 31: invalid
 
 ## English
 
-> Dedicated guide for the **Local voice (GPT-SoVITS)** provider.
+> Dedicated guide for the **GPT-SoVITS** provider.
 
 The plugin calls the local `api_v2.py` `/tts` endpoint **directly** — no gateway,
 no OpenAI-shaped request, no API key. The Gradio WebUI is not an HTTP API; start
 `api_v2.py` from the bundle and keep it running (default `http://127.0.0.1:9880`).
 
-In Settings → Built-in plugins → Voice, pick **Local voice (GPT-SoVITS)** and fill
+In Settings → Built-in plugins → Voice, pick **GPT-SoVITS** and fill
 the two required fields: **Service URL** and **Reference audio** (an absolute wav
 path on the machine running GPT-SoVITS). **Prompt transcript** is the word-for-word
 text of that clip — leaving it empty noticeably hurts voice similarity. Everything

@@ -52,9 +52,7 @@ voice-pack registry**; a **portable RVC runtime** means no RVC WebUI install is 
    read aloud automatically (the toggle gets a circular highlight); when off,
    nothing is auto-read.
 3. **Voice settings panel** under 设置 → 插件 → 语音:
-    - **TTS provider**: Edge TTS (free, no API key) / custom RVC voice /
-      local Index-TTS2 voice / local CosyVoice clone / Google Cloud TTS (paid, API key) /
-      local GPT-SoVITS voice (native /tts)
+    - **TTS provider**: Edge TTS / RVC / IndexTTS-2 / CosyVoice2.0 / Cloud TTS / GPT-SoVITS
     - **Voice**: 22 live-verified Edge TTS voices (default 晓萱 zh-CN-XiaoxuanNeural);
       8 Cloud voices in the cmn-CN group (default cmn-CN-Wavenet-A, free-form id allowed)
     - **Sound tuning**: rate / pitch / volume (0 = default, shared by Edge & Cloud)
@@ -234,10 +232,10 @@ Layered storage:
 A "Reset to defaults" button in the settings panel restores defaults and clears
 both layers (best-effort on the Host file).
 
-## Custom voice (RVC)
+## RVC
 
 Use your locally trained **RVC model** for voice conversion: switch the TTS
-provider to "自定义音色（RVC）" in the settings panel. **First-time RVC users
+provider to "RVC" in the settings panel. **First-time RVC users
 need two things**: a model file (`.pth`) and a running local RVC service — see
 the [RVC Guide](docs/RVC-GUIDE.md) or [User Guide](docs/USER-GUIDE.md) §4.2 for
 macOS/Windows/Linux startup commands. The full story — service startup, panel
