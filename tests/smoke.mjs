@@ -1184,117 +1184,116 @@ if (speakRoute && audioRoute) {
   }
 }
 
-// --- Host OpenAI-compatible provider settings (layered storage) ---------
-// Offline checks: URL normalisation, param clamping, extraBody flattening,
-// audio sniffing, config round-trip + write-only apiKey, unreachable errors.
+// --- Host GPT-SoVITS provider (native /tts, layered storage) ------------
+// Offline checks: URL normalisation, native field clamping, split-method
+// selection, extraBody flattening, audio sniffing, config round-trip, and
+// actionable errors for an unreachable api_v2.py / missing reference audio.
 {
-  const cfgGet = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/openai-config');
-  const cfgSave = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/openai-config-save');
-  const modelsRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/openai-models');
-  const testRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/openai-test');
-  check('plugin registers openai routes',
-    cfgGet !== undefined && cfgSave !== undefined && modelsRoute !== undefined && testRoute !== undefined);
-  check('__test openai hooks exposed',
-    plugin.__test && typeof plugin.__test.openaiTtsConfig === 'function' &&
-    typeof plugin.__test.openaiSpeechUrl === 'function' &&
-    typeof plugin.__test.parseOpenAiExtraBody === 'function' &&
+  const cfgGet = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/gsv-config');
+  const cfgSave = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/gsv-config-save');
+  const testRoute = routes.find((r) => r.kind === 'exact' && r.path === '/dsh-tts-api/gsv-test');
+  check('plugin registers gsv routes',
+    cfgGet !== undefined && cfgSave !== undefined && testRoute !== undefined);
+  check('__test gsv hooks exposed',
+    plugin.__test && typeof plugin.__test.gsvConfig === 'function' &&
+    typeof plugin.__test.gsvTtsUrl === 'function' &&
+    typeof plugin.__test.pickGsvSplitMethod === 'function' &&
+    typeof plugin.__test.parseGsvExtraBody === 'function' &&
     typeof plugin.__test.audioKindFromBytes === 'function');
-  if (plugin.__test && typeof plugin.__test.openaiTtsConfig === 'function') {
-    const c0 = plugin.__test.openaiTtsConfig(null, '');
-    check('openaiTtsConfig defaults',
-      c0.baseUrl === 'http://127.0.0.1:8000' && c0.model === 'tts-1' && c0.voice === 'alloy' &&
-      c0.format === 'wav' && c0.speed === 1, JSON.stringify(c0));
-    const c1 = plugin.__test.openaiTtsConfig({ baseUrl: 'http://127.0.0.1:9999/', format: 'MP3', speed: 9 }, 'nova');
-    check('openaiTtsConfig clamps speed, lowercases format, trims url, fallback voice',
-      c1.baseUrl === 'http://127.0.0.1:9999' && c1.format === 'mp3' && c1.speed === 4 && c1.voice === 'nova',
-      JSON.stringify(c1));
-    const c2 = plugin.__test.openaiTtsConfig({ format: 'exe' }, '');
-    check('openaiTtsConfig rejects unknown format', c2.format === 'wav', JSON.stringify(c2));
-
-    check('openaiSpeechUrl appends /v1/audio/speech',
-      plugin.__test.openaiSpeechUrl('http://127.0.0.1:9880') === 'http://127.0.0.1:9880/v1/audio/speech');
-    check('openaiSpeechUrl tolerates trailing /v1',
-      plugin.__test.openaiSpeechUrl('http://127.0.0.1:9880/v1/') === 'http://127.0.0.1:9880/v1/audio/speech');
-    check('openaiSpeechUrl keeps a full endpoint',
-      plugin.__test.openaiSpeechUrl('http://127.0.0.1:9880/v1/audio/speech') === 'http://127.0.0.1:9880/v1/audio/speech');
-    check('openaiApiRoot strips the speech path',
-      plugin.__test.openaiApiRoot('http://127.0.0.1:9880/v1') === 'http://127.0.0.1:9880/v1');
-
-    check('parseOpenAiExtraBody: empty -> {}',
-      Object.keys(plugin.__test.parseOpenAiExtraBody('')).length === 0);
-    check('parseOpenAiExtraBody: flattens an object',
-      plugin.__test.parseOpenAiExtraBody('{"top_k":15}').top_k === 15);
-    let badExtra = null;
-    try { plugin.__test.parseOpenAiExtraBody('not json'); } catch (e) { badExtra = e; }
-    check('parseOpenAiExtraBody: bad JSON throws host.openaiBadExtra',
-      badExtra !== null && !!badExtra.i18n && badExtra.i18n.code === 'host.openaiBadExtra',
-      String(badExtra && (badExtra.message || badExtra)).slice(0, 120));
-    let arrExtra = null;
-    try { plugin.__test.parseOpenAiExtraBody('[1,2]'); } catch (e) { arrExtra = e; }
-    check('parseOpenAiExtraBody: array rejected',
-      arrExtra !== null && !!arrExtra.i18n && arrExtra.i18n.code === 'host.openaiBadExtra',
-      String(arrExtra && arrExtra.message).slice(0, 80));
-
+  if (plugin.__test && typeof plugin.__test.gsvConfig === 'function') {
+    const c0 = plugin.__test.gsvConfig(null);
+    check('gsvConfig defaults (9880 / wav / auto / zh)',
+      c0.baseUrl === 'http://127.0.0.1:9880' && c0.mediaType === 'wav' &&
+      c0.textLang === 'auto' && c0.promptLang === 'zh' && c0.speed === 1 &&
+      c0.splitMethod === 'auto' && c0.refAudio === '', JSON.stringify(c0));
+    const c1 = plugin.__test.gsvConfig({
+      baseUrl: 'http://127.0.0.1:9881/', mediaType: 'MP3', textLang: 'nope',
+      promptLang: 'auto', speed: 99, splitMethod: 'cut9'
+    });
+    check('gsvConfig clamps bad media / langs / speed / split',
+      c1.baseUrl === 'http://127.0.0.1:9881' && c1.mediaType === 'wav' &&
+      c1.textLang === 'auto' && c1.promptLang === 'zh' && c1.speed === 4 &&
+      c1.splitMethod === 'auto', JSON.stringify(c1));
+    check('gsvTtsUrl appends /tts',
+      plugin.__test.gsvTtsUrl('http://127.0.0.1:9880') === 'http://127.0.0.1:9880/tts');
+    check('gsvTtsUrl keeps a full /tts endpoint',
+      plugin.__test.gsvTtsUrl('http://127.0.0.1:9880/tts/') === 'http://127.0.0.1:9880/tts');
+    check('pickGsvSplitMethod: one sentence -> cut0',
+      plugin.__test.pickGsvSplitMethod('你好。', 'auto') === 'cut0');
+    check('pickGsvSplitMethod: several sentences -> cut1',
+      plugin.__test.pickGsvSplitMethod('你好。今天天气不错。再见！', 'auto') === 'cut1');
+    check('pickGsvSplitMethod: >120 chars -> cut5',
+      plugin.__test.pickGsvSplitMethod('甲'.repeat(130), 'auto') === 'cut5');
+    check('pickGsvSplitMethod: forced value wins',
+      plugin.__test.pickGsvSplitMethod('你好。', 'cut3') === 'cut3');
+    check('parseGsvExtraBody: empty -> {}',
+      Object.keys(plugin.__test.parseGsvExtraBody('')).length === 0);
+    check('parseGsvExtraBody: keeps a JSON object',
+      plugin.__test.parseGsvExtraBody('{"top_k":10}').top_k === 10);
+    let bad = null;
+    try { plugin.__test.parseGsvExtraBody('{oops'); } catch (e) { bad = e; }
+    check('parseGsvExtraBody: bad JSON throws host.gsvBadExtra',
+      bad !== null && !!bad.i18n && bad.i18n.code === 'host.gsvBadExtra',
+      String(bad && bad.message).slice(0, 100));
+    let arr = null;
+    try { plugin.__test.parseGsvExtraBody('[1,2]'); } catch (e) { arr = e; }
+    check('parseGsvExtraBody: array rejected',
+      arr !== null && !!arr.i18n && arr.i18n.code === 'host.gsvBadExtra');
     check('audioKindFromBytes: RIFF/WAVE -> wav',
       plugin.__test.audioKindFromBytes(Buffer.from('RIFF0000WAVEfmt ')) === 'wav');
-    check('audioKindFromBytes: ID3 -> mp3',
-      plugin.__test.audioKindFromBytes(Buffer.from('ID3\u0004')) === 'mp3');
+    check('audioKindFromBytes: OggS -> ogg',
+      plugin.__test.audioKindFromBytes(Buffer.from('OggS0000')) === 'ogg');
     check('audioKindFromBytes: MPEG frame sync -> mp3',
       plugin.__test.audioKindFromBytes(Buffer.from([0xFF, 0xFB, 0x90, 0x64])) === 'mp3');
     check('audioKindFromBytes: junk -> empty',
       plugin.__test.audioKindFromBytes(Buffer.from('{"error":"nope"}')) === '');
   }
   if (cfgGet && cfgSave) {
-    const prev = (plugin.__test.loadHostOpenAiSettings && plugin.__test.loadHostOpenAiSettings()) || {};
-    const g0 = await call(cfgGet, { ...mockReq('/dsh-tts-api/openai-config'), method: 'GET' }, mockRes());
-    const g0d = JSON.parse(g0.body);
-    check('openai-config GET returns service shape',
-      g0.head.code === 200 && g0d.openai && typeof g0d.openai.baseUrl === 'string' &&
-      typeof g0d.openai.apiKeySet === 'boolean', g0.body.slice(0, 160));
-    const bad = await call(cfgSave, { ...mockReq('/dsh-tts-api/openai-config-save', JSON.stringify({ baseUrl: 'not-a-url' })), method: 'POST' }, mockRes());
-    check('openai-config-save rejects non-http URL', bad.head.code === 400, bad.body.slice(0, 120));
-    const s1 = await call(cfgSave, { ...mockReq('/dsh-tts-api/openai-config-save', JSON.stringify({
-      openai: { baseUrl: 'http://127.0.0.1:9880/v1', apiKey: 'sk-test-1234567890' }
+    const prev = (plugin.__test.loadHostGsvSettings && plugin.__test.loadHostGsvSettings()) || {};
+    const g0 = JSON.parse((await call(cfgGet, { ...mockReq('/dsh-tts-api/gsv-config'), method: 'GET' }, mockRes())).body);
+    check('gsv-config GET returns service shape',
+      g0.gsv && typeof g0.gsv.baseUrl === 'string', JSON.stringify(g0));
+    const bad = await call(cfgSave, { ...mockReq('/dsh-tts-api/gsv-config-save', JSON.stringify({ baseUrl: 'not-a-url' })), method: 'POST' }, mockRes());
+    check('gsv-config-save rejects non-http URL', bad.head.code === 400, bad.body.slice(0, 120));
+    const s1 = JSON.parse((await call(cfgSave, { ...mockReq('/dsh-tts-api/gsv-config-save', JSON.stringify({
+      gsv: { baseUrl: 'http://127.0.0.1:9881/' }
+    })), method: 'POST' }, mockRes())).body);
+    check('gsv-config-save persists + trims baseUrl',
+      s1.ok === true && s1.gsv.baseUrl === 'http://127.0.0.1:9881', JSON.stringify(s1));
+    const g1 = JSON.parse((await call(cfgGet, { ...mockReq('/dsh-tts-api/gsv-config'), method: 'GET' }, mockRes())).body);
+    check('gsv-config GET reflects saved address',
+      g1.gsv.baseUrl === 'http://127.0.0.1:9881', JSON.stringify(g1));
+    await call(cfgSave, { ...mockReq('/dsh-tts-api/gsv-config-save', JSON.stringify({
+      gsv: { baseUrl: prev.baseUrl || '' }
     })), method: 'POST' }, mockRes());
-    const s1d = JSON.parse(s1.body);
-    check('openai-config-save persists baseUrl + apiKey',
-      s1.head.code === 200 && s1d.ok === true && s1d.openai.baseUrl === 'http://127.0.0.1:9880/v1' &&
-      s1d.openai.apiKeySet === true, s1.body.slice(0, 200));
-    check('openai-config-save echoes only the key tail',
-      s1d.openai.apiKeyTail === '…7890' && !s1.body.includes('sk-test-1234567890'), s1.body.slice(0, 200));
-    const g1 = await call(cfgGet, { ...mockReq('/dsh-tts-api/openai-config'), method: 'GET' }, mockRes());
-    check('openai-config GET never echoes the full key',
-      !g1.body.includes('sk-test-1234567890') && JSON.parse(g1.body).openai.apiKeySet === true, g1.body.slice(0, 200));
-    // clear + restore the previous state so the test leaves no residue
-    await call(cfgSave, { ...mockReq('/dsh-tts-api/openai-config-save', JSON.stringify({ openai: { apiKey: '' } })), method: 'POST' }, mockRes());
-    const g2 = JSON.parse((await call(cfgGet, { ...mockReq('/dsh-tts-api/openai-config'), method: 'GET' }, mockRes())).body);
-    check('openai-config-save with empty key clears it', g2.openai.apiKeySet === false, JSON.stringify(g2.openai));
-    await call(cfgSave, { ...mockReq('/dsh-tts-api/openai-config-save', JSON.stringify({
-      openai: { baseUrl: prev.baseUrl || '' }
-    })), method: 'POST' }, mockRes());
-    check('openai-config round-trip restore ok', true);
+    check('gsv-config round-trip restore ok', true);
   }
-  // unreachable service -> actionable, localized errors (no live server needed)
+  // Unreachable service / missing reference audio / malformed extra body never
+  // need a live engine and must produce localized, actionable errors.
   {
-    const um = await call(modelsRoute, mockReq('/dsh-tts-api/openai-models?baseUrl=http%3A%2F%2F127.0.0.1%3A1'), mockRes());
-    const umd = JSON.parse(um.body);
-    check('openai-models unreachable returns localized error',
-      um.head.code === 502 && umd.i18n && umd.i18n.code === 'host.openaiUnreachable', um.body.slice(0, 200));
     const badSpeak = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
-      text: '你好。', voice: 'alloy', provider: 'openai-compatible',
-      custom: { baseUrl: 'http://127.0.0.1:1', model: 'tts-1', voice: 'alloy', format: 'wav', speed: 1 }
+      text: '你好。', voice: 'zh-CN-XiaoxuanNeural', provider: 'gpt-sovits',
+      custom: { baseUrl: 'http://127.0.0.1:1', refAudio: 'D:/ref.wav' }
     })), mockRes());
-    const bsd = JSON.parse(badSpeak.body);
-    check('speak openai-compatible unreachable returns localized error',
-      badSpeak.head.code === 500 && bsd.i18n && bsd.i18n.code === 'host.openaiUnreachable',
+    const d = JSON.parse(badSpeak.body);
+    check('speak gpt-sovits unreachable returns localized error',
+      badSpeak.head.code === 500 && d.i18n && d.i18n.code === 'host.gsvUnreachable',
       badSpeak.body.slice(0, 200));
-    const badJson = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
-      text: '你好。', voice: 'alloy', provider: 'openai-compatible',
-      custom: { baseUrl: 'http://127.0.0.1:1', extraBody: '{oops' }
+    const noRef = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+      text: '你好。', voice: 'zh-CN-XiaoxuanNeural', provider: 'gpt-sovits',
+      custom: { baseUrl: 'http://127.0.0.1:1' }
     })), mockRes());
-    const bjd = JSON.parse(badJson.body);
-    check('speak openai-compatible rejects malformed extraBody before any network call',
-      badJson.head.code === 500 && bjd.i18n && bjd.i18n.code === 'host.openaiBadExtra',
+    const nd = JSON.parse(noRef.body);
+    check('speak gpt-sovits without reference audio explains what to fill',
+      noRef.head.code === 500 && nd.i18n && nd.i18n.code === 'host.gsvNoRefAudio',
+      noRef.body.slice(0, 160));
+    const badJson = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
+      text: '你好。', voice: 'zh-CN-XiaoxuanNeural', provider: 'gpt-sovits',
+      custom: { baseUrl: 'http://127.0.0.1:1', refAudio: 'D:/ref.wav', extraBody: '{oops' }
+    })), mockRes());
+    const jd = JSON.parse(badJson.body);
+    check('speak gpt-sovits rejects malformed extraBody before any network call',
+      badJson.head.code === 500 && jd.i18n && jd.i18n.code === 'host.gsvBadExtra',
       badJson.body.slice(0, 160));
   }
 }

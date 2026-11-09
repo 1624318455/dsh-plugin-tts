@@ -20,18 +20,18 @@
 - **[RVC 自定义音色指南](docs/RVC-GUIDE.md)**（自定义音色 · 分块渐进播放 · 紧凑索引 · 音色包 · 便携运行时）
 - **[Index-TTS2 指南](docs/INDEX-TTS2-GUIDE.md)**（本机参考音频音色）
 - **[CosyVoice 指南](docs/COSYVOICE-GUIDE.md)**（本机提示音频零样本克隆，CosyVoice-2.0-0.5B）
-- **[OpenAI 兼容指南](docs/OPENAI-COMPAT-GUIDE.md)**（自定义接口 / GPT-SoVITS 网关 · extraBody 透传契约）
+- **[GPT-SoVITS 指南](docs/GPT-SOVITS-GUIDE.md)**（本机 `api_v2.py /tts` 直连 · 参考音频克隆 · 原生字段契约）
 - **[Cloud TTS 指南](docs/CLOUD-GUIDE.md)**（谷歌付费音色 · API Key · 用量与计费口径）
 - **[Edge TTS 指南](docs/EDGE-GUIDE.md)**（默认在线朗读）
 - **[自适应分块设计文档](https://github.com/1624318455/dsh-plugin-tts/blob/main/docs/adaptive-chunked-playback.md)**（长文无缝朗读的设计与实测，仅源码仓库提供）
 
 ---
 
-# dsh-plugin-tts — Edge TTS + RVC / Index-TTS2 / CosyVoice / Cloud / OpenAI 兼容 语音大集成
+# dsh-plugin-tts — Edge TTS + RVC / Index-TTS2 / CosyVoice / GPT-SoVITS / Cloud 语音大集成
 
 DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软免费在线音色（Edge TTS），
 也能用**你自己训练的 RVC 音色**、**本机 Index-TTS2 参考音频音色**、**本机 CosyVoice
-提示音频零样本克隆**或**谷歌 Cloud TTS 付费音色**朗读；长回复**自适应分块渐进播放、
+提示音频零样本克隆**、**本机 GPT-SoVITS 参考音频克隆**或**谷歌 Cloud TTS 付费音色**朗读；长回复**自适应分块渐进播放、
 段间无缝**；音色可**从音色包仓库一键安装**；还提供**免装 RVC WebUI 的便携运行时**。
 
 > 📖 **第一次用？看[《使用手册（执行手册）》](docs/USER-GUIDE.md)**——每一步都有
@@ -48,7 +48,7 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软�
    > 输入框左下角，开启时喇叭按钮带圆形高亮。逐项说明见[《使用手册》](docs/USER-GUIDE.md)。
 
 3. **语音设置面板**：侧边栏「设置 → 插件」新增「语音」标签页：
-   - **TTS提供者**：Edge TTS（免费在线）/ 自定义音色（RVC）/ 本地音色（Index-TTS2）/ 本地克隆（CosyVoice）/ Cloud TTS（谷歌付费）/ OpenAI 兼容（自定义接口）
+   - **TTS提供者**：Edge TTS（免费在线）/ 自定义音色（RVC）/ 本地音色（Index-TTS2）/ 本地克隆（CosyVoice）/ 本地音色（GPT-SoVITS）/ Cloud TTS（谷歌付费）
    - **朗读音色**：22 个经实测可用的 Edge TTS 音色（默认 晓萱 zh-CN-XiaoxuanNeural）；
      Cloud 组 8 个 cmn-CN 音色（默认 cmn-CN-Wavenet-A，也可手输 voice id）
    - **声音调节**：语速 / 音调 / 音量（0 = 默认，Edge 与 Cloud 共用）
@@ -58,7 +58,7 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软�
      提示文字稿（必填，按顺序全文填写）+ 语速（0.5–2.0）+ 随机种子（0 = 随机）——详见[《CosyVoice 指南》](docs/COSYVOICE-GUIDE.md)
    - **Cloud 配置**：API Key（只存本机 Host 文件，输入框写后即清）+ Project ID（可选）+
      测试连接 + 本月分档用量（Standard 400 万 / Wavenet·Neural2·Chirp3 各 100 万）——详见[《Cloud 指南》](docs/CLOUD-GUIDE.md)
-   - **OpenAI 兼容配置**：API 地址（唯一必填项，其余留空即用默认值）+ API Key（只存本机 Host 文件）+ 模型（可拉取 /v1/models）+ 音色 + 输出格式 + 语速 + 高级参数 extraBody 透传；连通性与真实合成统一在「运行诊断」里测——详见[《OpenAI 兼容指南》](docs/OPENAI-COMPAT-GUIDE.md)
+   - **GPT-SoVITS 配置**：服务地址（默认 9880，只存本机 Host 文件）+ 参考音频（必填）+ 参考文本 / 语言 + 合成文本语言 + 输出格式 + 语速 + 切分方式 + 高级参数（JSON 平铺进 `/tts`）+「试听一句」；**无需 API Key、无需网关**——详见[《GPT-SoVITS 指南》](docs/GPT-SOVITS-GUIDE.md)
    - **音色包**：从音色包仓库一键下载安装音色
    - **试听测试**：输入文本 + 播放按钮（播放中显示旋转 loading，可点击停止；失败时红字提示）
 4. **RVC 自定义音色**：用你自己训练的 RVC 模型朗读，全程本机计算，支持
@@ -70,7 +70,7 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软�
 7. **主题化 tooltip + RVC 首次引导**：悬浮提示用主题 token（`--dsw-*`）渲染；RVC 面板顶部
    内嵌首次使用三步引导（分 OS 启动命令 + 一键诊断）。
 8. **音频下载**：每条消息操作行新增下载按钮保存合成音频——Edge/Cloud 读出 MP3，
-   本地链路（RVC/Index-TTS2/CosyVoice）读出 WAV；复用进程内缓存，刚读过的消息一点即下。
+   本地链路（RVC/Index-TTS2/CosyVoice/GPT-SoVITS）读出 WAV（GPT-SoVITS 跟随输出格式）；复用进程内缓存，刚读过的消息一点即下。
    分段长文目前没有单个输出文件，会提示"暂不支持导出"而非做无用功的重合成。
 9. **朗读选中文本**：在消息里选中文本会在选区上方出现「朗读选中」悬浮按钮，点按只朗读该选中片段。
 10. **长读流式（Edge 同样支持）**：纯 Edge 长文本也走自适应分块渐进播放——第一块先响、其余边播边合成，
@@ -95,6 +95,8 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软�
     （`启动api服务.bat`，默认端口 7880）——见[《Index-TTS2 指南》](docs/INDEX-TTS2-GUIDE.md)。
   - **CosyVoice 克隆**：本机 CosyVoice-2.0-0.5B 包的 `cosy-server.py`
     （`启动cosy服务.bat`，默认端口 7890）——见[《CosyVoice 指南》](docs/COSYVOICE-GUIDE.md)。
+  - **GPT-SoVITS 克隆**：本机 GPT-SoVITS 整合包的 `api_v2.py`
+    （默认端口 9880；Gradio WebUI 不是 HTTP API）——见[《GPT-SoVITS 指南》](docs/GPT-SOVITS-GUIDE.md)。
 
 ## 安装
 
@@ -131,7 +133,7 @@ dsh plugin --profile web add "file:/path/to/dsh-plugin-tts/plugin"
 
 | 层     | 位置            | 职责                                                                                                                                                                                                                                                                     |
 | ------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Host   | `lib/index.mjs` | 注册 webServer 路由：`/dsh-tts-api/speak`（全链路合成/分块队列）、`/dsh-tts-audio/<id>`（音频字节）、`/dsh-tts-api/rvc-next`（取下一段/取消任务）、`/dsh-tts-api/rvc-files` + `/rvc-compact-index` + `/rvc-packs*`（RVC 服务代理/音色包）、`/dsh-tts-api/index-*` 与 `/dsh-tts-api/cosy-*`（本地服务代理+配置）、`/dsh-tts-api/cloud-*`（Cloud Key/用量/连通测试）、`/dsh-tts-api/openai-*`（OpenAI 兼容配置/模型/测试）、`/dsh-tts-api/notify`（审批提醒队列）、`/dsh-tts-api/diagnose`（一键诊断）；用 `node -e` 运行零依赖 Edge worker |
+| Host   | `lib/index.mjs` | 注册 webServer 路由：`/dsh-tts-api/speak`（全链路合成/分块队列）、`/dsh-tts-audio/<id>`（音频字节）、`/dsh-tts-api/rvc-next`（取下一段/取消任务）、`/dsh-tts-api/rvc-files` + `/rvc-compact-index` + `/rvc-packs*`（RVC 服务代理/音色包）、`/dsh-tts-api/index-*` 与 `/dsh-tts-api/cosy-*`（本地服务代理+配置）、`/dsh-tts-api/cloud-*`（Cloud Key/用量/连通测试）、`/dsh-tts-api/gsv-*`（GPT-SoVITS 配置/试听）、`/dsh-tts-api/notify`（审批提醒队列）、`/dsh-tts-api/diagnose`（一键诊断）；用 `node -e` 运行零依赖 Edge worker |
 | Client | `lib/client.js` | `shell.overlay` 里的 Web Audio 分块播放器（采样级拼接，`<audio>` 降级）+ UI（朗读按钮 / 自动朗读开关 / 语音设置面板），通过 `fetch` 调 Host 路由                                                                                                                          |
 
 TTS 引擎：worker 协议镜像 [node-edge-tts@1.2.10](https://github.com/SchneeHertz/node-edge-tts)：
@@ -219,7 +221,7 @@ macOS/Windows/Linux 的启动命令见 [《RVC 指南》](docs/RVC-GUIDE.md) 或
   若新版仍跳并弹出「已跳过」toast，把设置 → 语音 → 诊断 →「导出诊断日志」发给开发者。
 
 > RVC 相关排查见 [《RVC 指南》疑难排查](docs/RVC-GUIDE.md#rvc-疑难排查)。
-> Index-TTS2 / CosyVoice / Cloud 排查见各自指南的疑难排查节。
+> Index-TTS2 / CosyVoice / GPT-SoVITS / Cloud 排查见各自指南的疑难排查节。
 
 ## 常见问题（FAQ）
 
@@ -232,7 +234,7 @@ macOS/Windows/Linux 的启动命令见 [《RVC 指南》](docs/RVC-GUIDE.md) 或
   | Windows（纯 CPU 精简版） | ~1–2 GB | ~2–3 GB |
   | Windows（保留 NVIDIA GPU 加速） | ~6 GB | ~7 GB |
 - 上面这些是自包含运行包的体积；**完整版 RVC WebUI 有 7.8GB**，本插件用不到的 WebUI/训练/实时变声都不会带。
-- Index-TTS2 / CosyVoice 同样是本地包（体积随版本变，见各自指南的准备节）。
+- Index-TTS2 / CosyVoice / GPT-SoVITS 同样是本地包（体积随版本变，见各自指南的准备节）。
 
 **Q：依赖大吗？**
 - 不小，但**完全不需要你安装**：RVC 便携包自包含 Python、ffmpeg（Windows）/PyAV（macOS）以及全部推理依赖，解压即用，无编译、无环境配置。
@@ -241,16 +243,16 @@ macOS/Windows/Linux 的启动命令见 [《RVC 指南》](docs/RVC-GUIDE.md) 或
 **Q：需要本地 TTS 模型吗？**
 - 用默认 Edge TTS 或 Cloud TTS：**不需要本地模型**（在线合成）。
 - 用自定义音色（RVC）：需要**你自己的** RVC 音色模型（`.pth`），可选加一个 `.index` 索引；预训练的 hubert / rmvpe 已随便携包带好，你只需提供自己训练的模型。
-- 用 Index-TTS2 / CosyVoice：不用训练——给本地包准备**参考/提示音频**（几秒清晰人声）并在面板里选中即可，详见[《Index-TTS2 指南》](docs/INDEX-TTS2-GUIDE.md)与[《CosyVoice 指南》](docs/COSYVOICE-GUIDE.md)。
+- 用 Index-TTS2 / CosyVoice / GPT-SoVITS：不用训练——给本地包准备**参考/提示音频**（几秒清晰人声）并在面板里填路径即可，详见[《Index-TTS2 指南》](docs/INDEX-TTS2-GUIDE.md)、[《CosyVoice 指南》](docs/COSYVOICE-GUIDE.md)与[《GPT-SoVITS 指南》](docs/GPT-SOVITS-GUIDE.md)。
 
 **Q：好装吗？**
 - 插件按常规方式安装即可。
 - 用 RVC 时：下载对应平台的便携包 → 解压 → 运行启动脚本（mac 双击 `.command`，Windows 双击 `.bat`）→ 把 `.pth` 放进 `assets/weights` → 在插件面板里点「浏览」选模型即可。
-- Index-TTS2 / CosyVoice 同样三步（备包 → 保持服务运行 → 面板选音色）；Cloud 只需往设置里粘 API Key。各指南里都有 walkthrough。
+- Index-TTS2 / CosyVoice / GPT-SoVITS 同样三步（备包 → 保持服务运行 → 面板填参考音频）；Cloud 只需往设置里粘 API Key。各指南里都有 walkthrough。
 - 无需编译、无需手动装 Python/ffmpeg。注意 **mac 首次启动会慢几十秒**（macOS 首次扫描解压出的运行库，一次性行为），之后启动只要几秒。
 
 **Q：需要付费 API 吗？**
-- 不需要：默认 Edge TTS 免费（无 API key），RVC / Index-TTS2 / CosyVoice 完全本地推理、免费（但各需自己的本地服务包先跑起来，见上文「要求」）。
+- 不需要：默认 Edge TTS 免费（无 API key），RVC / Index-TTS2 / CosyVoice / GPT-SoVITS 完全本地推理、免费（但各需自己的本地服务包先跑起来，见上文「要求」）。GPT-SoVITS 尤其不需要任何 OpenAI / 第三方 API Key。
 - 谷歌 Cloud TTS 按量付费，需自备 API Key：中文标准音色每月前 400 万字符免费，Wavenet/Neural2/Chirp 每月前 100 万字符免费（本地计数，官方以 Google Cloud Billing 为准），详见[《Cloud 指南》](docs/CLOUD-GUIDE.md)。
 - 提示：Edge TTS 是微软公开的端侧免费能力，个人使用没问题；商用 / 高并发请留意微软服务条款。
 
@@ -312,17 +314,17 @@ macOS/Windows/Linux 的启动命令见 [《RVC 指南》](docs/RVC-GUIDE.md) 或
 
 ```sh
 node tests/smoke.mjs   # 冒烟测试：fake ctx 注册路由 + 真实 Edge TTS 合成 + 音频回放断言
-npm run test:all       # 全量：smoke/live/patch/i18n/client/archive/openai/e2e/pack/privacy
+npm run test:all       # 全量：smoke/live/patch/i18n/client/archive/gsv/gsv-e2e/pack/privacy
 npm run test:pack      # 发布包内容守卫（哪些文件会被 npm install 装到用户机器上）
 npm run test:privacy   # 隐私守卫（本机用户名/绝对路径/真机截图/凭据不许进仓库）
 ```
 
 测试只能在源码仓库里跑。npm 发布包按 `package.json` 的 `files` 白名单裁剪过：
-只含 `lib/`、`rvc-server.py`、`cordis.patch.yml`、面向用户的文档，以及
-`tools/gpt-sovits-openai-gateway.py`（GPT-SoVITS 用户的可选网关）。
-`docs/` 里只有 7 份用户向指南进包，设计稿、测试计划、验收清单等维护者文档留在源码仓库，
-README 中对应链接指向在线仓库。`tests/`、CI 配置、`verify-openai-gateway.py` /
-`mock-sovits-upstream.py` 等维护者工具不进发布包；`test:pack` 守着这条边界。
+只含 `lib/`、`rvc-server.py`、`cordis.patch.yml` 和面向用户的文档。
+`docs/` 里只有 7 份用户向指南进包，设计稿、UI 审计记录、验收清单等维护者文档留在源码仓库，
+README 中对应链接指向在线仓库。GPT-SoVITS 直连本机 `api_v2.py`，**没有网关进程、
+没有 Python 适配层、没有 API Key**。`tests/`、CI 配置与 `tools/` 下的维护者工具
+不进发布包；`test:pack` 守着这条边界。
 
 改 `lib/` 后的热更新（Windows 下 `file:` 安装是**复制**而非符号链接，
 运行中的 dsh 读的是 profile 副本）：

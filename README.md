@@ -20,19 +20,20 @@
 - **[RVC Custom Voice Guide](docs/RVC-GUIDE.md)** — custom voices · chunked progressive playback · compact index · voice packs · portable runtime
 - **[Index-TTS2 Guide](docs/INDEX-TTS2-GUIDE.md)** — local reference-audio voices
 - **[CosyVoice Guide](docs/COSYVOICE-GUIDE.md)** — local zero-shot prompt cloning (CosyVoice-2.0-0.5B)
-- **[OpenAI-Compatible Guide](docs/OPENAI-COMPAT-GUIDE.md)** — custom endpoints / GPT-SoVITS gateway · extraBody passthrough contract
+- **[GPT-SoVITS Guide](docs/GPT-SOVITS-GUIDE.md)** — direct local `api_v2.py /tts` · reference-audio cloning · native payload contract
 - **[Cloud TTS Guide](docs/CLOUD-GUIDE.md)** — paid Google voices · API key · usage & billing caliber
 - **[Edge TTS Guide](docs/EDGE-GUIDE.md)** — default online reading
 - **[Adaptive chunked playback design](https://github.com/1624318455/dsh-plugin-tts/blob/main/docs/adaptive-chunked-playback.md)** — how gapless long reads work (source repo only)
 
 ---
 
-# dsh-plugin-tts — Edge TTS + RVC / Index-TTS2 / CosyVoice / Cloud / OpenAI-compatible voices for DeepSeek Harness
+# dsh-plugin-tts — Edge TTS + RVC / Index-TTS2 / CosyVoice / GPT-SoVITS / Cloud voices for DeepSeek Harness
 
 A dual-sided (Host + Web UI) DeepSeek Harness plugin that reads assistant replies
 aloud — Microsoft Edge's free online TTS out of the box, **your own RVC voice
 models** for custom voices, **local Index-TTS2 reference-audio voices**,
-**local CosyVoice zero-shot prompt clones** (CosyVoice-2.0-0.5B), or
+**local CosyVoice zero-shot prompt clones** (CosyVoice-2.0-0.5B),
+**local GPT-SoVITS reference-audio clones**, or
 **paid Google Cloud TTS voices** (Chinese Standard/Wavenet). Long replies stream
 with **gapless adaptive chunked playback**; voices install **one-click from a
 voice-pack registry**; a **portable RVC runtime** means no RVC WebUI install is needed.
@@ -53,7 +54,7 @@ voice-pack registry**; a **portable RVC runtime** means no RVC WebUI install is 
 3. **Voice settings panel** under 设置 → 插件 → 语音:
     - **TTS provider**: Edge TTS (free, no API key) / custom RVC voice /
       local Index-TTS2 voice / local CosyVoice clone / Google Cloud TTS (paid, API key) /
-      OpenAI-compatible endpoint (any service speaking /v1/audio/speech)
+      local GPT-SoVITS voice (native /tts)
     - **Voice**: 22 live-verified Edge TTS voices (default 晓萱 zh-CN-XiaoxuanNeural);
       8 Cloud voices in the cmn-CN group (default cmn-CN-Wavenet-A, free-form id allowed)
     - **Sound tuning**: rate / pitch / volume (0 = default, shared by Edge & Cloud)
@@ -68,7 +69,7 @@ voice-pack registry**; a **portable RVC runtime** means no RVC WebUI install is 
     - **Cloud config**: API Key (Host-file-only, write-only input) + Project ID (optional) +
       test button + this month's local usage per tier (Standard 4M / Wavenet-Neural2-Chirp3 1M) —
       see the [Cloud Guide](docs/CLOUD-GUIDE.md)
-   - **OpenAI-compatible config**: API URL (the only required field — everything else falls back to defaults) + API Key (Host-file-only) + model (fetchable from /v1/models) + voice + output format + speed + advanced `extraBody` passthrough; reachability and a real synthesis are both covered by Run diagnosis — see the [OpenAI-Compatible Guide](docs/OPENAI-COMPAT-GUIDE.md)
+   - **GPT-SoVITS config**: service URL (default 9880, Host-file-only) + reference audio (required) + prompt transcript / language + text language + media type + speed + split method + advanced params (a JSON object flattened into `/tts`) + "Test one line"; **no API key, no gateway** — see the [GPT-SoVITS Guide](docs/GPT-SOVITS-GUIDE.md)
    - **Voice packs**: one-click install of voices from a registry
    - **Preview**: type text and press the play (triangle) button — a spinning
      loader shows while it is synthesizing/playing (click again to stop),
@@ -124,6 +125,9 @@ voice-pack registry**; a **portable RVC runtime** means no RVC WebUI install is 
   - **CosyVoice clones**: the local CosyVoice-2.0-0.5B bundle's `cosy-server.py`
     (`启动cosy服务.bat`, default port 7890) — see the
     [CosyVoice Guide](docs/COSYVOICE-GUIDE.md).
+  - **GPT-SoVITS clones**: the local bundle's `api_v2.py` (default port 9880; the
+    Gradio WebUI is **not** an HTTP API) — see the
+    [GPT-SoVITS Guide](docs/GPT-SOVITS-GUIDE.md).
 
 ## Install
 
@@ -161,7 +165,7 @@ duplicates (it rolls back instead of overwriting).
 
 | Layer | Location | Role |
 |---|---|---|
-| Host | `lib/index.mjs` | Registers webServer routes: `/dsh-tts-api/speak` (synthesis / chunk queue, all providers), `/dsh-tts-audio/<id>` (audio bytes), `/dsh-tts-api/rvc-next` (next chunk / job cancel), `/dsh-tts-api/rvc-files` + `/rvc-compact-index` + `/rvc-packs*` (RVC service proxy / packs), `/dsh-tts-api/index-*` and `/dsh-tts-api/cosy-*` (local service proxy + config), `/dsh-tts-api/cloud-*` (Cloud key/usage/test), `/dsh-tts-api/openai-*` (OpenAI-compatible config/models/test), `/dsh-tts-api/notify` (approval-alert queue), `/dsh-tts-api/diagnose` (one-click diagnostics); runs a zero-dependency Edge worker via `node -e` |
+| Host | `lib/index.mjs` | Registers webServer routes: `/dsh-tts-api/speak` (synthesis / chunk queue, all providers), `/dsh-tts-audio/<id>` (audio bytes), `/dsh-tts-api/rvc-next` (next chunk / job cancel), `/dsh-tts-api/rvc-files` + `/rvc-compact-index` + `/rvc-packs*` (RVC service proxy / packs), `/dsh-tts-api/index-*` and `/dsh-tts-api/cosy-*` (local service proxy + config), `/dsh-tts-api/cloud-*` (Cloud key/usage/test), `/dsh-tts-api/gsv-*` (GPT-SoVITS config/test), `/dsh-tts-api/notify` (approval-alert queue), `/dsh-tts-api/diagnose` (one-click diagnostics); runs a zero-dependency Edge worker via `node -e` |
 | Client | `lib/client.js` | Web Audio chunk player (sample-accurate joins, `<audio>` fallback) in `shell.overlay` + the UI entries (read-aloud button / auto-read toggle / settings panel); talks to the Host through `fetch` |
 
 The TTS worker mirrors [node-edge-tts@1.2.10](https://github.com/SchneeHertz/node-edge-tts):
@@ -268,7 +272,7 @@ portable runtime, settings reference and troubleshooting — lives in the
   | Windows (CPU-minimal) | ~1–2 GB | ~2–3 GB |
   | Windows (with NVIDIA GPU) | ~6 GB | ~7 GB |
 - These are self-contained runtimes; the **full RVC WebUI is 7.8 GB** — we don't ship the WebUI / training / realtime parts this plugin doesn't need.
-- Index-TTS2 / CosyVoice also ship as local bundles (sizes vary by release — see the [Index-TTS2 Guide](docs/INDEX-TTS2-GUIDE.md) / [CosyVoice Guide](docs/COSYVOICE-GUIDE.md) preparation sections).
+- Index-TTS2 / CosyVoice / GPT-SoVITS also ship as local bundles (sizes vary by release — see the [Index-TTS2 Guide](docs/INDEX-TTS2-GUIDE.md) / [CosyVoice Guide](docs/COSYVOICE-GUIDE.md) / [GPT-SoVITS Guide](docs/GPT-SOVITS-GUIDE.md) preparation sections).
 
 **Q: Are the dependencies big?**
 - The runtime is heavy but **you don't install anything**: the portable package bundles Python, ffmpeg (Windows) / PyAV (macOS), and all inference deps. Unzip and run — no compile, no env setup.
@@ -277,17 +281,18 @@ portable runtime, settings reference and troubleshooting — lives in the
 **Q: Do I need a local TTS model?**
 - With the default Edge TTS or Cloud TTS: **no** — they synthesize online.
 - With custom voices (RVC): you need **your own** RVC voice model (`.pth`), optionally a `.index`; the pretrained hubert / rmvpe are already bundled — you only provide your trained model.
-- With Index-TTS2 / CosyVoice: no training needed — you provide **reference/prompt audio** (a few seconds of clear speech) to the local bundle and pick it in the panel; see the [Index-TTS2 Guide](docs/INDEX-TTS2-GUIDE.md) and [CosyVoice Guide](docs/COSYVOICE-GUIDE.md).
+- With Index-TTS2 / CosyVoice / GPT-SoVITS: no training needed — you provide **reference/prompt audio** (a few seconds of clear speech) and point the panel at it; see the [Index-TTS2 Guide](docs/INDEX-TTS2-GUIDE.md), [CosyVoice Guide](docs/COSYVOICE-GUIDE.md) and [GPT-SoVITS Guide](docs/GPT-SOVITS-GUIDE.md).
 
 **Q: Is it easy to install?**
 - Install the plugin normally, then for RVC: download the portable package for your platform → unzip → run the launcher (double-click `.command` on macOS, `.bat` on Windows) → drop your `.pth` into `assets/weights` → pick it in the plugin panel.
-- Index-TTS2 / CosyVoice follow the same three steps (bundle → keep its service running → pick a voice in the panel); Cloud TTS only needs an API key pasted into settings. Each provider guide walks through it.
+- Index-TTS2 / CosyVoice / GPT-SoVITS follow the same three steps (bundle → keep its service running → set the reference audio in the panel); Cloud TTS only needs an API key pasted into settings. Each provider guide walks through it.
 - No compile, no manual Python/ffmpeg install. Note: **the first macOS launch is slow (tens of seconds)** while macOS scans the extracted runtimes (one-time); later launches take a few seconds.
 
 **Q: Do I need a paid API?**
-- No for Edge TTS (free, no API key) and RVC / Index-TTS2 / CosyVoice (fully
-  local and free — but each needs its local service package running, see
-  Requirements above).
+- No for Edge TTS (free, no API key) and RVC / Index-TTS2 / CosyVoice /
+  GPT-SoVITS (fully local and free — but each needs its local service package
+  running, see Requirements above). GPT-SoVITS in particular needs **no**
+  OpenAI or third-party API key.
 - Google Cloud TTS is pay-as-you-go and needs your own API key: Chinese
   Standard voices are free for the first 4M chars/month, Wavenet/Neural2/Chirp
   for the first 1M chars/month (local counters; Google Cloud Billing is
@@ -371,19 +376,19 @@ injection and asserts on the resulting `<style>` length and brace balance.
 
 ```sh
 node tests/smoke.mjs   # fake-ctx route registration + real Edge TTS synthesis + audio serve assertions
-npm run test:all       # full: smoke/live/patch/i18n/client/archive/openai/e2e/pack/privacy
+npm run test:all       # full: smoke/live/patch/i18n/client/archive/gsv/gsv-e2e/pack/privacy
 npm run test:pack      # guard on what npm install actually ships to users
 npm run test:privacy   # guard against local usernames/paths, GUI captures, credentials
 ```
 
 Tests only run from the source repo. The published package is trimmed by the
 `files` allowlist in `package.json`: it contains `lib/`, `rvc-server.py`,
-`cordis.patch.yml`, the user-facing docs, and
-`tools/gpt-sovits-openai-gateway.py` (the optional gateway for GPT-SoVITS users).
-Only the seven user-facing guides under `docs/` ship; design notes, test plans and
-acceptance checklists stay in the source repo, with README links pointing online.
-`tests/`, CI config and maintainer-only tools (`verify-openai-gateway.py`,
-`mock-sovits-upstream.py`, ...) are excluded; `test:pack` enforces that boundary.
+`cordis.patch.yml` and the user-facing docs. Only the seven user-facing guides
+under `docs/` ship; design notes, UI audit records and acceptance checklists
+stay in the source repo, with README links pointing online. GPT-SoVITS talks
+straight to the local `api_v2.py` — **no gateway process, no Python adapter,
+no API key**. `tests/`, CI config and maintainer-only tools under `tools/`
+are excluded; `test:pack` enforces that boundary.
 
 Hot-reload after editing `lib/` (on Windows a `file:` install is a COPY, not a
 symlink, so the running dsh reads the profile copy):

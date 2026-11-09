@@ -45,8 +45,6 @@ const required = [
   'README.md',
   'README.zh.md',
   'LICENSE',
-  // 可选组件：GPT-SoVITS 用户唯一的对接方式，文档让用户直接跑它。
-  'tools/gpt-sovits-openai-gateway.py',
 ];
 for (const f of required) check(`必须包含 ${f}`, has(f));
 
@@ -60,7 +58,7 @@ const requiredDocs = [
   'CLOUD-GUIDE.md',
   'COSYVOICE-GUIDE.md',
   'INDEX-TTS2-GUIDE.md',
-  'OPENAI-COMPAT-GUIDE.md',
+  'GPT-SOVITS-GUIDE.md',
 ];
 for (const d of requiredDocs) check(`必须包含 docs/${d}`, has(`docs/${d}`));
 const extraDocs = packed
@@ -81,7 +79,7 @@ for (const f of [...declared].sort()) check(`声明路径在包内 ${f}`, has(f)
 const forbidden = [
   [/^tests\//, '测试与真机探针'],
   [/^\.github\//, 'CI 配置'],
-  [/^tools\/(?!gpt-sovits-openai-gateway\.py$)/, '维护者工具 / mock / 自检脚本'],
+  [/^tools\//, '维护者工具 / mock / 自检脚本'],
   [/^\.tmp-ui\//, '本地草稿'],
   [/^Snipaste_/, '临时截屏'],
   [/^(ANALYSIS|TODO|PR-REVIEW)\.md$/, '内部分析文档'],

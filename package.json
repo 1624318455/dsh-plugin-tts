@@ -1,6 +1,6 @@
 {
   "name": "@memef1f1y/dsh-plugin-tts",
-  "description": "Edge TTS 语音大集成插件：消息朗读按钮、自动朗读开关、语音设置面板（Edge TTS / RVC / Index-TTS2 / CosyVoice / Google Cloud TTS / OpenAI 兼容接口）",
+  "description": "Edge TTS 语音大集成插件：消息朗读按钮、自动朗读开关、语音设置面板（Edge TTS / RVC / Index-TTS2 / CosyVoice / GPT-SoVITS / Google Cloud TTS）",
   "version": "0.7.0",
   "type": "module",
   "engines": {
@@ -19,14 +19,13 @@
     "lib/",
     "rvc-server.py",
     "cordis.patch.yml",
-    "tools/gpt-sovits-openai-gateway.py",
     "docs/USER-GUIDE.md",
     "docs/RVC-GUIDE.md",
     "docs/EDGE-GUIDE.md",
     "docs/CLOUD-GUIDE.md",
     "docs/COSYVOICE-GUIDE.md",
     "docs/INDEX-TTS2-GUIDE.md",
-    "docs/OPENAI-COMPAT-GUIDE.md",
+    "docs/GPT-SOVITS-GUIDE.md",
     "README.md",
     "README.zh.md",
     "LICENSE"
@@ -58,12 +57,11 @@
     "test:i18n": "node tests/i18n-keys.mjs",
     "test:client": "node tests/client-load.mjs",
     "test:archive": "node tests/archive-guard.mjs",
-    "test:openai": "node tests/openai-provider-contract.mjs",
-    "test:openai-e2e": "node tests/e2e-openai-gateway.mjs",
+    "test:gsv": "node tests/gpt-sovits-contract.mjs",
+    "test:gsv-e2e": "node tests/e2e-gpt-sovits.mjs",
     "test:pack": "node tests/pack-guard.mjs",
     "test:privacy": "node tests/privacy-guard.mjs",
-    "verify:gateway": "python tools/verify-openai-gateway.py",
-    "test:all": "node tests/smoke.mjs && node tests/rvc-server-live.mjs && node tests/package-runtime-patch.mjs && node tests/i18n-keys.mjs && node tests/client-load.mjs && node tests/archive-guard.mjs && node tests/openai-provider-contract.mjs && node tests/e2e-openai-gateway.mjs && node tests/pack-guard.mjs && node tests/privacy-guard.mjs"
+    "test:all": "node tests/smoke.mjs && node tests/rvc-server-live.mjs && node tests/package-runtime-patch.mjs && node tests/i18n-keys.mjs && node tests/client-load.mjs && node tests/archive-guard.mjs && node tests/gpt-sovits-contract.mjs && node tests/e2e-gpt-sovits.mjs && node tests/pack-guard.mjs && node tests/privacy-guard.mjs"
   },
   "repository": {
     "type": "git",

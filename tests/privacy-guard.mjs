@@ -59,7 +59,13 @@ const RULES = [
 // Edge TTS 协议里 TRUSTED_CLIENT_TOKEN 是微软公开的客户端常量，所有 edge-tts
 // 实现都用同一个值，不是任何人的私钥。别让守卫把它当成泄露的凭据。
 const PUBLIC_CONSTANTS = [/TRUSTED_CLIENT_TOKEN/, /CHROMIUM_FULL_VERSION/];
-const isPublicConstant = line => PUBLIC_CONSTANTS.some(re => re.test(line));
+
+// 文档 / i18n 里的「示例参考音频路径」是虚构的占位值，不是作者本机目录。
+// GPT-SoVITS 指南和设置面板都用它示范绝对路径该怎么写；只用精确形态放行，
+// 其它 `D:/GPT-SoVITS/...` 依然按本机路径拦截。
+const DOC_EXAMPLES = [/D:[\\/]GPT-SoVITS[\\/]refs[\\/][A-Za-z0-9._-]+\.wav/];
+const isAllowed = line =>
+  PUBLIC_CONSTANTS.some(re => re.test(line)) || DOC_EXAMPLES.some(re => re.test(line));
 
 const textFiles = tracked.filter(f => f !== SELF && TEXT_EXT.test(f));
 for (const [re, label] of RULES) {
@@ -67,7 +73,7 @@ for (const [re, label] of RULES) {
   for (const f of textFiles) {
     const lines = readFileSync(path.join(root, f), 'utf8').split(/\r?\n/);
     lines.forEach((line, i) => {
-      if (isPublicConstant(line)) return;
+      if (isAllowed(line)) return;
       re.lastIndex = 0;
       if (re.test(line)) hits.push(`${f}:${i + 1}`);
     });

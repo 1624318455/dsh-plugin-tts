@@ -1,7 +1,12 @@
 // Live UI audit: reads back what the running shell actually painted, so the
 // design-language work is checked against the real DOM instead of a screenshot.
 //
-//   node tests/live-ui-audit.mjs [base] [token]
+//   CHROME_PATH="C:/Program Files/Google/Chrome/Application/chrome.exe" \
+//     node tests/live-ui-audit.mjs [base] [token]
+//
+// If Playwright's own browser download is missing/outdated, the script falls
+// back to an installed Chrome or Edge so a machine update cannot silently
+// disable the audit.
 //
 // If no token is given, the script mints a short-lived browser-session cookie
 // from the LOCAL signing secret in ~/.dsh/.credentials.yaml using dsh's own
@@ -69,11 +74,32 @@ function localSessionCookie(origin) {
 const base = process.argv[2] || 'http://127.0.0.1:3080';
 const token = process.argv[3];
 
-const browser = await chromium.launch({
+const launchOptions = {
   headless: true,
   args: ['--no-proxy-server'],
   ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
-});
+};
+function systemBrowser() {
+  const roots = [process.env.LOCALAPPDATA, 'C:/Program Files', 'C:/Program Files (x86)'].filter(Boolean);
+  const rels = [
+    'Google/Chrome/Application/chrome.exe',
+    'Microsoft/Edge/Application/msedge.exe',
+  ];
+  for (const root of roots) for (const rel of rels) {
+    const p = path.join(root, rel);
+    if (existsSync(p)) return p;
+  }
+  return null;
+}
+let browser;
+try {
+  browser = await chromium.launch(launchOptions);
+} catch (e) {
+  const exe = systemBrowser();
+  if (!exe) throw e;
+  console.log(`playwright browser unavailable (${e.message.split('\n')[0]}); using ${exe}`);
+  browser = await chromium.launch({ ...launchOptions, executablePath: exe });
+}
 const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
 if (!token) await context.addCookies([localSessionCookie(base)]);
 const page = await context.newPage();
@@ -157,7 +183,7 @@ const boxes = await page.evaluate(() => {
     switches: [...document.querySelectorAll('.dsh-tts-switch')].slice(0, 4).map(box),
     sliderLabels: [...document.querySelectorAll('.dsh-tts-rvc-row:has(.dsh-tts-slider) > .dsh-tts-rvc-label')].slice(0, 3).map(el => ({ text: (el.textContent || '').trim(), font: cs(el).fontSize + '/' + cs(el).fontWeight })),
     rules: (() => {
-      const wanted = ['.dsh-tts-module', '.dsh-tts-dd-trigger', '.dsh-tts-rvc-input', '.dsh-tts-rvc-row .dsh-tts-dd-trigger'];
+      const wanted = ['.dsh-tts-module', '.dsh-tts-dd-trigger', '.dsh-tts-rvc-input', '.dsh-tts-rvc-row .dsh-tts-dd-trigger', '.dsh-tts-switch', '.dsh-tts-switch-thumb'];
       const all = [];
       for (const s of document.styleSheets) { try { all.push(...s.cssRules); } catch (e) { /* cross-origin */ } }
       return wanted.map(sel => {
@@ -170,6 +196,17 @@ const boxes = await page.evaluate(() => {
     overlayIdle: [...document.querySelectorAll('[class*="overlayLayer"]')].map(el => cs(el).zIndex),
     dialogZ: [...document.querySelectorAll('[role="dialog"]')].map(el => cs(el).zIndex),
     dpr: devicePixelRatio,
+    // Chrome serialises `corner-shape:round` as `superellipse(1)` in
+    // getComputedStyle (newer builds) while older builds return the literal
+    // `round`. Probe a known-round element instead of hard-coding either form.
+    probeRound: (() => {
+      const el = document.createElement('div');
+      el.style.cornerShape = 'round';
+      document.body.appendChild(el);
+      const v = getComputedStyle(el).cornerShape;
+      el.remove();
+      return v;
+    })(),
   };
 });
 console.log('--- measured boxes (Edge provider) ---');
@@ -203,7 +240,30 @@ const align = await page.evaluate(() => {
 });
 check('settings-row menu is end-aligned and stays inside the dialog',
   !!align && Math.abs(align.menuRight - align.trigRight) <= 2 && align.menuRight <= align.dialogRight + 1,
-  JSON.stringify(align));
+  JSON.stringify(align && { trigRight: align.trigRight, menuRight: align.menuRight, dialogRight: align.dialogRight }));
+
+// The provider list is the product surface: 0.7.0 shipped a generic
+// "OpenAI-compatible" entry fronted by a Python gateway. It was replaced by a
+// dedicated local GPT-SoVITS provider that speaks api_v2.py's native /tts.
+// Assert on the REAL rendered menu, not just the client source — a stale
+// profile copy would otherwise keep offering the removed provider. The first
+// picker on the panel is the *language* selector, so target the provider
+// dropdown by its own class instead of `.first()`.
+await page.keyboard.press('Escape');
+await page.waitForTimeout(150);
+await page.locator('.dsh-tts-dd-provider .dsh-tts-dd-trigger').first().click();
+await page.waitForTimeout(250);
+const providerItems = await page.evaluate(() => {
+  const wrap = document.querySelector('.dsh-tts-dd-provider');
+  const menu = wrap && wrap.querySelector('.dsh-tts-dd-menu');
+  return menu ? [...menu.querySelectorAll('.dsh-tts-dd-item-text')].map(e => (e.textContent || '').trim()) : [];
+});
+check('provider menu is the six dedicated providers, GPT-SoVITS included, no OpenAI entry',
+  providerItems.length === 6 &&
+  providerItems.some(x => x.includes('GPT-SoVITS')) &&
+  providerItems.some(x => x.includes('CosyVoice')) &&
+  providerItems.every(x => !/OpenAI/i.test(x)),
+  providerItems.join(' | ') || 'menu items not found');
 await page.keyboard.press('Escape');
 await page.waitForTimeout(150);
 
@@ -228,8 +288,10 @@ check('standalone buttons are Button.sm (28px)', boxes.buttons.filter(b => !b.in
   `${boxes.buttons.filter(b => !b.inPath).length} standalone`);
 
 check('switches are 36x20 border-box round capsules', boxes.switches.length > 0 && boxes.switches.every(s =>
-  s.w === 36 && s.h === 20 && s.boxSizing === 'border-box' && /round/.test(s.corner)),
-  `${boxes.switches.length} switches`);
+  s.w === 36 && s.h === 20 && s.boxSizing === 'border-box' && s.corner === boxes.probeRound) &&
+  /corner-shape:\s*round/.test(authored('.dsh-tts-switch')) &&
+  /corner-shape:\s*round/.test(authored('.dsh-tts-switch-thumb')),
+  `${boxes.switches.length} switches; round=${boxes.probeRound} computed=${[...new Set(boxes.switches.map(s => s.corner))].join(',')}`);
 
 // ---- 3b. switch to the RVC provider so the path rows actually render ----
 // On the Edge panel there are no .dsh-tts-path rows at all; asserting on that
