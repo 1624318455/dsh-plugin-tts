@@ -48,9 +48,15 @@ const slots = {
   inject(slot, fn) { injectedComponents.push({ slot, fn }); },
   register(spec, component) { return component; }, // real host returns the registered component
 };
+// The style effect is the only one that runs: it is pure DOM construction and
+// the one place the whole stylesheet can be silently lost. Running the other
+// three would register real listeners against a half-mocked window for no gain.
+const injectedStyles = [];
 const ctx = {
   get(name) { if (name === 'slots') return slots; return undefined; },
-  effect() {},
+  effect(fn, label) {
+    if (typeof label === 'string' && label.endsWith(': styles')) fn();
+  },
 };
 try { Object.defineProperty(globalThis, 'navigator', { value: { language: 'zh-CN' }, configurable: true }); }
 catch (e) { /* already settable */ }
@@ -60,9 +66,15 @@ globalThis.window = {
   confirm: () => true,
 };
 globalThis.document = {
-  createElement: () => ({ style: {}, setAttribute(){}, appendChild(){}, removeChild(){}, pause(){}, removeAttribute(){}, play: () => Promise.resolve(), addEventListener(){}, removeEventListener(){} }),
+  createElement: tag => {
+    const el = { tagName: String(tag).toUpperCase(), dataset: {}, style: {}, setAttribute(){}, appendChild(){}, removeChild(){}, pause(){}, removeAttribute(){}, play: () => Promise.resolve(), addEventListener(){}, removeEventListener(){} };
+    // insertCss builds a <style> then assigns textContent; capture the element
+    // so the test can read back the sheet that would reach the document.
+    if (el.tagName === 'STYLE') injectedStyles.push(el);
+    return el;
+  },
   body: { appendChild() {}, removeChild() {} },
-  head: { appendChild() {} },
+  head: { appendChild() {}, removeChild() {} },
 };
 globalThis.Audio = function(){ this.play = () => Promise.resolve(); this.pause=()=>{}; this.setAttribute=()=>{}; this.removeAttribute=()=>{}; };
 // in-memory localStorage so the i18n persistence (loadPersistedLang/setLang) works
@@ -95,6 +107,22 @@ try {
   const ml = fn(globalThis.window, globalThis.navigator, globalThis.document, globalThis.Audio);
   check('client.js loads + apply() runs', injectedComponents.length > 0, `${injectedComponents.length} slot(s) injected`);
   check('client bundle exports inject with slots', Array.isArray(globalThis.__dshTtsClientMod?.inject) && globalThis.__dshTtsClientMod.inject.includes('slots'));
+
+  // ---- the stylesheet that actually reaches the document ----
+  // CSS is one `+`-joined literal. A stray double quote inside `content:""`
+  // closes the string early, the rest of the line becomes a comment, and every
+  // rule after it is dropped — while `node --check` stays green, because the
+  // shortened literal is still valid JS. A regression here silently unstyles
+  // the whole settings panel, so assert on the assembled sheet, not the source.
+  const sheet = injectedStyles.length === 1 ? String(injectedStyles[0].textContent || '') : '';
+  check('stylesheet is injected exactly once', injectedStyles.length === 1 && sheet.length > 0, `styles=${injectedStyles.length}`);
+  check('stylesheet survives full concatenation', sheet.length > 20000, `len=${sheet.length}`);
+  const openBraces = (sheet.match(/\{/g) || []).length;
+  const closeBraces = (sheet.match(/\}/g) || []).length;
+  check('stylesheet has no truncated rule', openBraces === closeBraces && sheet.trimEnd().endsWith('}'), `{=${openBraces} }=${closeBraces}`);
+  check('stylesheet reaches its last rule', sheet.includes('.dsh-tts-reading-bar:hover{transform:translateX(0) scale(1.03)}'), sheet.slice(-60));
+  check('stylesheet carries the picker and toast-layer rules', sheet.includes('.dsh-tts-dd-trigger{') && sheet.includes('overlayLayer'), undefined);
+
   // ---- i18n preference persistence (round-trip) ----
   try {
     const hooks = globalThis.window.__dshTtsI18n;
@@ -292,7 +320,83 @@ if (!failed) {
       react.useState = h.useState; react.useEffect = h.useEffect; react.useRef = h.useRef; react.useMemo = h.useMemo;
       const node = comp.fn()({ useSession: sel => sel({ nodes: [] }), messageId: 'm1' });
       react.useState = orig.useState; react.useEffect = orig.useEffect; react.useRef = orig.useRef; react.useMemo = orig.useMemo;
-      check('settings renders approval voice-alert module', allText(node).includes('事件语音提醒') && allText(node).includes('启用审批语音提醒'), undefined);
+      // Boolean options are rendered as the shell's own switch (button[role=switch]),
+      // never as a native checkbox whose label repeats the row title.
+      const collectSwitches = n => {
+        const out = [];
+        const walk = x => {
+          if (!x || typeof x !== 'object') return;
+          // TtsSwitch is a plain function component with no hooks — evaluate it
+          // so the assertion sees the real button[role=switch] it produces.
+          if (typeof x.type === 'function' && x.props && x.props.checked !== undefined) {
+            let sub = null;
+            try { sub = x.type(x.props); } catch (e) { sub = null; }
+            if (sub && sub.props && sub.props.role === 'switch') out.push({ props: sub.props, label: x.props.label });
+            return;
+          }
+          if (x.props && x.props.role === 'switch') out.push(x);
+          const ch = x.children;
+          if (Array.isArray(ch)) ch.forEach(walk);
+        };
+        walk(n);
+        return out;
+      };
+      const collectCheckboxes = n => {
+        let count = 0;
+        const walk = x => {
+          if (!x || typeof x !== 'object') return;
+          if (x.type === 'input' && x.props && x.props.type === 'checkbox') count += 1;
+          const ch = x.children;
+          if (Array.isArray(ch)) ch.forEach(walk);
+        };
+        walk(n);
+        return count;
+      };
+      const switches = collectSwitches(node);
+      const notifySwitch = switches.some(s => s.props['aria-label'] === '启用审批语音提醒');
+      check('settings renders approval voice-alert module', allText(node).includes('事件语音提醒') && notifySwitch, `switches=${switches.length}`);
+      check('settings uses switches instead of native checkboxes', switches.length >= 4 && collectCheckboxes(node) === 0, `switches=${switches.length} boxes=${collectCheckboxes(node)}`);
+      check('switches expose aria-checked state', switches.every(s => s.props['aria-checked'] === 'true' || s.props['aria-checked'] === 'false'), undefined);
+      // The switch is copied verbatim from primitives/lib/Switch.module.css. Without
+      // box-sizing the 2px padding inflates the 36x20 track to 40x24, so the radius
+      // reads as 12 instead of 10 and the thumb sits 2px off centre; without
+      // corner-shape:round the capsule falls back to the shell's superellipse. Neither
+      // regression is visible to a DOM assertion, hence the source check.
+      const swRule = (clientSrc.match(/\.dsh-tts-switch\{[^}]*\}/) || [''])[0];
+      check('switch copies the shell spec (border-box + corner-shape)', swRule.includes('box-sizing:border-box') && swRule.includes('corner-shape:round') && swRule.includes('width:36px') && swRule.includes('height:20px'), swRule.slice(0, 64));
+      // Form controls take their corner from the shell's radius scale (4/8/12/16/20/28),
+      // never from a hand-picked px value — the earlier 8px set read as a different product.
+      const ctlClasses = ['ctl', 'dd-trigger', 'dd-item', 'dd-menu', 'rvc-input', 'preview-input', 'browse'];
+      const ctlRules = ctlClasses.map(c => (clientSrc.match(new RegExp('\\.dsh-tts-' + c + '\\{[^}]*\\}')) || [''])[0]).filter(Boolean);
+      check('controls take their radius from --dsw-radius-* tokens', ctlRules.length === ctlClasses.length && ctlRules.every(r => /border-radius:var\(--dsw-radius-/.test(r)), `rules=${ctlRules.length}`);
+      // A picker on a settings row is a seat (PermissionPresets trigger), not a field:
+      // 28px, no border, no fill until hover. The bordered 32px version reads as a form
+      // bolted onto the shell and has been rejected twice — pin the shape in source.
+      const seatRule = (clientSrc.match(/\.dsh-tts-dd-trigger\{[^}]*\}/) || [''])[0];
+      check('settings-row picker is a borderless 28px seat', seatRule.includes('height:28px') && seatRule.includes('border:none') && seatRule.includes('background:0 0') && seatRule.includes('border-radius:var(--dsw-radius-sm)'), seatRule.slice(0, 56));
+      // ...while a picker inside a form field must keep the input's box, or the row
+      // loses its shared baseline.
+      check('field-row picker shares the input box', /\.dsh-tts-rvc-row \.dsh-tts-dd-trigger\{[^}]*height:32px/.test(clientSrc), undefined);
+      // A path row holds only inputs / pickers / buttons, so every child takes the
+      // field box. The previous rule targeted .dsh-tts-rvc-row, where no button
+      // ever sits — it was dead CSS and the buttons stayed 28px beside a 32px
+      // input. Pin the selector that actually matches.
+      const pathBtn = (clientSrc.match(/\.dsh-tts-path \.dsh-tts-browse\{[^}]*\}/) || [''])[0];
+      check('path-row buttons take the field height', pathBtn.includes('height:32px') && pathBtn.includes('border-radius:var(--dsw-radius-md)'), pathBtn.slice(0, 56));
+      check('no dead browse rule under a label row', !/\.dsh-tts-rvc-row \.dsh-tts-browse\{/.test(clientSrc), undefined);
+      // A field note starts at the control column: label 110px + row gap 10px.
+      // The old 110px left every hint 10px behind the input above it.
+      const noteRule = (clientSrc.match(/\.dsh-tts-note\{[^}]*\}/) || [''])[0];
+      const rowRule = (clientSrc.match(/\.dsh-tts-rvc-row\{[^}]*\}/) || [''])[0];
+      const labelRule = (clientSrc.match(/\.dsh-tts-rvc-label\{[^}]*\}/) || [''])[0];
+      const gap = Number((rowRule.match(/gap:(\d+)px/) || [])[1]);
+      const label = Number((labelRule.match(/width:(\d+)px/) || [])[1]);
+      const indent = Number((noteRule.match(/margin:[^;]*?\s(\d+)px/) || [])[1]);
+      check('field notes align to the control column', indent === label + gap, `indent=${indent} label=${label} gap=${gap}`);
+      // Settings rows use the shell's own rhythm: 16px block padding, a half-pixel
+      // l2 rule, and secondary ink for the description.
+      const modRule = (clientSrc.match(/\.dsh-tts-module\{[^}]*\}/) || [''])[0];
+      check('settings rows copy the shell rhythm', modRule.includes('padding:16px 0') && modRule.includes('0.5px solid var(--dsw-alias-border-l2)') && modRule.includes('gap:24px'), modRule.slice(0, 56));
       check('settings renders export-diagnostic-log button', allText(node).includes('导出诊断日志') && allText(node).includes('运行诊断'), undefined);
       // Entry CTAs removed: provider switch is the only entry (no shortcut cards)
       check('settings hides removed entry CTAs (edge mode)', !allText(node).includes('需要克隆音色') && !allText(node).includes('Index-TTS2 音色'), undefined);
@@ -398,6 +502,45 @@ if (!failed) {
     check('starved chunk clamps to now (no tail overlap)', starveClamp);
   } catch (e) {
     check('single-file progress regression checks', false, String(e && e.stack || e).slice(0, 200));
+  }
+}
+
+// Archived-session guard: archiving the session being read aloud must STOP
+// the read (the session left the workspace, so speaking for it is nonsense).
+// Regression test for "归档了正在朗读的会话，session 已从工作区消失但仍在读".
+{
+  const A = globalThis.window.__dshTtsArchive;
+  if (!A || typeof A.sync !== 'function') {
+    check('archive guard hook exposed (__dshTtsArchive)', false, 'hook missing');
+  } else {
+    // 1) the guard tracks the Host's archive set
+    A.sync(['sess-a', 'sess-b']);
+    check('archive guard tracks the host archive set',
+      A.isArchived('sess-a') === true && A.isArchived('sess-b') === true && A.isArchived('sess-z') === false,
+      'archived=' + JSON.stringify(A.archived()));
+    // 2) an archived session may not start a new read
+    check('archived session cannot start a read',
+      A.canRead('sess-a') === false && A.canRead('sess-z') === true);
+    // 3) a session-less read (settings preview / selection) is always allowed
+    check('session-less read is always allowed', A.canRead(null) === true);
+    // 4) unarchive removes the member again (the host set is authoritative)
+    A.sync(['sess-b']);
+    check('unarchive clears the archived member',
+      A.isArchived('sess-a') === false && A.isArchived('sess-b') === true,
+      'archived=' + JSON.stringify(A.archived()));
+    // 5) syncing the set while nothing is playing must not report a stop
+    check('archive sync without a read reports no stop', A.sync(['sess-b']) === false);
+    // 6) source-level: the guard subscribes to the workspaces root hook and
+    //    stops the read through stopSpeaking()
+    const src = globalThis.__dshTtsClientSrc || '';
+    const usesHook = /useWorkspaces/.test(src);
+    const stopsRead = /if \(readArchived\) \{\s*stopSpeaking\(\);/.test(src);
+    const tracksSession = /shared\.readSessionId = sessionId;/.test(src);
+    const guardsStart = /if \(!canReadSession\(sessionId\)\) \{/.test(src);
+    const clearsOnStop = /shared\.readSessionId = null;/.test(src);
+    check('archive guard stops the read and refuses a new one',
+      usesHook && stopsRead && tracksSession && guardsStart && clearsOnStop,
+      `hook=${usesHook} stop=${stopsRead} track=${tracksSession} guard=${guardsStart} clear=${clearsOnStop}`);
   }
 }
 

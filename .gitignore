@@ -10,3 +10,12 @@ __pycache__/
 # local vision-verification scratch
 .dsh-vision-router/
 tools/ui-preview.html
+
+# local scratch (real-machine test wavs)
+.tmp-ui/
+
+# live GUI probes capture the local workspace (session titles, chat content).
+# They are debugging artifacts, never commit them.
+tests/live-*.png
+*.credentials.*
+credentials.yaml

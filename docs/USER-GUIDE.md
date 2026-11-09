@@ -38,7 +38,7 @@
 2. **完全关闭再重新启动 `dsh web`**（不是刷新页面）。
 3. 验证成功：打开网页 → 侧边栏 **设置 → 插件**，出现「**语音**」标签页。
 
-> 想开发/本地安装：`dsh plugin --profile web add "file:D:/Work/ForAI/dsh-plugin-TTS/plugin"`
+> 想开发/本地安装：`dsh plugin --profile web add "file:<本仓库绝对路径>"`
 > （Windows 下是复制安装，改代码后要把 `lib/` 再复制进 profile 副本并重启，详见 README「开发」）。
 
 ---
@@ -232,6 +232,7 @@
 - **停止朗读**：再点一次喇叭按钮；关闭自动朗读开关会停止自动朗读（不影响手动）。
 - **长回复**：自动分段、边读边合成，进度显示「第 x/y 段 · 边播边合成」。
 - **换会话 / 关页面**：自动朗读会停止。
+- **归档会话**：正在朗读的会话被归档后，朗读会立即停止（会话已从工作区移除，不会继续出声）。
 - **设置不保存**：声音/开关等设置存在内存里，刷新页面会恢复默认（音色包安装的文件会保留）。
 
 ---
@@ -354,7 +355,7 @@ E:\...\RVC20240604Nvidia\runtime\python.exe `
 ```
 
 - 脚本复制已验证的 Python 环境 + 推理核心 + hubert/rmvpe + ffmpeg + rvc-server.py，
-  **不下载任何东西**，成品立即可用（已在本机实测：RTX 5070 上模型加载与转换正常）；
+  **不下载任何东西**，成品立即可用（已在本机实测：NVIDIA GPU 上模型加载与转换正常）；
 - **RTX 50 系列（Blackwell）可选的提速升级**：官方 pytorch CDN 对部分网络很慢
   （实测 31KB/s，3.3GB 要 29 小时），用国内镜像在**可见的终端窗口**里跑（能看到进度条）：
 
@@ -386,4 +387,4 @@ node tests/e2e-compact-index.mjs  # 紧凑索引端到端（需 4892 服务）
 ```
 
 详细架构与设计见 [`README.md`](../README.md)（或[中文版](../README.zh.md)）、
-[`RVC 指南`](RVC-GUIDE.md) 与 [`adaptive-chunked-playback.md`](adaptive-chunked-playback.md)。
+[`RVC 指南`](RVC-GUIDE.md) 与[自适应分块设计文档](https://github.com/1624318455/dsh-plugin-tts/blob/main/docs/adaptive-chunked-playback.md)（仅源码仓库提供）。

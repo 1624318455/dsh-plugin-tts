@@ -203,3 +203,51 @@
   自动忽略（`for k in RVC_DEFAULTS`），Host 对残留 `custom.baseSource` 同理
   忽略；`rvc-config-save` 的 `{version:1}` 文件不受影响。
 - 运行：`smoke 74 · patch 4 · i18n 6 · client-load 49` 全绿。
+
+## 15. 归档会话仍在朗读 · 修复记录（2026-10-12）
+
+### 现象
+
+把**正在朗读**的会话从左侧工作区归档后：会话已从侧栏消失，但**仍在读、仍在出声**——
+用户明确反馈"很诡异、不合理"。
+
+### 根因
+
+朗读的生命周期与**会话**的生命周期此前完全解耦：
+
+- `speakText()` 只维护 `shared.speaking / currentText / speakToken / playSeq`，
+  没有任何"这条朗读属于哪个会话"的概念——因此**无从判断**会话是否还在。
+- 停止朗读的触发点只有：再次点按钮、关自动朗读开关、Esc/S 快捷键、新消息打断、
+  换会话时的自动朗读归零。**归档不在其中**——宿主把会话移出工作区时，
+  客户端没有任何通知。
+- 归档只是"隐藏会话"，不销毁会话：会话视图可能仍然挂载（`uiWorkspace.archiveSession()`
+  → `clearMain()` 之前视图还在），所以 `<audio>` 继续播放，插件也继续跑分块队列。
+
+### 修复
+
+新增**归档会话守卫**（client 侧，纯客户端改动）：
+
+1. **记录朗读归属的会话**：`shared.readSessionId`。消息朗读按钮与自动朗读 watcher
+   都会把当前会话 id 传进 `speakText({ sessionId })`；设置面板试听、选区朗读、
+   审批语音提醒不绑定会话（`null`），永远不受影响。
+2. **订阅宿主的归档集合**：`useWorkspaces` 是 root 标准 hook
+   （`dsh-client-ui-workspace` 的 `ctx.slots.provideRoot({ hooks: { workspaces } })`），
+   在 root 作用域的 `shell.overlay` 里可用，与当前打开哪个会话无关。宿主在归档集合
+   变化时推送 `archived` 增量，快照里的 `archivedSessionIds` 即权威集合。
+3. **被朗读的会话进入归档集合 → 立即停止**：`syncArchivedSessions()` 调用既有的
+   `stopSpeaking()`（暂停 `<audio>`、`load()` 中止解码、取消 RVC 分块 job、
+   挂起 Web Audio 时钟），保证**音频与资源一起停**。
+4. **拒绝为已归档会话开始新朗读**：`canReadSession()` 拦截，并弹
+   「该会话已被归档，已停止朗读」提示——归档后消息已不在屏幕上，再读是错的。
+5. **归档集合是权威的**（而非只增不减）：取消归档后该会话可再次朗读。
+
+### 测试
+
+- 新增 `tests/archive-guard.mjs`：**端到端复现**用户场景——真实 client bundle +
+  模拟浏览器 + 模拟 `/dsh-tts-api/speak` + 真实朗读按钮 + 真实守卫组件，
+  断言「归档 → 朗读停止 + 音频暂停 + 会话绑定清空 + 新朗读被拒」。
+- `tests/client-load.mjs` 增 6 条守卫断言（集合跟踪 / 拒绝新朗读 / 取消归档可恢复 /
+  无会话朗读不受影响 / 源码接线）。
+- 运行：`client-load 83 · archive-guard 14 · i18n 6` 全绿；`smoke` 107/122 的失败项
+  全部是沙箱限制（`spawn EPERM`、`~/.dsh` 写权限），与本次改动无关（Host 半边未改）。
+- 文档：README/README.zh「边界行为」+ `docs/USER-GUIDE.md` §9。

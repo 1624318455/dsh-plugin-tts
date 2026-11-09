@@ -59,5 +59,9 @@ jobs:
         run: |
           node -e "const fs=require('fs');const v=require('./package.json').version;const tag=process.env.GITHUB_REF_NAME.replace(/^v/,'');if(v!==tag){console.error('tag '+process.env.GITHUB_REF_NAME+' != package.json '+v);process.exit(1)}else{console.log('version ok: '+v)}"
 
+      - name: Verify pack contents + privacy guard
+        # 发布前最后一道闸：开发文件不许混进 tarball，仓库不许带本机/个人信息。
+        run: npm run test:pack && npm run test:privacy
+
       - name: Publish to npm
         run: npm publish --provenance --access public

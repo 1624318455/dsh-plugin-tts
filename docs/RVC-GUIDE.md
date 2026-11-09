@@ -78,7 +78,7 @@ Edge TTS 朗读（原声）→ 本机 RVC 推理服务（rvc-server.py）→ 转
   <你的便携包目录>/start-rvc-server.sh
   ```
 
-- **已有自己搭好的 RVC 环境**（例如按本仓库 `docs/macos-test-prompt.md` 搭建的目录）：
+- **已有自己搭好的 RVC 环境**（自备 Python 3.9 与 RVC 推理依赖）：
 
   ```bash
   <你的工作目录>/venv/bin/python <你的工作目录>/rvc-server.py --port 4892
@@ -91,7 +91,7 @@ Edge TTS 朗读（原声）→ 本机 RVC 推理服务（rvc-server.py）→ 转
   ```
 
 > ⚠️ 在 macOS 上第一次使用前，请先确认推理依赖已装好。最稳妥的方式是按下文
-> 「便携运行时」或 `docs/macos-test-prompt.md` 的清单准备 Python 3.9 环境；
+> 「便携运行时」的清单准备 Python 3.9 环境；
 > 常见的缺失（`ModuleNotFoundError: No module named 'parselmouth'`）只要
 > `pip install praat-parselmouth av torchcrepe` 等即可补上。
 
@@ -153,7 +153,7 @@ RVC 是变声，长文本必须先合成整段原声再转换；"全部转换完
 8. **校准落盘**：探测结果存入 `~/.dsh/tts-rvc/calibration.json`（7 天有效 + GPU 名设备指纹），
    dsh 重启后直接复用，换显卡自动重新探测。
 
-> 完整设计见 [`adaptive-chunked-playback.md`](adaptive-chunked-playback.md)。
+> 完整设计见[自适应分块设计文档](https://github.com/1624318455/dsh-plugin-tts/blob/main/docs/adaptive-chunked-playback.md)（仅源码仓库提供）。
 
 ---
 
@@ -221,7 +221,7 @@ RVC 训练出的检索索引常达**数百 MB**（实测示例 408MB / 129,396 �
 给"只有音色模型、不想装整套 RVC WebUI"的人：一个免安装文件夹，内含转换服务需要的一切
 （Python + torch + 推理核心 + hubert/rmvpe + ffmpeg + `rvc-server.py`），
 Windows 双击 `启动服务.bat`，macOS/Linux 运行 `start-rvc-server.sh` 即用。
-**Windows 已在本机实测**（RTX 5070：模型加载 + 转换正常）；**macOS（Apple Silicon）也已实测通过**。
+**Windows 已在本机实测**（NVIDIA GPU：模型加载 + 转换正常）；**macOS（Apple Silicon）也已实测通过**。
 
 打包（在已装 RVC WebUI 的机器上，**零下载**）：
 

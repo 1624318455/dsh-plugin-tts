@@ -28,6 +28,9 @@ jobs:
         # ~/rvc-work / RVC_URL is absent, so it won't false-fail here.
         run: npm test && npm run test:i18n && npm run test:client && npm run test:patch
 
+      - name: Published-package contents + privacy guard
+        run: npm run test:pack && npm run test:privacy
+
       - name: Live (optional, when RVC runtime available)
         run: npm run test:live
         continue-on-error: true

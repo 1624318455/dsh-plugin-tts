@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="dsh-plugin-tts" width="140" />
+  <img src="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/logo.png" alt="dsh-plugin-tts" width="140" />
 </p>
 
 <h1 align="center">dsh-plugin-tts</h1>
@@ -20,13 +20,14 @@
 - **[RVC 自定义音色指南](docs/RVC-GUIDE.md)**（自定义音色 · 分块渐进播放 · 紧凑索引 · 音色包 · 便携运行时）
 - **[Index-TTS2 指南](docs/INDEX-TTS2-GUIDE.md)**（本机参考音频音色）
 - **[CosyVoice 指南](docs/COSYVOICE-GUIDE.md)**（本机提示音频零样本克隆，CosyVoice-2.0-0.5B）
+- **[OpenAI 兼容指南](docs/OPENAI-COMPAT-GUIDE.md)**（自定义接口 / GPT-SoVITS 网关 · extraBody 透传契约）
 - **[Cloud TTS 指南](docs/CLOUD-GUIDE.md)**（谷歌付费音色 · API Key · 用量与计费口径）
 - **[Edge TTS 指南](docs/EDGE-GUIDE.md)**（默认在线朗读）
-- **[自适应分块设计文档](docs/adaptive-chunked-playback.md)**（长文无缝朗读的设计与实测）
+- **[自适应分块设计文档](https://github.com/1624318455/dsh-plugin-tts/blob/main/docs/adaptive-chunked-playback.md)**（长文无缝朗读的设计与实测，仅源码仓库提供）
 
 ---
 
-# dsh-plugin-tts — Edge TTS + RVC / Index-TTS2 / CosyVoice / Cloud 语音大集成
+# dsh-plugin-tts — Edge TTS + RVC / Index-TTS2 / CosyVoice / Cloud / OpenAI 兼容 语音大集成
 
 DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软免费在线音色（Edge TTS），
 也能用**你自己训练的 RVC 音色**、**本机 Index-TTS2 参考音频音色**、**本机 CosyVoice
@@ -43,11 +44,11 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软�
 2. **自动朗读开关**：输入框左下角的喇叭按钮；开启后每条新完成的 AI 回复自动朗读
    （按钮带圆形高亮），关闭则不自动朗读。
 
-   ![朗读按钮与自动朗读开关](Snipaste_2026-08-16_13-29-01.png)
-   ![朗读中状态](Snipaste_2026-08-16_13-29-11.png)
+   > 示意图：朗读按钮在回复操作行左下角，播放中显示音柱动画；自动朗读开关在
+   > 输入框左下角，开启时喇叭按钮带圆形高亮。逐项说明见[《使用手册》](docs/USER-GUIDE.md)。
 
 3. **语音设置面板**：侧边栏「设置 → 插件」新增「语音」标签页：
-   - **TTS提供者**：Edge TTS（免费在线）/ 自定义音色（RVC）/ 本地音色（Index-TTS2）/ 本地克隆（CosyVoice）/ Cloud TTS（谷歌付费）
+   - **TTS提供者**：Edge TTS（免费在线）/ 自定义音色（RVC）/ 本地音色（Index-TTS2）/ 本地克隆（CosyVoice）/ Cloud TTS（谷歌付费）/ OpenAI 兼容（自定义接口）
    - **朗读音色**：22 个经实测可用的 Edge TTS 音色（默认 晓萱 zh-CN-XiaoxuanNeural）；
      Cloud 组 8 个 cmn-CN 音色（默认 cmn-CN-Wavenet-A，也可手输 voice id）
    - **声音调节**：语速 / 音调 / 音量（0 = 默认，Edge 与 Cloud 共用）
@@ -57,12 +58,13 @@ DeepSeek Harness 语音插件：给 AI 回复加朗读——开箱即用微软�
      提示文字稿（必填，按顺序全文填写）+ 语速（0.5–2.0）+ 随机种子（0 = 随机）——详见[《CosyVoice 指南》](docs/COSYVOICE-GUIDE.md)
    - **Cloud 配置**：API Key（只存本机 Host 文件，输入框写后即清）+ Project ID（可选）+
      测试连接 + 本月分档用量（Standard 400 万 / Wavenet·Neural2·Chirp3 各 100 万）——详见[《Cloud 指南》](docs/CLOUD-GUIDE.md)
+   - **OpenAI 兼容配置**：API 地址（唯一必填项，其余留空即用默认值）+ API Key（只存本机 Host 文件）+ 模型（可拉取 /v1/models）+ 音色 + 输出格式 + 语速 + 高级参数 extraBody 透传；连通性与真实合成统一在「运行诊断」里测——详见[《OpenAI 兼容指南》](docs/OPENAI-COMPAT-GUIDE.md)
    - **音色包**：从音色包仓库一键下载安装音色
    - **试听测试**：输入文本 + 播放按钮（播放中显示旋转 loading，可点击停止；失败时红字提示）
 4. **RVC 自定义音色**：用你自己训练的 RVC 模型朗读，全程本机计算，支持
    免索引模式、高级参数（详见[《RVC 指南》](docs/RVC-GUIDE.md)）。
 5. **长文本无缝朗读**：自适应分块渐进播放——探测校准块大小、边播边合成、Web Audio
-   采样级拼接、段间无停顿（详见[设计文档](docs/adaptive-chunked-playback.md)）。
+   采样级拼接、段间无停顿（详见[设计文档](https://github.com/1624318455/dsh-plugin-tts/blob/main/docs/adaptive-chunked-playback.md)）。
 6. **朗读时 mini 播放器**：暂停/继续 + 倍速（1x / 1.25x / 1.5x），分块长读显示可见的
    「第 x/y 段」计数。
 7. **主题化 tooltip + RVC 首次引导**：悬浮提示用主题 token（`--dsw-*`）渲染；RVC 面板顶部
@@ -129,7 +131,7 @@ dsh plugin --profile web add "file:/path/to/dsh-plugin-tts/plugin"
 
 | 层     | 位置            | 职责                                                                                                                                                                                                                                                                     |
 | ------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Host   | `lib/index.mjs` | 注册 webServer 路由：`/dsh-tts-api/speak`（全链路合成/分块队列）、`/dsh-tts-audio/<id>`（音频字节）、`/dsh-tts-api/rvc-next`（取下一段/取消任务）、`/dsh-tts-api/rvc-files` + `/rvc-compact-index` + `/rvc-packs*`（RVC 服务代理/音色包）、`/dsh-tts-api/index-*` 与 `/dsh-tts-api/cosy-*`（本地服务代理+配置）、`/dsh-tts-api/cloud-*`（Cloud Key/用量/连通测试）、`/dsh-tts-api/notify`（审批提醒队列）、`/dsh-tts-api/diagnose`（一键诊断）；用 `node -e` 运行零依赖 Edge worker |
+| Host   | `lib/index.mjs` | 注册 webServer 路由：`/dsh-tts-api/speak`（全链路合成/分块队列）、`/dsh-tts-audio/<id>`（音频字节）、`/dsh-tts-api/rvc-next`（取下一段/取消任务）、`/dsh-tts-api/rvc-files` + `/rvc-compact-index` + `/rvc-packs*`（RVC 服务代理/音色包）、`/dsh-tts-api/index-*` 与 `/dsh-tts-api/cosy-*`（本地服务代理+配置）、`/dsh-tts-api/cloud-*`（Cloud Key/用量/连通测试）、`/dsh-tts-api/openai-*`（OpenAI 兼容配置/模型/测试）、`/dsh-tts-api/notify`（审批提醒队列）、`/dsh-tts-api/diagnose`（一键诊断）；用 `node -e` 运行零依赖 Edge worker |
 | Client | `lib/client.js` | `shell.overlay` 里的 Web Audio 分块播放器（采样级拼接，`<audio>` 降级）+ UI（朗读按钮 / 自动朗读开关 / 语音设置面板），通过 `fetch` 调 Host 路由                                                                                                                          |
 
 TTS 引擎：worker 协议镜像 [node-edge-tts@1.2.10](https://github.com/SchneeHertz/node-edge-tts)：
@@ -164,6 +166,10 @@ TTS 引擎：worker 协议镜像 [node-edge-tts@1.2.10](https://github.com/Schne
   `approval/decided`）并按审批 id 去重；客户端轮询 `/dsh-tts-api/notify?s=N`——
   首次轮询只做基线同步（刷新不重播旧提醒）；播报失败静默（不弹错误 toast，避免 Agent
   循环期间刷屏）。
+- **归档正在朗读的会话会停止朗读**：归档会把会话从侧栏工作区移除，此时继续出声等于在朗读
+  用户已经看不到、也回不去的对话。一个 root 作用域的守卫监听宿主的归档集合，一旦被朗读的
+  会话进入归档集合就立即停止朗读并暂停音频；已被归档的会话也不会再开始新的朗读。
+  不绑定会话的朗读（设置面板试听、选区朗读、审批语音提醒）不受影响。
 
 ## 设置持久化
 
@@ -190,11 +196,14 @@ macOS/Windows/Linux 的启动命令见 [《RVC 指南》](docs/RVC-GUIDE.md) 或
 [《使用手册》](docs/USER-GUIDE.md) §4.2。涵盖**服务启动、面板配置、长文无缝播放、紧凑索引、
 音色包一键安装、便携运行时、设置项详解与排查**——完整内容见 **[《RVC 自定义音色指南》](docs/RVC-GUIDE.md)**。
 
-![RVC 配置面板](Snipaste_2026-08-16_13-28-10.png)
+> 面板主要字段：服务地址（默认 `http://127.0.0.1:4892`）、原声来源、原声音色、
+> 模型路径（`.pth`）、索引路径（`.index`）与高级参数。逐项说明见 [《RVC 指南》](docs/RVC-GUIDE.md)。
 
-![RVC 高级参数](Snipaste_2026-08-16_13-28-23.png)
+> 高级参数（展开「高级参数（一般不用改）」）：说话人 ID、f0 方法、变调、
+> 索引权重、输出采样率、响度混合、辅音保护、滤波半径、F0 曲线文件。
 
-![RVC 音色包](Snipaste_2026-08-16_13-28-37.png)
+> 音色包页：填仓库地址 → 点「获取列表」→ 选包「下载并启用」；GitHub raw 慢时可填代理地址。
+> 逐项说明见 [《RVC 指南》](docs/RVC-GUIDE.md)。
 
 > 公开音色仓库示例：[rvc-for-tts](https://github.com/1624318455/rvc-for-tts)
 > （设置 → 语音 → 音色包 → 仓库地址填 `https://raw.githubusercontent.com/1624318455/rvc-for-tts/main`）。
@@ -260,12 +269,55 @@ macOS/Windows/Linux 的启动命令见 [《RVC 指南》](docs/RVC-GUIDE.md) 或
 - 切换后**立即生效**，并持久化到 localStorage（`dsh-tts-lang`），刷新/重开面板不丢。
 - 覆盖范围：整个设置面板 + 气泡/朗读按钮 + 诊断 + 音色包面板，以及 RVC 服务的报错/进度提示。
 
+## 界面与设计语言
+
+设置面板里的控件是自绘的，规格逐条抄自 DSH 的 `Button` / `Input` / `Menu` / `Switch` /
+`PermissionPresets` / `AgentPreset` / `SettingsGeneral` 源码，不是照截图仿制。
+
+**两种下拉形态。** 设置行上的选择器是一枚 *seat*：28px 高、无边框、无底色，hover 才出现
+`interactive-bg-hover`，13px/500 次级墨色，圆角 `--dsw-radius-sm` —— 与
+`PermissionPresets` 的 trigger 和 `AgentPreset` 的 seat 完全一致。只有表单字段行里的选择器才
+变成 *field*：和旁边的 `Input` 同盒（32px / `--dsw-radius-md` / 0.5px `border-l4` / `bg-layer-1`）。
+两种形态混用，正是「面板看着像嵌了个表单」的原因。菜单浮层用官方材质（`--dsw-menu-surface-fill`
+半透明底、`blur(40px) saturate(150%)`、`--dsw-elevation-prominent` 三层阴影、12px 圆角选项、
+选中项右侧打勾），支持 `Esc` / 点外部关闭 / `↑↓` + `Enter` 选择，空间不足时自动上翻。
+
+**行节奏抄设置页。** 每行 `padding:16px 0`、`0.5px border-l2` 细分隔、`gap:24px`，标题 14/20、
+说明 12/18 次级墨色；成组的模块标题升到 16/24/500。
+
+**按钮只有三变体。** `Button.sm`（28px / `radius-sm` / 0.5px `border-l3` / 12/18）、
+图标按钮（28×28 / `radius-sm` / `button-primary-fill`）、禁用态 `opacity .4`。一行里只要有输入框，
+同行按钮与选择器统一到 32px，避免 32 + 28 两个基线。
+
+**开关**是 36 × 20，与 `Switch.module.css` 逐字一致 —— 含 `box-sizing:border-box` 和
+`corner-shape:round`（后者用于退出 shell 的全局 superellipse，少了它 999px 圆角会被画成 squircle），
+不用原生方框，因为原生 checkbox 由操作系统绘制。
+
+**Toast** 用官方深色面（`toast-bg` + `toast-label` + `--dsw-shadow-lv3`、`radius-lg`、
+`padding 12px 16px`），不画边框，状态靠前导圆点区分。
+
+所有圆角都取自 `--dsw-radius-xs/sm/md/lg`，不写死像素。必填项只标一个红色 `*`，其余字段不加标记
+（GOV.UK / USWDS 的「只标少数派」写法）。诊断结果是一张 hairline 列表：
+状态图标 + 名称 + 右对齐状态，第二行是可执行建议，`跳过` 项保持灰色、不误报红。
+
+样式表是一整条 `+` 拼接的字面量，一旦某个引号写坏会被静默截断（`node --check` 照样通过），
+所以 `tests/client-load.mjs` 会真的跑一遍注入、再断言注入后的 `<style>` 长度与花括号配平。
+
 ## 开发
 
 ```sh
 node tests/smoke.mjs   # 冒烟测试：fake ctx 注册路由 + 真实 Edge TTS 合成 + 音频回放断言
-npm run test:all       # 全量：smoke + live + patch + i18n + client-load
+npm run test:all       # 全量：smoke/live/patch/i18n/client/archive/openai/e2e/pack/privacy
+npm run test:pack      # 发布包内容守卫（哪些文件会被 npm install 装到用户机器上）
+npm run test:privacy   # 隐私守卫（本机用户名/绝对路径/真机截图/凭据不许进仓库）
 ```
+
+测试只能在源码仓库里跑。npm 发布包按 `package.json` 的 `files` 白名单裁剪过：
+只含 `lib/`、`rvc-server.py`、`cordis.patch.yml`、面向用户的文档，以及
+`tools/gpt-sovits-openai-gateway.py`（GPT-SoVITS 用户的可选网关）。
+`docs/` 里只有 7 份用户向指南进包，设计稿、测试计划、验收清单等维护者文档留在源码仓库，
+README 中对应链接指向在线仓库。`tests/`、CI 配置、`verify-openai-gateway.py` /
+`mock-sovits-upstream.py` 等维护者工具不进发布包；`test:pack` 守着这条边界。
 
 改 `lib/` 后的热更新（Windows 下 `file:` 安装是**复制**而非符号链接，
 运行中的 dsh 读的是 profile 副本）：

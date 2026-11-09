@@ -8,7 +8,7 @@
 
 # 任务
 
-你是运行在一台 **Windows 电脑**（NVIDIA GPU，例如 RTX 5070）上的 AI 助手。你的任务是**在真实 Windows + CUDA 环境里对 `dsh-plugin-tts` 做一次完整回归**，确认它的 RVC 变声服务在 GPU 上仍能端到端正常使用，并如实报告（包括失败、装不上的包、跑不通的步骤——这些全是正当产出，不要为了好看而掩盖）。
+你是运行在一台 **Windows 电脑**（NVIDIA GPU，例如 NVIDIA GPU）上的 AI 助手。你的任务是**在真实 Windows + CUDA 环境里对 `dsh-plugin-tts` 做一次完整回归**，确认它的 RVC 变声服务在 GPU 上仍能端到端正常使用，并如实报告（包括失败、装不上的包、跑不通的步骤——这些全是正当产出，不要为了好看而掩盖）。
 
 背景：该插件已在 macOS（Apple Silicon）上完整验证过（含 CPU 转换、边界加固、中英文国际化），本次要补的是 **Windows GPU（CUDA）路径**——因为 GPU 才用到 `is_half=True`、`--device cuda`、`torch 2.7+cu128` 这些分支，Mac 上没有动过。
 
