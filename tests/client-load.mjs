@@ -624,6 +624,15 @@ if (!failed) {
     !src.includes('indexNum("maxTextTokensPerSegment"'),
     'bounded numeric fields use sliders');
 
+  check('slider rows use the same settings-row grid as dropdown rows',
+    !/\.dsh-tts-rvc-row:has\(>\.dsh-tts-slider\)\{flex-direction:column/.test(cssText) &&
+    !/\.dsh-tts-rvc-row:has\(>\.dsh-tts-slider\)>\.dsh-tts-rvc-label\{/.test(cssText) &&
+    !/\.dsh-tts-field:has\(\.dsh-tts-slider\)>\.dsh-tts-note\{margin-left:0\}/.test(cssText) &&
+    /\.dsh-tts-slider\{[^}]*min-height:32px/.test(cssText) &&
+    /\.dsh-tts-slider input\[type=range\]\{[^}]*height:18px/.test(cssText) &&
+    /\.dsh-tts-slider-scale\{[^}]*line-height:14px/.test(cssText),
+    '110px label column / 120px control+hint column / 32px field box');
+
   check('slider round parts use official radius tokens and corner-shape:round',
     /\.dsh-tts-slider input\[type=range\]\{[^}]*corner-shape:round/.test(cssText) &&
     /::-webkit-slider-thumb\{[^}]*corner-shape:round/.test(cssText) &&

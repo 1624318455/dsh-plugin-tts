@@ -317,8 +317,8 @@ const fieldBoxes = await page.evaluate(() => {
     })),
     // A note's left edge must line up with the control above it. It used to be
     // indented by the 110px label width only, ignoring the row's 10px gap.
+    // Slider rows are on the same grid now, so no field is exempt.
     notes: [...document.querySelectorAll('.dsh-tts-field > .dsh-tts-note')]
-      .filter(el => !el.parentElement.querySelector('.dsh-tts-slider'))
       .map(el => {
         const row = el.parentElement.querySelector('.dsh-tts-rvc-row');
         const control = row && row.children[1];
@@ -429,8 +429,39 @@ await page.waitForTimeout(200);
 const gsvClosed = await page.evaluate(() => {
   const adv = document.querySelector('.dsh-tts-advanced');
   const items = [...document.querySelectorAll('.dsh-tts-steps li')];
-  const speedRow = [...document.querySelectorAll('.dsh-tts-field')]
-    .find(el => (el.querySelector('.dsh-tts-rvc-label')?.textContent || '').includes('语速'));
+  const visibleFields = [...document.querySelectorAll('.dsh-tts-field')]
+    .filter(el => el.getBoundingClientRect().height > 0);
+  const fieldByLabel = kw => visibleFields.find(el =>
+    (el.querySelector('.dsh-tts-rvc-label')?.textContent || '').includes(kw));
+  const speedRow = fieldByLabel('语速');
+  // A slider must sit on the exact same three columns as a dropdown row:
+  // right-aligned label edge, control left edge, hint left edge.
+  const geom = el => {
+    if (!el) return null;
+    const row = el.querySelector('.dsh-tts-rvc-row');
+    const label = el.querySelector('.dsh-tts-rvc-label');
+    const control = row && row.children[1];
+    const note = el.querySelector(':scope > .dsh-tts-note');
+    const box = x => x ? x.getBoundingClientRect() : null;
+    const one = n => Math.round(n * 10) / 10;
+    return {
+      labelRight: one(box(label).right),
+      controlLeft: one(box(control).left),
+      noteLeft: note ? one(box(note).left) : null,
+      labelFont: getComputedStyle(label).fontSize,
+      labelColor: getComputedStyle(label).color,
+      rowHeight: one(box(row).height),
+      // The track's min / max / value scale stays inside the control column:
+      // no overlapping chips and no overflow past the field's right edge.
+      scale: (() => {
+        const s = el.querySelector('.dsh-tts-slider-scale');
+        if (!s) return null;
+        const kids = [...s.children].map(c => c.getBoundingClientRect());
+        const overlap = kids.some((r, i) => i > 0 && r.left < kids[i - 1].right - 0.5);
+        return { overlap, right: one(kids[kids.length - 1].right), boxRight: one(box(control).right) };
+      })(),
+    };
+  };
   return {
     helpOpen: !!document.querySelector('.dsh-tts-help[open]'),
     itemCount: items.length,
@@ -443,6 +474,8 @@ const gsvClosed = await page.evaluate(() => {
     advSwitches: adv ? adv.querySelectorAll('.dsh-tts-switch').length : 0,
     speedIsRange: !!(speedRow && speedRow.querySelector('input[type=range]')),
     pageRanges: document.querySelectorAll('.dsh-tts-slider input[type=range]').length,
+    formatGeom: geom(fieldByLabel('输出格式')),
+    speedGeom: geom(speedRow),
   };
 });
 check('setup steps are four distinct rows, each on its own line',
@@ -457,6 +490,20 @@ check('advanced panel is collapsed by default and holds 7 discrete fields',
 check('bounded numeric fields are real sliders in the browser',
   gsvClosed.speedIsRange && gsvClosed.pageRanges >= 6 && gsvClosed.advRanges === 5,
   gsvClosed.pageRanges + ' range inputs on the panel');
+const fmtGeom = gsvClosed.formatGeom, spdGeom = gsvClosed.speedGeom;
+check('speed slider is a peer row of output format (label / control / hint columns + height)',
+  !!fmtGeom && !!spdGeom &&
+  Math.abs(fmtGeom.labelRight - spdGeom.labelRight) <= 1 &&
+  Math.abs(fmtGeom.controlLeft - spdGeom.controlLeft) <= 1 &&
+  Math.abs(fmtGeom.noteLeft - spdGeom.noteLeft) <= 1 &&
+  fmtGeom.labelFont === spdGeom.labelFont &&
+  fmtGeom.labelColor === spdGeom.labelColor &&
+  Math.abs(fmtGeom.rowHeight - spdGeom.rowHeight) <= 2,
+  JSON.stringify({ format: fmtGeom, speed: spdGeom }));
+check('slider scale stays inside the control column without overlapping chips',
+  !!spdGeom && !!spdGeom.scale && !spdGeom.scale.overlap &&
+  spdGeom.scale.right <= spdGeom.scale.boxRight + 1,
+  JSON.stringify(spdGeom && spdGeom.scale));
 await page.locator('.dsh-tts-advanced > summary').first().click();
 await page.waitForTimeout(200);
 const gsvOpen = await page.evaluate(() => {
@@ -466,11 +513,37 @@ const gsvOpen = await page.evaluate(() => {
     open: adv ? adv.open : null,
     visible: fields.filter(el => el.getBoundingClientRect().height > 0).length,
     labels: fields.map(el => (el.querySelector('.dsh-tts-rvc-label')?.textContent || '').trim()),
+    // Every advanced row (5 sliders, 1 number, 1 switch) must sit on the same
+    // three columns as the ordinary dropdown rows above it.
+    columns: fields.map(el => {
+      const row = el.querySelector('.dsh-tts-rvc-row');
+      const label = el.querySelector('.dsh-tts-rvc-label');
+      const control = row && row.children[1];
+      const note = el.querySelector(':scope > .dsh-tts-note');
+      const one = n => Math.round(n * 10) / 10;
+      return {
+        labelRight: one(label.getBoundingClientRect().right),
+        controlLeft: one(control.getBoundingClientRect().left),
+        noteLeft: note ? one(note.getBoundingClientRect().left) : null,
+        // A switch intentionally hugs the far right of the row (margin-left:auto),
+        // the way the shell's own PermissionRow does. Only its label/hint columns
+        // are part of the grid; inputs and sliders start at the control column.
+        isSwitch: !!el.querySelector('.dsh-tts-switch'),
+      };
+    }),
   };
 });
 check('expanding advanced reveals every field as its own row',
   gsvOpen.open === true && gsvOpen.visible === 7 && new Set(gsvOpen.labels).size === 7,
   gsvOpen.labels.join(' | '));
+check('expanded advanced rows share the settings-row grid',
+  gsvOpen.columns.length === 7 && gsvOpen.columns.every(c =>
+    Math.abs(c.labelRight - fmtGeom.labelRight) <= 1 &&
+    (c.isSwitch
+      ? c.controlLeft >= fmtGeom.controlLeft
+      : Math.abs(c.controlLeft - fmtGeom.controlLeft) <= 1) &&
+    (c.noteLeft === null || Math.abs(c.noteLeft - fmtGeom.noteLeft) <= 1)),
+  JSON.stringify(gsvOpen.columns));
 
 if (process.env.AUDIT_SHOT) {
   await page.screenshot({ path: process.env.AUDIT_SHOT });
