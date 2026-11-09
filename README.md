@@ -338,7 +338,10 @@ right edge so long labels never spill out of the dialog. `Esc` / click-outside /
 
 **Row rhythm** follows the settings page: `padding:16px 0`, a half-pixel
 `border-l2` rule, `gap:24px`, 14/20 titles and 12/18 secondary descriptions; a
-module that opens a group takes the 16/24/500 section tier.
+module that opens a group takes the 16/24/500 section tier. A row immediately
+followed by a bordered provider card drops its bottom rule (the two strokes
+would land on the same pixel and read as a broken line); two stacked cards keep
+both borders and are separated by a 12px gap.
 
 **Three button variants only.** `Button.sm` (28px, `radius-sm`, 0.5px
 `border-l3`, 12/18), icon buttons (28×28, `radius-sm`, `button-primary-fill`) and

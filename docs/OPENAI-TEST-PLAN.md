@@ -287,7 +287,7 @@ box-shadow: var(--dsw-elevation-prominent);   /* 0 0 0 .5px + 3px 8px + 0 0 20px
 | 5 | 下拉浮层 | radius 16px / padding 4px / `rgba(248,249,250,.58)` / `blur(40px) saturate(1.5)` / 三层阴影 |
 | 6 | 菜单项 | `min-height 34px` / `padding 6px 8px` / radius 12px / `gap 6px` / 13px |
 | 7 | Index-TTS2 面板开关 | 36×20 / border-box / round，与 Edge 面板一致 |
-| 8 | 回归 | smoke 160 / i18n 6 / client-load 100 / archive 14 / patch 4 / contract 105 / live-ui 12 全绿 |
+| 8 | 回归 | smoke 160 / i18n 6 / client-load 102 / archive 14 / patch 4 / contract 105 / live-ui 15 全绿 |
 
 `client-load` 新增 2 条源码级断言（DOM 断言看不出这两类回归）：
 - `.dsh-tts-switch` 规则必须同时含 `box-sizing:border-box` + `corner-shape:round` + 36/20；
@@ -339,6 +339,25 @@ box-shadow: var(--dsw-elevation-prominent);   /* 0 0 0 .5px + 3px 8px + 0 0 20px
 顶出设置弹窗右边界。现在只对 `.dsh-tts-module>.dsh-tts-dd` 的下拉加 `left:auto;right:0`，
 字段行仍左对齐到所属输入框；真机实测浮层右缘 1176 = 触发器右缘 1176，弹窗右缘 1200。
 
+#### 卡片前的横线要去掉（用户指出，顺带查出第二种情况）
+
+设置面板是 `display:flex;flex-direction:column` 且**没有 gap**，模块之间靠各自的 `padding:16px 0`
+撑开。于是「TTS提供者」行的 `border-bottom` 与紧随其后 provider 卡片的 `border-top` 落在同一
+像素上，看起来像一根断线 / 双线（用户原话：「框和线重叠感觉有问题吧 这里应该不用这根横线了」）。
+
+第一版写了 `.dsh-tts-module:has(+ .dsh-tts-rvc){border-bottom:none}`，真机 dump 立刻暴露第二
+种情况：RVC / Index-TTS2 面板会**连续渲染两张卡片**，第一张卡片也满足 `:has(+ .dsh-tts-rvc)`，
+底边框被一并抹掉，变成「一张没封口的盒子被一根线切开」。最终拆成两条：
+
+```css
+.dsh-tts-module:not(.dsh-tts-rvc):has(+ .dsh-tts-rvc){border-bottom:none}
+.dsh-tts-rvc + .dsh-tts-rvc{margin-top:12px}
+```
+
+`:not()` 保证只有普通行被抑制、卡片保留完整边框；12px 是官方 settings 包里出现 11 次的合法
+间距。`client-load` 两条源码断言 + `live-ui-audit` 三条真机断言分别钉住：卡片前那行 `0px`、
+相邻卡片 `gap>=10` 且上下两条边框都在、其余普通行仍是 1px（防一刀切）。
+
 #### 同步落地的其它项
 
 | 项 | 改前 | 改后（对齐源码） |
@@ -354,6 +373,7 @@ box-shadow: var(--dsw-elevation-prominent);   /* 0 0 0 .5px + 3px 8px + 0 0 20px
 | 滑块行 | 标题 + 滑块横排（标签列 110px） | 纵向三段（标题 / 滑块 + 刻度 / 说明），标题升到 14/20 |
 | 说明块 | 自带边框背景 | 纯文字（官方 description 就是纯文字） |
 | 字段说明缩进 | `margin-left:110px`（只算标签列） | `120px` = 标签 110 + 行 `gap:10`，与输入框左缘对齐 |
+| 卡片边界 | 行底 0.5px 线 + 卡片 0.5px 上边框贴在同一像素（`gap:0`），看着像断线 | 卡片前的**普通行**不再画底线；两张相邻卡片各自保留完整边框、中间 12px 间距（官方 settings 的 `gap:12px`） |
 
 #### 本轮踩到的坑（值得单独记）
 
@@ -376,7 +396,7 @@ JS 字符串，`//"//"` 成为行注释，**其后的全部规则被静默丢弃
 而 `conversation.input.permission` slot 才是 composer seat。后续所有控件都先确认「用在哪」，
 再抄「长什么样」。
 
-#### 源码级断言清单（client-load 共 100 条，节选设计语言相关项）
+#### 源码级断言清单（client-load 共 102 条，节选设计语言相关项）
 
 | # | 断言 | 防的是什么 |
 |---|---|---|
@@ -392,8 +412,10 @@ JS 字符串，`//"//"` 成为行注释，**其后的全部规则被静默丢弃
 | 10 | `:disabled` 与 `:hover:not(:disabled)` 都不清空填充 | 透明底从状态规则悄悄回流 |
 | 11 | 两条 field 覆盖规则都把 gap 复位成 4px | selector 的 12px 间距污染字段行 |
 | 12 | `.dsh-tts-module>.dsh-tts-dd .dsh-tts-dd-menu` 是 `left:auto;right:0` | 浮层向右溢出设置弹窗（官方 `align:"end"`） |
+| 13 | `:not(.dsh-tts-rvc):has(+ .dsh-tts-rvc)` 是 `border-bottom:none` | 卡片前那行的横线与卡片上边框重叠 |
+| 14 | `.dsh-tts-rvc + .dsh-tts-rvc` 有 `margin-top:12px` | 两张卡片边框贴在一起 / 首张卡片底边被误删 |
 
-#### 真机复测（`tests/live-ui-audit.mjs`，12/12 通过；selector 修正后已重跑）
+#### 真机复测（`tests/live-ui-audit.mjs`，15/15 通过；selector 与卡片边界修正后已重跑）
 
 不需要 token：`dsh web` 的 launch token 是进程内随机值（WeakMap，只在启动时打印），但浏览器会话
 cookie 是用 `~/.dsh/.credentials.yaml` 里持久化的签名密钥做的 HMAC-SHA256。脚本按
@@ -406,7 +428,7 @@ cookie 是用 `~/.dsh/.credentials.yaml` 里持久化的签名密钥做的 HMAC-
 
 | # | 实测 | 结果 |
 |---|---|---|
-| 1 | 注入样式表 | 28713 字符、`{` / `}` 各 241、尾部末条规则在 |
+| 1 | 注入样式表 | 28830 字符、`{` / `}` 各 243、尾部末条规则在 |
 | 2 | 三个设置行 selector | 均 36px / `0px` 边框 / radius 12px / 14px 400 / `rgb(245,246,247)` 填充 / gap 12px（computed 背景非透明） |
 | 2a | 展开一个设置行下拉 | 浮层右缘 1176 = 触发器右缘 1176，左缘 996，弹窗右缘 1200 —— `align:"end"` 生效，长选项不再溢出 |
 | 3 | 设置行节奏 | 4 行 `16px/16px` + gap 24；2 个 stack 容器 column + gap 10 |
@@ -415,6 +437,9 @@ cookie 是用 `~/.dsh/.credentials.yaml` 里持久化的签名密钥做的 HMAC-
 | 6 | RVC 路径行 | 3 行，每行全部子元素 32px / radius 12px（含 2~3 个按钮） |
 | 7 | 字段 picker / 输入框 | 3 个 picker、7 个输入框全部 32px / radius 12px |
 | 8 | 字段说明对齐 | 10 条说明与控件左缘 delta 全为 0 |
+| 8a | 卡片前那一行 | 「TTS提供者」`border-bottom:0px`、卡片 `border-top:1px`、间距 0 —— 不再有断线 |
+| 8b | 相邻两张 provider 卡片 | `gap:12px`，前卡 `border-bottom:1px` + 后卡 `border-top:1px` 都在 |
+| 8c | 其余普通行 | 9 行仍为 `1px` 分隔线，规则没有一刀切 |
 | 9 | Toast | `overlayLayer` z 从 20 升到 1100，`elementFromPoint` 命中 toast 自身，完整在视口内 |
 | 10 | Toast 材质 | 深色 `rgb(53,54,56)` / radius 16px / 无边框 |
 

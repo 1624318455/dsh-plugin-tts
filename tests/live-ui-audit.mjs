@@ -265,6 +265,30 @@ const fieldBoxes = await page.evaluate(() => {
           delta: Math.round((el.getBoundingClientRect().left - control.getBoundingClientRect().left) * 10) / 10,
         } : null;
       }).filter(Boolean),
+    // The provider card has its own border and sits at gap:0 from the row above.
+    // Two hairlines on the same pixel read as a broken border. Only that row is
+    // suppressed; plain rows must still be separated.
+    cardEdges: [...document.querySelectorAll('.dsh-tts-settings > .dsh-tts-module:not(.dsh-tts-rvc)')]
+      .filter(el => el.nextElementSibling && el.nextElementSibling.classList.contains('dsh-tts-rvc'))
+      .map(el => ({
+        title: (el.querySelector('.dsh-tts-module-title')?.textContent || '').trim().slice(0, 20),
+        rowBorder: getComputedStyle(el).borderBottomWidth,
+        cardBorder: getComputedStyle(el.nextElementSibling).borderTopWidth,
+        gap: Math.round(el.nextElementSibling.getBoundingClientRect().top - el.getBoundingClientRect().bottom),
+      })),
+    // Two provider cards in a row (RVC / Index-TTS2) must keep BOTH strokes and
+    // be pulled apart — suppressing the first card's bottom border instead would
+    // leave an unclosed card that reads as one box cut by a stray line.
+    cardPairs: [...document.querySelectorAll('.dsh-tts-settings > .dsh-tts-rvc')]
+      .filter(el => el.previousElementSibling && el.previousElementSibling.classList.contains('dsh-tts-rvc'))
+      .map(el => ({
+        gap: Math.round(el.getBoundingClientRect().top - el.previousElementSibling.getBoundingClientRect().bottom),
+        prevBorder: getComputedStyle(el.previousElementSibling).borderBottomWidth,
+        ownBorder: getComputedStyle(el).borderTopWidth,
+      })),
+    otherRows: [...document.querySelectorAll('.dsh-tts-settings > .dsh-tts-module:not(.dsh-tts-rvc)')]
+      .filter(el => el.nextElementSibling && !el.nextElementSibling.classList.contains('dsh-tts-rvc'))
+      .map(el => getComputedStyle(el).borderBottomWidth),
   };
 });
 console.log('--- measured boxes (RVC provider) ---');
@@ -287,6 +311,18 @@ check('field pickers and inputs share the 32px / radius-md box', fieldBoxes.fiel
 check('field notes line up with their control column', fieldBoxes.notes.length > 0 &&
   fieldBoxes.notes.every(n => Math.abs(n.delta) <= 1.5),
   `${fieldBoxes.notes.length} notes: delta=${fieldBoxes.notes.map(n => n.delta).join(',')}`);
+
+check('row before a provider card has no doubled hairline', fieldBoxes.cardEdges.length > 0 &&
+  fieldBoxes.cardEdges.every(e => num(e.rowBorder) === 0 && num(e.cardBorder) > 0 && e.gap === 0),
+  JSON.stringify(fieldBoxes.cardEdges));
+
+check('adjacent provider cards keep both borders and a gap', fieldBoxes.cardPairs.length > 0 &&
+  fieldBoxes.cardPairs.every(p => p.gap >= 10 && num(p.prevBorder) > 0 && num(p.ownBorder) > 0),
+  JSON.stringify(fieldBoxes.cardPairs));
+
+check('plain rows keep their separators', fieldBoxes.otherRows.length > 0 &&
+  fieldBoxes.otherRows.every(b => num(b) > 0),
+  `${fieldBoxes.otherRows.length} rows: ${[...new Set(fieldBoxes.otherRows)].join(',')}`);
 
 // ---- 4. toast layering inside the settings dialog ----
 await page.evaluate(() => window.__dshTtsToast.show('设计语言审计 · toast 层级检查', 'ok'));

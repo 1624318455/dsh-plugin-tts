@@ -398,6 +398,16 @@ if (!failed) {
       const alignRule = (clientSrc.match(/\.dsh-tts-module>\.dsh-tts-dd \.dsh-tts-dd-menu\{[^}]*\}/) || [''])[0];
       check('settings-row menu is end-aligned like PopupSelect',
         alignRule.includes('left:auto') && alignRule.includes('right:0'), alignRule);
+      // The provider card has its own 0.5px border and sits at gap:0 from the row
+      // above it. Without this rule the row's bottom hairline and the card's top
+      // stroke land on the same pixel and look like a broken/doubled border.
+      const cardEdgeRule = (clientSrc.match(/\.dsh-tts-module:not\(\.dsh-tts-rvc\):has\(\+ \.dsh-tts-rvc\)\{[^}]*\}/) || [''])[0];
+      check('row before a provider card drops its hairline',
+        cardEdgeRule.includes('border-bottom:none'), cardEdgeRule);
+      // RVC stacks two cards back to back. The :not() above keeps the first card's
+      // bottom stroke; this gap stops that stroke from touching the next card's top.
+      const cardGapRule = (clientSrc.match(/\.dsh-tts-rvc \+ \.dsh-tts-rvc\{[^}]*\}/) || [''])[0];
+      check('stacked provider cards keep a gap', cardGapRule.includes('margin-top:12px'), cardGapRule);
       // ...while a picker inside a form field must keep the input's box, or the row
       // loses its shared baseline. Both field selectors also reset the selector's
       // roomy 12px gap back to the field's 4px.
