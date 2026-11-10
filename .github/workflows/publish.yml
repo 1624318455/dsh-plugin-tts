@@ -1,7 +1,8 @@
 name: publish
 
 # GitHub -> npm 自动发布：打 tag 即发包（先跑测试，绿了才 publish）。
-# 发完 npm 后顺手建 GitHub Release（自动生成变更说明），打 tag 即出页面。
+# Release 说明取自 CHANGELOG.md 里对应版本的小节——发版前记得把「未发布」改成版本号。
+# 发完 npm 后建 GitHub Release（body_path 指向抽取出的 release-notes.md）。
 # 用法：npm version patch && git push --follow-tags
 #   或：git tag v0.6.7 && git push --tags
 # 前置（一次即可）：npmjs.com 打开本包 Settings -> Trusted Publisher，
@@ -42,6 +43,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 需要完整 tag 历史，用于找上一个版本拼 Full Changelog 链接
 
       - uses: actions/setup-node@v4
         with:
@@ -64,13 +67,31 @@ jobs:
         # 发布前最后一道闸：开发文件不许混进 tarball，仓库不许带本机/个人信息。
         run: npm run test:pack && npm run test:privacy
 
+      - name: Extract release notes from CHANGELOG
+        # 从 CHANGELOG.md 抽出当前版本小节。放 publish 之前：缺小节就整体失败，
+        # 避免「npm 已发但 Release 页没说明」的半残状态。
+        run: |
+          awk -v ver="$GITHUB_REF_NAME" '
+            $0 ~ ("^## " ver "([ \t].*)?$") { found=1; next }
+            /^## / && found { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::CHANGELOG.md 缺少 $GITHUB_REF_NAME 小节——发版前先写好更新点"
+            exit 1
+          fi
+          PREV=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          if [ -n "$PREV" ]; then
+            printf '\n**Full Changelog**: https://github.com/%s/compare/%s...%s\n' \
+              "$GITHUB_REPOSITORY" "$PREV" "$GITHUB_REF_NAME" >> release-notes.md
+          fi
+
       - name: Publish to npm
         run: npm publish --provenance --access public
 
       - name: Create GitHub Release
         # tag 即 GITHUB_REF_NAME（v*），与前面校验过的 package.json.version 一致。
-        # 自动生成变更说明（基于上次 Release 以来的 commit/PR）。
-        # 想换成手写说明：把 generate_release_notes 去掉，改用 body_path 指向 CHANGELOG 片段。
+        # 说明来自上面的 extract 步骤（CHANGELOG.md 对应版本小节 + Full Changelog 链接）。
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body_path: release-notes.md
