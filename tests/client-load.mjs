@@ -788,6 +788,38 @@ if (!failed) {
     `handlers=${handlersOk} wired=${wiredOk} noDoubleFire=${noDoubleFire} css=${cssOk} i18n=${i18nOk}`);
 }
 
+// ---- diagnostic report: one-click Copy (readable plain text for issues) ----
+// Complements the JSON "Export diagnostic log": this copies a human-readable
+// report (versions + per-check rows + in-flight jobs) so users can paste it
+// straight into a bug report. Must not re-run diagnostics.
+{
+  const fnOk =
+    clientSrc.includes('const buildDiagText = d =>') &&
+    clientSrc.includes('const copyDiagReport = async () =>');
+  const wiredOk =
+    /onClick: copyDiagReport,\s*disabled: !diag \|\| !diag\.checks \|\| diag\.running/.test(clientSrc) &&
+    clientSrc.includes('t("diag.copy")') &&
+    clientSrc.includes('navigator.clipboard.writeText(text)');
+  const textOk =
+    clientSrc.includes('CLIENT_BUILD') &&
+    /c\.name \+ \(c\.detail \? " — " \+ c\.detail : ""\)/.test(clientSrc) &&
+    clientSrc.includes('t("diag.reportJobs")') &&
+    clientSrc.includes('t("diag.reportTitle")') &&
+    !/L\.push\("dsh-plugin-tts 诊断报告"\)/.test(clientSrc);
+  const fallbackOk =
+    clientSrc.includes('document.execCommand("copy")') &&
+    clientSrc.includes('t("diag.copyNoResult")') &&
+    clientSrc.includes('t("diag.copied")');
+  const i18nOk =
+    (clientSrc.match(/"diag\.copy":/g) || []).length === 2 &&
+    (clientSrc.match(/"diag\.copied":/g) || []).length === 2 &&
+    (clientSrc.match(/"diag\.copyNoResult":/g) || []).length === 2 &&
+    (clientSrc.match(/"diag\.copyFail":/g) || []).length === 2;
+  check('diagnostic report one-click Copy (readable text for issues)',
+    fnOk && wiredOk && textOk && fallbackOk && i18nOk,
+    `fn=${fnOk} wired=${wiredOk} text=${textOk} fallback=${fallbackOk} i18n=${i18nOk}`);
+}
+
 // ---- GPT-SoVITS settings polish: source-level contract ----
 // Asserted on source + the ASSEMBLED stylesheet, so a later edit cannot
 // silently re-merge the setup steps, restore the JSON blob, or copy a
