@@ -675,6 +675,30 @@ if (!failed) {
     `payload=${payloadOk} switch=${switchOk} i18n=${i18nOk}`);
 }
 
+// ---- upload drop zone: click-to-browse + drag & drop replaces raw file inputs ----
+{
+  const zoneOk =
+    clientSrc.includes('const UploadZone = props =>') &&
+    /onDragOver:\s*e => \{/.test(clientSrc) &&
+    /onDrop:\s*e => \{/.test(clientSrc) &&
+    clientSrc.includes('dsh-tts-dropzone-drag') &&
+    clientSrc.includes('dataTransfer && e.dataTransfer.files');
+  // the only remaining type:"file" input is the hidden one inside UploadZone
+  const fileInputs = (clientSrc.match(/type: "file"/g) || []).length;
+  const hiddenOk = fileInputs === 1 && /ref:\s*inputRef,\s*\n?\s*type: "file"/.test(clientSrc);
+  const cssOk =
+    /\.dsh-tts-dropzone\{[^}]*border:1px dashed/.test(clientSrc) &&
+    /\.dsh-tts-dropzone\{[^}]*border-radius:var\(--dsw-radius-lg\)/.test(clientSrc) &&
+    clientSrc.includes('.dsh-tts-dropzone-drag{border-color:var(--dsw-alias-brand-primary)');
+  const wiredOk =
+    /react\.createElement\(UploadZone,\s*\{[^}]*onFile:\s*uploadIndexVoice/.test(clientSrc) &&
+    /react\.createElement\(UploadZone,\s*\{[^}]*onFile:\s*uploadCosyVoice/.test(clientSrc);
+  const i18nOk = (clientSrc.match(/"upload\.drop\.bad":/g) || []).length === 2;
+  check('upload zones replace raw file inputs with drag & drop + click',
+    zoneOk && hiddenOk && cssOk && wiredOk && i18nOk,
+    `zone=${zoneOk} hidden=${hiddenOk} css=${cssOk} wired=${wiredOk} i18n=${i18nOk}`);
+}
+
 // ---- GPT-SoVITS settings polish: source-level contract ----
 // Asserted on source + the ASSEMBLED stylesheet, so a later edit cannot
 // silently re-merge the setup steps, restore the JSON blob, or copy a

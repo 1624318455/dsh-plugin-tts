@@ -621,6 +621,31 @@ check('expanded advanced rows share the settings-row grid',
     (c.noteLeft === null || Math.abs(c.noteLeft - fmtGeom.noteLeft) <= 1)),
   JSON.stringify(gsvOpen.columns));
 
+// ---- upload drop zone: renders in Index-TTS2, click + drag wiring intact ----
+await page.locator('.dsh-tts-dd-provider .dsh-tts-dd-trigger').first().click();
+await page.waitForTimeout(250);
+await page.locator('.dsh-tts-dd-provider .dsh-tts-dd-item')
+  .filter({ hasText: 'IndexTTS-2' }).first().click();
+await page.waitForTimeout(450);
+const dropzone = await page.evaluate(() => {
+  const z = document.querySelector('.dsh-tts-dropzone');
+  if (!z) return null;
+  const st = getComputedStyle(z);
+  const input = z.querySelector('input[type=file]');
+  return {
+    borderStyle: st.borderTopStyle,
+    radius: st.borderTopLeftRadius,
+    text: (z.querySelector('.dsh-tts-dropzone-text') || {}).textContent || '',
+    hasHiddenInput: !!input && input.offsetParent === null,
+    hasIcon: !!z.querySelector('.dsh-tts-dropzone-icon'),
+    clickable: z.getAttribute('role') === 'button',
+  };
+});
+check('index upload is a dashed drop zone with hidden input and drop wiring',
+  !!dropzone && dropzone.borderStyle === 'dashed' && dropzone.hasHiddenInput &&
+  dropzone.hasIcon && dropzone.clickable && /拖拽|drop/.test(dropzone.text),
+  dropzone ? dropzone.borderStyle + ' r=' + dropzone.radius + ' "' + dropzone.text + '"' : 'zone missing');
+
 if (process.env.AUDIT_SHOT) {
   await page.screenshot({ path: process.env.AUDIT_SHOT });
   console.log('screenshot: ' + process.env.AUDIT_SHOT);
