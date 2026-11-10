@@ -657,6 +657,24 @@ if (!failed) {
   }
 }
 
+// ---- Index-TTS2 cleanText vs global rawMarkdown: conflict resolution ----
+// The engine-side clean_text flag must be force-disabled while the global
+// "read raw Markdown symbols" switch is on, in BOTH the speak payload and
+// the settings switch (disabled + takeover hint).
+{
+  const payloadOk =
+    /cleanText:\s*!!shared\.index\.cleanText && !shared\.rawMarkdown/.test(clientSrc);
+  const switchOk =
+    /checked:\s*!!shared\.index\.cleanText && !shared\.rawMarkdown/.test(clientSrc) &&
+    /disabled:\s*!!shared\.rawMarkdown/.test(clientSrc) &&
+    clientSrc.includes('t("index.cleanText.raw")');
+  const i18nOk =
+    (clientSrc.match(/"index\.cleanText\.raw":/g) || []).length === 2; // zh + en
+  check('index engine clean_text yields to global raw-Markdown switch',
+    payloadOk && switchOk && i18nOk,
+    `payload=${payloadOk} switch=${switchOk} i18n=${i18nOk}`);
+}
+
 // ---- GPT-SoVITS settings polish: source-level contract ----
 // Asserted on source + the ASSEMBLED stylesheet, so a later edit cannot
 // silently re-merge the setup steps, restore the JSON blob, or copy a
