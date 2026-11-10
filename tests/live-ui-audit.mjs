@@ -406,6 +406,58 @@ check('plain rows keep their separators', fieldBoxes.otherRows.length > 0 &&
   fieldBoxes.otherRows.every(b => num(b) > 0),
   `${fieldBoxes.otherRows.length} rows: ${[...new Set(fieldBoxes.otherRows)].join(',')}`);
 
+// ---- 3c. text preprocessing panel (issue #6) ----
+// The module renders on every provider panel (global read behavior), so the
+// Edge view is enough. Drives the real UI: template fill, live preview,
+// invalid-regex flagging, and removal.
+const prepModule = page.locator('.dsh-tts-module')
+  .filter({ has: page.locator('.dsh-tts-module-title', { hasText: '文本预处理' }) })
+  .first();
+await prepModule.waitFor({ state: 'visible', timeout: 10000 });
+const prepEmpty = await prepModule.locator('.dsh-tts-prep-empty').count();
+check('preprocess panel shows an empty hint before any rule', prepEmpty === 1,
+  `empty-hint=${prepEmpty}`);
+
+await prepModule.locator('.dsh-tts-browse', { hasText: '模板：去中文括号' }).first().click();
+await prepModule.locator('.dsh-tts-prep-row').first().waitFor({ timeout: 5000 });
+const prepAfterTpl = await page.evaluate(() => {
+  const mod = [...document.querySelectorAll('.dsh-tts-module')]
+    .find(el => (el.querySelector('.dsh-tts-module-title')?.textContent || '').includes('文本预处理'));
+  const row = mod.querySelector('.dsh-tts-prep-row');
+  const input = row.querySelector('.dsh-tts-prep-pattern');
+  const out = (mod.querySelector('.dsh-tts-prep-test-out')?.textContent || '').trim();
+  return {
+    pattern: input.value,
+    invalid: row.dataset.invalid,
+    rows: mod.querySelectorAll('.dsh-tts-prep-row').length,
+    previewLostBrackets: !out.includes('（笑）') && out.length > 0,
+    inputH: Math.round(input.getBoundingClientRect().height),
+  };
+});
+check('zh-bracket template fills the pattern and the live preview strips （笑）',
+  prepAfterTpl.pattern === '（[^）]*）' && prepAfterTpl.invalid === 'false' &&
+  prepAfterTpl.rows === 1 && prepAfterTpl.previewLostBrackets && prepAfterTpl.inputH === 32,
+  JSON.stringify(prepAfterTpl));
+
+await prepModule.locator('.dsh-tts-prep-pattern').first().fill('([unclosed');
+await page.waitForTimeout(150);
+const prepInvalid = await prepModule.locator('.dsh-tts-prep-row[data-invalid="true"]').count();
+check('an invalid regex is flagged red on the row', prepInvalid === 1, `invalid=${prepInvalid}`);
+await prepModule.locator('.dsh-tts-prep-pattern').first().fill('（[^）]*）');
+
+await prepModule.locator('.dsh-tts-browse', { hasText: '删除此规则' }).first().click();
+await page.waitForTimeout(150);
+const prepReset = await page.evaluate(() => {
+  const mod = [...document.querySelectorAll('.dsh-tts-module')]
+    .find(el => (el.querySelector('.dsh-tts-module-title')?.textContent || '').includes('文本预处理'));
+  return {
+    rows: mod.querySelectorAll('.dsh-tts-prep-row').length,
+    empty: mod.querySelectorAll('.dsh-tts-prep-empty').length,
+  };
+});
+check('removing the rule restores the empty hint', prepReset.rows === 0 && prepReset.empty === 1,
+  JSON.stringify(prepReset));
+
 // ---- 4. toast layering inside the settings dialog ----
 await page.evaluate(() => window.__dshTtsToast.show('设计语言审计 · toast 层级检查', 'ok'));
 await page.waitForTimeout(350);

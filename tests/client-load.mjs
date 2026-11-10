@@ -580,6 +580,83 @@ if (!failed) {
   }
 }
 
+// ---- Text preprocessing rules (issue #6): functional contract ----
+// Drives the __dshTtsPreprocess hook so the rule engine is exercised as code,
+// not just as source text: order, flags, groups, invalid patterns, and the
+// empty-output guard all live here.
+{
+  const P = globalThis.window.__dshTtsPreprocess;
+  if (!P || typeof P.apply !== 'function') {
+    check('preprocess hook exposed (__dshTtsPreprocess)', false, 'hook missing');
+  } else {
+    const saved = P.rules();
+    P.set([]);
+    check('no rules -> Markdown cleanup only, brackets untouched',
+      P.plain('（笑）hello **bold**') === '（笑）hello bold');
+
+    P.set([{ pattern: '（[^）]*）', replace: '', enabled: true }]);
+    check('zh-bracket template strips interjections',
+      P.plain('他嘿嘿一笑（笑），转身离开') === '他嘿嘿一笑，转身离开');
+    check('rule replaces every occurrence (forced g flag)',
+      P.plain('（笑）（叹气）好的') === '好的');
+
+    P.set([{ pattern: '【(.+?)】', replace: '$1', enabled: true }]);
+    check('replacement supports $1 group refs', P.plain('【重点】内容') === '重点内容');
+
+    P.set([
+      { pattern: '（[^）]*）', replace: '', enabled: false },
+      { pattern: '省略', replace: '…', enabled: true },
+    ]);
+    check('disabled rule is skipped, enabled one still runs', P.plain('他（笑）说省略') === '他（笑）说…');
+
+    P.set([{ pattern: '([unclosed', replace: '', enabled: true }]);
+    let threw = false;
+    try { P.plain('正常文本'); } catch (e) { threw = true; }
+    check('invalid regex is flagged and skipped without throwing',
+      !threw && P.valid({ pattern: '([unclosed' }) === false &&
+      P.plain('正常文本') === '正常文本');
+
+    P.set([
+      { pattern: 'aaa', replace: 'bbb', enabled: true },
+      { pattern: 'bbb', replace: 'ccc', enabled: true },
+    ]);
+    check('rules apply sequentially (later rule sees earlier output)',
+      P.plain('aaa') === 'ccc');
+
+    P.set([{ pattern: '.*', replace: '', enabled: true }]);
+    check('a rule that erases everything yields empty output (read guard bails)',
+      P.plain('whatever') === '');
+
+    // rawMarkdown mode opts out of Markdown cleanup but NOT of user rules.
+    const src = globalThis.__dshTtsClientSrc || '';
+    check('rawMarkdown branch wraps in applyPreprocess too',
+      /applyPreprocess\(\s*String\(text \|\| ""\)/.test(src) &&
+      /\.trim\(\)\s*\);/.test(src));
+
+    // persistence round-trip: rules survive save -> localStorage
+    P.set([{ pattern: '（[^）]*）', replace: '', enabled: true }]);
+    globalThis.window.__dshTtsSettings.save();
+    let stored = null;
+    try { stored = JSON.parse(memStore.get('dsh-tts-settings') || 'null'); } catch (e) {}
+    check('rules persist to localStorage via saveSettings',
+      stored && Array.isArray(stored.preprocess) && stored.preprocess.length === 1 &&
+      stored.preprocess[0].pattern === '（[^）]*）');
+
+    // settings UI: rule rows, add/template actions, live preview, guardrails
+    const cssText = String((injectedStyles[0] && injectedStyles[0].textContent) || '');
+    check('preprocess panel renders rule rows with template buttons and preview',
+      src.includes('className: "dsh-tts-prep-list"') &&
+      src.includes('className: "dsh-tts-prep-row"') &&
+      src.includes('"dsh-tts-prep-input dsh-tts-prep-pattern"') &&
+      src.includes('t("prep.tplZh")') && src.includes('t("prep.tplEn")') &&
+      src.includes('t("prep.testTitle")') &&
+      /shared\.preprocess\.length < PREPROCESS_MAX_RULES/.test(src) &&
+      /\.dsh-tts-prep-row\{[^}]*display:flex;align-items:center;gap:8px/.test(cssText) &&
+      /\.dsh-tts-prep-row\[data-invalid='true'\]/.test(cssText));
+    P.set(saved);
+  }
+}
+
 // ---- GPT-SoVITS settings polish: source-level contract ----
 // Asserted on source + the ASSEMBLED stylesheet, so a later edit cannot
 // silently re-merge the setup steps, restore the JSON blob, or copy a
