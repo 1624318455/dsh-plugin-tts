@@ -647,12 +647,13 @@ if (!failed) {
     check('preprocess panel renders rule rows with template buttons and preview',
       src.includes('className: "dsh-tts-prep-list"') &&
       src.includes('className: "dsh-tts-prep-row"') &&
-      src.includes('"dsh-tts-prep-input dsh-tts-prep-pattern"') &&
+      src.includes('"dsh-tts-prep-pattern"') &&
+      src.includes('"dsh-tts-prep-replace"') &&
       src.includes('t("prep.tplZh")') && src.includes('t("prep.tplEn")') &&
       src.includes('t("prep.testTitle")') &&
       /shared\.preprocess\.length < PREPROCESS_MAX_RULES/.test(src) &&
       /\.dsh-tts-prep-row\{[^}]*display:flex;align-items:center;gap:8px/.test(cssText) &&
-      /\.dsh-tts-prep-row\[data-invalid='true'\]/.test(cssText));
+      /\.dsh-tts-prep-row\[data-invalid='true'\] \.dsh-tts-textin/.test(cssText));
     P.set(saved);
   }
 }
@@ -697,6 +698,17 @@ if (!failed) {
   check('upload zones replace raw file inputs with drag & drop + click',
     zoneOk && hiddenOk && cssOk && wiredOk && i18nOk,
     `zone=${zoneOk} hidden=${hiddenOk} css=${cssOk} wired=${wiredOk} i18n=${i18nOk}`);
+}
+
+// ---- unified TextInput: official focus ring + clear (×) + migrated fields ----
+{
+  const tiOk =
+    clientSrc.includes('const TextInput = props =>') &&
+    /outline:var\(--dsw-focus-ring-width\) solid var\(--dsw-focus-ring-color/.test(clientSrc) &&
+    clientSrc.includes('"dsh-tts-textin-clear"') &&
+    clientSrc.includes('textIn = (key, placeholder) =>') &&
+    /react\.createElement\(TextInput/.test(clientSrc);
+  check('unified TextInput: focus-ring token + clear button + migrated fields', tiOk, `ti=${tiOk}`);
 }
 
 // ---- sticky section nav + provider status dots ----
