@@ -699,6 +699,35 @@ if (!failed) {
     `zone=${zoneOk} hidden=${hiddenOk} css=${cssOk} wired=${wiredOk} i18n=${i18nOk}`);
 }
 
+// ---- sticky section nav + provider status dots ----
+{
+  const navOk =
+    clientSrc.includes('const voiceNav = react.createElement(') &&
+    clientSrc.includes('"dsh-tts-sec-provider"') &&
+    clientSrc.includes('"dsh-tts-sec-diag"') &&
+    clientSrc.includes('"dsh-tts-sec-follow"') &&
+    clientSrc.includes('"dsh-tts-sec-notify"') &&
+    clientSrc.includes('"dsh-tts-sec-prep"') &&
+    clientSrc.includes('"dsh-tts-sec-preview"') &&
+    /scrollIntoView\(\{ behavior: "smooth", block: "start" \}\)/.test(clientSrc);
+  const dotOk =
+    clientSrc.includes('const StatusDot = props =>') &&
+    clientSrc.includes('const providerStatusFromChecks = checks =>') &&
+    (clientSrc.match(/createElement\(StatusDot, \{ state: providerStatus/g) || []).length === 6 &&
+    /\.dsh-tts-nav\{[^}]*position:sticky/.test(clientSrc) &&
+    /\.dsh-tts-dot\[data-st=ok\]\{background:var\(--dsw-alias-state-success-primary/.test(clientSrc);
+  const probeOk =
+    /probe: "light"/.test(clientSrc) &&
+    /applyStatusFromChecks\(d\.checks \|\| \[\]\)/.test(clientSrc) &&
+    clientSrc.includes('providerStatus: {}');
+  const i18nOk =
+    (clientSrc.match(/"status\.ok":/g) || []).length === 2 &&
+    (clientSrc.match(/"nav\.follow":/g) || []).length === 2;
+  check('sticky section nav + provider status dots wired to light probe',
+    navOk && dotOk && probeOk && i18nOk,
+    `nav=${navOk} dots=${dotOk} probe=${probeOk} i18n=${i18nOk}`);
+}
+
 // ---- GPT-SoVITS settings polish: source-level contract ----
 // Asserted on source + the ASSEMBLED stylesheet, so a later edit cannot
 // silently re-merge the setup steps, restore the JSON blob, or copy a

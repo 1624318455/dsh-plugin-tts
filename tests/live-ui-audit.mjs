@@ -306,6 +306,30 @@ check('settings rows use the shell rhythm', plainRows.length > 0 && plainRows.ev
 check('standalone buttons are Button.sm (28px)', boxes.buttons.filter(b => !b.inPath).every(b => b.h === 28),
   `${boxes.buttons.filter(b => !b.inPath).length} standalone`);
 
+// ---- sticky section nav + provider status dot ----
+const navState = await page.evaluate(() => {
+  const nav = document.querySelector('.dsh-tts-nav');
+  if (!nav) return null;
+  const pills = [...nav.querySelectorAll('.dsh-tts-nav-pill')];
+  const dot = document.querySelector('#dsh-tts-sec-provider .dsh-tts-dot');
+  const st = getComputedStyle(nav);
+  const dst = dot ? getComputedStyle(dot) : null;
+  return {
+    pills: pills.map(p => (p.textContent || '').trim()),
+    sticky: st.position,
+    blur: (st.backdropFilter || st.webkitBackdropFilter || '').includes('blur'),
+    dotSt: dst ? dst.backgroundColor : null,
+    dotInTitle: dot ? dot.parentElement.className.includes('dsh-tts-module-title') : false,
+  };
+});
+check('sticky nav lists six section pills with frosted surface',
+  !!navState && navState.sticky === 'sticky' && navState.pills.length === 6 &&
+  new Set(navState.pills).size === 6 && navState.blur,
+  navState ? navState.pills.join(' | ') + ' blur=' + navState.blur : 'nav missing');
+check('provider title carries a status dot', !!navState && !!navState.dotInTitle &&
+  !!navState.dotSt && navState.dotSt !== 'rgba(0, 0, 0, 0)',
+  navState ? String(navState.dotSt) : 'dot missing');
+
 check('switches are 36x20 border-box round capsules', boxes.switches.length > 0 && boxes.switches.every(s =>
   s.w === 36 && s.h === 20 && s.boxSizing === 'border-box' && s.corner === boxes.probeRound) &&
   /corner-shape:\s*round/.test(authored('.dsh-tts-switch')) &&
