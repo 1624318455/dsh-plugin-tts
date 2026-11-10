@@ -760,6 +760,34 @@ if (!failed) {
     `box=${boxOk} filter=${filterOk} i18n=${i18nOk}`);
 }
 
+// ---- global drag & drop: window-level receiving onto the provider card ----
+// The official composer receives files at the window level, so dropping a
+// reference audio anywhere over the panel (not just the dedicated zone) must
+// highlight the whole panel and upload it for Index-TTS2 / CosyVoice.
+{
+  const handlersOk =
+    clientSrc.includes('const [dragOverProvider, setDragOverProvider] = react.useState(false)') &&
+    clientSrc.includes('const onPanelDragOver = e =>') &&
+    clientSrc.includes('const onPanelDragLeave = e =>') &&
+    clientSrc.includes('const onPanelDrop = e =>') &&
+    clientSrc.includes('const AUDIO_EXTS = AUDIO_UPLOAD_EXTS;');
+  const wiredOk =
+    /"div",\s*\{\s*className: "dsh-tts-settings",\s*onDragOver: onPanelDragOver,\s*onDragLeave: onPanelDragLeave,\s*onDrop: onPanelDrop,\s*\}/.test(clientSrc) &&
+    clientSrc.includes('className: "dsh-tts-dropoverlay"') &&
+    clientSrc.includes('className: "dsh-tts-dropoverlay-inner"') &&
+    /dragOverProvider\s*\?\s*react\.createElement\(\s*"div",\s*\{\s*className: "dsh-tts-dropoverlay"/.test(clientSrc);
+  const noDoubleFire =
+    /onDrop: e => \{\s*e\.preventDefault\(\);\s*e\.stopPropagation\(\);\s*setDrag\(false\);/.test(clientSrc);
+  const cssOk =
+    /\.dsh-tts-settings\{[^}]*position:relative/.test(clientSrc) &&
+    /\.dsh-tts-dropoverlay\{[^}]*position:absolute;inset:0/.test(clientSrc);
+  const i18nOk =
+    (clientSrc.match(/"upload\.dropHere":/g) || []).length === 2;
+  check('global drag-and-drop onto provider card (window-level receive)',
+    handlersOk && wiredOk && noDoubleFire && cssOk && i18nOk,
+    `handlers=${handlersOk} wired=${wiredOk} noDoubleFire=${noDoubleFire} css=${cssOk} i18n=${i18nOk}`);
+}
+
 // ---- GPT-SoVITS settings polish: source-level contract ----
 // Asserted on source + the ASSEMBLED stylesheet, so a later edit cannot
 // silently re-merge the setup steps, restore the JSON blob, or copy a
