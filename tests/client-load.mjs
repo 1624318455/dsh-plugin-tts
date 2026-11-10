@@ -726,7 +726,7 @@ if (!failed) {
     clientSrc.includes('const StatusDot = props =>') &&
     clientSrc.includes('const providerStatusFromChecks = checks =>') &&
     (clientSrc.match(/createElement\(StatusDot, \{ state: providerStatus/g) || []).length === 6 &&
-    /\.dsh-tts-nav\{[^}]*position:sticky/.test(clientSrc) &&
+    /\.dsh-tts-sticky\{[^}]*position:sticky/.test(clientSrc) &&
     /\.dsh-tts-dot\[data-st=ok\]\{background:var\(--dsw-alias-state-success-primary/.test(clientSrc);
   const probeOk =
     /probe: "light"/.test(clientSrc) &&
@@ -738,6 +738,26 @@ if (!failed) {
   check('sticky section nav + provider status dots wired to light probe',
     navOk && dotOk && probeOk && i18nOk,
     `nav=${navOk} dots=${dotOk} probe=${probeOk} i18n=${i18nOk}`);
+}
+
+// ---- settings search: keyword filter collapses non-matching fields/modules ----
+{
+  const boxOk =
+    clientSrc.includes('const searchBox = react.createElement(TextInput') &&
+    clientSrc.includes('t("search.placeholder")') &&
+    clientSrc.includes('className: "dsh-tts-search"') &&
+    /\.dsh-tts-sticky\{[^}]*position:sticky/.test(clientSrc);
+  const filterOk =
+    /const searchHit = text =>/.test(clientSrc) &&
+    /"dsh-tts-field" \+ \(searchHit\(label/.test(clientSrc) &&
+    /dsh-tts-hidden"\) \}/.test(clientSrc) &&
+    /\.dsh-tts-hidden\{display:none/.test(clientSrc) &&
+    /\.dsh-tts-module-hidden\{display:none/.test(clientSrc);
+  const i18nOk =
+    (clientSrc.match(/"search\.placeholder":/g) || []).length === 2;
+  check('settings search box filters fields + collapses empty modules',
+    boxOk && filterOk && i18nOk,
+    `box=${boxOk} filter=${filterOk} i18n=${i18nOk}`);
 }
 
 // ---- GPT-SoVITS settings polish: source-level contract ----
