@@ -1,6 +1,7 @@
 name: publish
 
 # GitHub -> npm 自动发布：打 tag 即发包（先跑测试，绿了才 publish）。
+# 发完 npm 后顺手建 GitHub Release（自动生成变更说明），打 tag 即出页面。
 # 用法：npm version patch && git push --follow-tags
 #   或：git tag v0.6.7 && git push --tags
 # 前置（一次即可）：npmjs.com 打开本包 Settings -> Trusted Publisher，
@@ -13,7 +14,7 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write # 建 GitHub Release 需要
   id-token: write # npm provenance 需要
 
 jobs:
@@ -65,3 +66,11 @@ jobs:
 
       - name: Publish to npm
         run: npm publish --provenance --access public
+
+      - name: Create GitHub Release
+        # tag 即 GITHUB_REF_NAME（v*），与前面校验过的 package.json.version 一致。
+        # 自动生成变更说明（基于上次 Release 以来的 commit/PR）。
+        # 想换成手写说明：把 generate_release_notes 去掉，改用 body_path 指向 CHANGELOG 片段。
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
