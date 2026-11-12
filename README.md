@@ -90,7 +90,9 @@ voice-pack registry**; a **portable RVC runtime** means no RVC WebUI install is 
     instantly. Long chunked reads have no single output file yet and report
     "not supported" instead of starting a wasteful re-synthesis.
 9. **Read selected text**: selecting text in a message shows a floating
-   "朗读选中" chip — click it to read just that selection.
+   "朗读选中文本" chip **below the selection** — click it to read just that
+   selection. The space above the selection is left to DSH's own 引用本段
+   (quote selection) bar, so the two never overlap.
 10. **Streaming long reads (Edge too)**: long plain-Edge reads also stream
     progressively (first chunk plays while the rest synthesize), reusing the
     gapless chunked pipeline — no more waiting for full synthesis.
@@ -190,6 +192,10 @@ derived from the voice locale, one retry on abnormal (1006) closures. Audio is
 - Audio is **autoplay-unlocked** on the first user gesture (Web Audio context
   resumed + silent clip) so reads aren't silently blocked by browser policy.
 - `Esc` / `S` (outside an input) stops the current read-aloud.
+- The read-selection chip is anchored **below** the selection: DSH's built-in
+  引用本段 (quote selection) bar owns the space above, so the chip no longer
+  stacks on top of it. Near the bottom edge of the viewport the chip clamps
+  inside the view instead of flipping back up over that bar.
 - Synthesis / playback failures **surface a themed toast** (message read-aloud and
   auto-read no longer fail silently; the preview panel keeps its inline error).
   In RVC mode the error toast carries a one-click **"read with Edge TTS instead"**

@@ -48,13 +48,16 @@ const slots = {
   inject(slot, fn) { injectedComponents.push({ slot, fn }); },
   register(spec, component) { return component; }, // real host returns the registered component
 };
-// The style effect is the only one that runs: it is pure DOM construction and
-// the one place the whole stylesheet can be silently lost. Running the other
-// three would register real listeners against a half-mocked window for no gain.
+// The style effect always runs: it is pure DOM construction and the one place
+// the whole stylesheet can be silently lost. Every effect is also recorded, so a
+// test can opt in to the ones it needs (e.g. the selection chip, which registers
+// real listeners and needs its own fake selection/DOM).
 const injectedStyles = [];
+const effects = [];
 const ctx = {
   get(name) { if (name === 'slots') return slots; return undefined; },
   effect(fn, label) {
+    effects.push({ fn, label });
     if (typeof label === 'string' && label.endsWith(': styles')) fn();
   },
 };
@@ -65,6 +68,13 @@ globalThis.window = {
   AudioContext: function(){}, webkitAudioContext: function(){},
   confirm: () => true,
 };
+// Listener registry: the mocked document has no event system, so a test that
+// runs an effect registering handlers keeps them here and calls them directly.
+const docListeners = new Map();
+function addDocListener(type, fn) {
+  if (!docListeners.has(type)) docListeners.set(type, []);
+  docListeners.get(type).push(fn);
+}
 globalThis.document = {
   createElement: tag => {
     const el = { tagName: String(tag).toUpperCase(), dataset: {}, style: {}, setAttribute(){}, appendChild(){}, removeChild(){}, pause(){}, removeAttribute(){}, play: () => Promise.resolve(), addEventListener(){}, removeEventListener(){} };
@@ -75,6 +85,12 @@ globalThis.document = {
   },
   body: { appendChild() {}, removeChild() {} },
   head: { appendChild() {}, removeChild() {} },
+  addEventListener: addDocListener,
+  removeEventListener(type, fn) {
+    const l = docListeners.get(type) || [];
+    const i = l.indexOf(fn);
+    if (i >= 0) l.splice(i, 1);
+  },
 };
 globalThis.Audio = function(){ this.play = () => Promise.resolve(); this.pause=()=>{}; this.setAttribute=()=>{}; this.removeAttribute=()=>{}; };
 // in-memory localStorage so the i18n persistence (loadPersistedLang/setLang) works
@@ -913,6 +929,62 @@ if (!failed) {
     !/自定义音色（RVC）|本地音色（Index-TTS2）|本地克隆（CosyVoice）|Cloud TTS（谷歌付费）|本地音色（GPT-SoVITS）/.test(src) &&
     !/Custom voice \(RVC\)|Local voice \(Index-TTS2\)|Local clone \(CosyVoice\)|Cloud TTS \(Google, paid\)|Local voice \(GPT-SoVITS\)/.test(src),
     'descriptions stay in provider.help.*, not in the label');
+}
+
+// Selection chip placement: the chip must sit BELOW the selection. DSH's own
+// 「引用本段」 bar occupies the space above the selection, so a chip drawn there
+// stacked on top of it (the reported bug). Runs the real effect and checks the
+// geometry it computes.
+{
+  const NAME = 'selection chip sits below the selection';
+  const effect = effects.find(e => String(e.label || '').includes('dsh-plugin-tts: selection read'));
+  if (!effect) {
+    check(NAME, false, 'selection-read effect not registered');
+  } else {
+    const appended = [];
+    const origAppend = globalThis.document.body.appendChild;
+    const origInner = globalThis.window.innerHeight;
+    try {
+      globalThis.document.body.appendChild = n => { appended.push(n); return n; };
+      let selRect = { left: 100, top: 200, right: 300, bottom: 220, width: 200, height: 20 };
+      globalThis.window.getSelection = () => ({
+        toString: () => '选中一段文字',
+        anchorNode: { nodeType: 1, tagName: 'P' },
+        rangeCount: 1,
+        getRangeAt: () => ({ getBoundingClientRect: () => selRect }),
+      });
+      globalThis.window.innerHeight = 900;
+      const cleanup = effect.fn();
+      const fireMouseUp = () => (docListeners.get('mouseup') || []).forEach(fn => fn({}));
+      fireMouseUp();
+      const wrap = appended.find(n => n.className === 'dsh-tts-sel-wrap');
+      if (!wrap) {
+        check(NAME, false, 'no chip node created');
+      } else {
+        const normalTop = parseFloat(wrap.style.top);
+        check(NAME, wrap.style.display === 'block' && normalTop >= selRect.bottom,
+          `top=${wrap.style.top} bottom=${selRect.bottom}`);
+
+        // Near the viewport bottom the chip clamps inside the view (it must not
+        // flip back above the selection, where the 引用本段 bar lives).
+        selRect = { left: 100, top: 870, right: 300, bottom: 890, width: 200, height: 20 };
+        fireMouseUp();
+        const clampedTop = parseFloat(wrap.style.top);
+        const chipH = 26; // .dsh-tts-sel-btn height (the fake DOM has no layout)
+        check('selection chip clamps inside the viewport (never flips above)',
+          clampedTop + chipH <= 900 && clampedTop < 890,
+          `top=${wrap.style.top} chipH=${chipH} viewH=900`);
+      }
+      if (typeof cleanup === 'function') cleanup();
+    } catch (e) {
+      check(NAME, false, String(e && e.stack || e).slice(0, 200));
+    } finally {
+      globalThis.document.body.appendChild = origAppend;
+      globalThis.window.innerHeight = origInner;
+      delete globalThis.window.getSelection;
+      docListeners.clear();
+    }
+  }
 }
 
 const failedCount = results.filter(r => !r.ok).length;

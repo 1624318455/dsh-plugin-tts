@@ -125,8 +125,9 @@
    在 `/speak` 短路径分发；配置了 `piperBinary`+`piperModel` 时 `spawn piper --model … --output_file …`，
    未配置时返回本地化错误 `host.piperUnconfigured`（不崩溃）。`tests/smoke.mjs` 增加未配置用例（49/49）。
   （真实端到端合成需用户放好 Piper 二进制与 .onnx 模型，本环境无二进制无法实跑。）
-- **F4 选区朗读（已完成）**：`setupSelectionRead` 监听 `mouseup`，在会话中出现非空文本选区时于选区上方
-  显示一个「朗读选中文本」悬浮 chip（`speakText(sel, 'manual')`）；自动忽略 input/textarea 内选择，
+- **F4 选区朗读（已完成）**：`setupSelectionRead` 监听 `mouseup`，在会话中出现非空文本选区时于选区下方
+  显示一个「朗读选中文本」悬浮 chip（`speakText(sel, 'manual')`）；上方空间留给 DSH 内置「引用本段」，
+  两者不再重叠。自动忽略 input/textarea 内选择，
   点击外部/滚动自动隐藏。新增 `sel.read` i18n 键与 `dsh-tts-sel-*` 主题化 CSS；preview 屏验证 chip 渲染正常。
 - **待续**：M2 原生流式合成（SSE/WebSocket + 客户端流式播放适配——较大且需真实宿主交互验证）。
 - **M2 原生流式合成的可行子集（已完成）**：把**自适应分块渐进播放**扩展到泛 Edge 长读——长文本不再"整段合成完再播"，而是走同一分块队列"边合成边播"。`/speak` 的 `convertChunk` 改为按 `job.sink` 分发（RVC=逐块变声，Edge=逐块 Edge 合成）；长 Edge 文本 >12s 时返回 `jobId+chunks`，前端复用现有 `playChunks` 无感续播。`tests/smoke.mjs` 增加"long edge read returns chunked job"用例（50/50）。
