@@ -26,7 +26,7 @@ jobs:
       - name: Smoke + i18n + client-load + patch
         # live layer requires a real local rvc-server; it auto-SKIPs on CI when
         # ~/rvc-work / RVC_URL is absent, so it won't false-fail here.
-        run: npm test && npm run test:i18n && npm run test:client && npm run test:patch && npm run test:slots
+        run: npm test && npm run test:i18n && npm run test:client && npm run test:patch && npm run test:slots && npm run test:audio
 
       - name: Published-package contents + privacy guard
         run: npm run test:pack && npm run test:privacy
