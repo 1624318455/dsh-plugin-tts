@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/logo.png" alt="dsh-plugin-tts" width="140" />
+  <img src="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/logo.png" alt="dsh-plugin-tts" width="104" />
 </p>
 
 <h1 align="center">dsh-plugin-tts</h1>
