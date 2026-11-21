@@ -22,12 +22,37 @@
   <a href="README.md">English</a> · <b>简体中文</b>
 </p>
 
+<p align="center">
+  <a href="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/assets/social-preview.png">
+    <img src="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/assets/social-preview.png"
+         alt="dsh-plugin-tts —— DSH 里的语音设置面板（设置 → 插件 → 语音）" width="100%" />
+  </a>
+</p>
+
 ---
 
 一个 Host + Web UI 双侧插件，给 DSH web 界面里的每条 AI 回复加朗读。默认走
 Edge TTS，**零配置**就能用；想要特定音色时，再接本机链路——RVC 自己训练的模型、
 Index-TTS2 / CosyVoice / GPT-SoVITS 的参考音频克隆。长回复**自适应分块渐进播放**，
 不必等整段合成完才出声。
+
+## 安装
+
+```sh
+# npm 包（推荐）
+dsh plugin --profile web add "@memef1f1y/dsh-plugin-tts"
+
+# 或直接用 GitHub 源码
+dsh plugin --profile web add "github:1624318455/dsh-plugin-tts#main"
+
+# 或本地开发
+dsh plugin --profile web add "file:/path/to/dsh-plugin-tts"
+```
+
+重启 `dsh web` 后作为 profile bundle 自动加载，无需手动启用。dsh-market 界面里搜包名安装也行。
+
+> 换来源前先卸载已有的：三种方式注册的是同一个 loader 条目 id（`tts`），
+> 安装器遇到重复 id 会直接回滚，不会覆盖。
 
 ## 六种音色后端，一个设置面板
 
@@ -52,24 +77,6 @@ RVC 面板填这些：服务地址（默认 `http://127.0.0.1:4892`）、原声�
 → 各后端指南：[Edge](docs/EDGE-GUIDE.md) · [RVC](docs/RVC-GUIDE.md) ·
 [Index-TTS2](docs/INDEX-TTS2-GUIDE.md) · [CosyVoice](docs/COSYVOICE-GUIDE.md) ·
 [GPT-SoVITS](docs/GPT-SOVITS-GUIDE.md) · [Cloud](docs/CLOUD-GUIDE.md)
-
-## 安装
-
-```sh
-# npm 包（推荐）
-dsh plugin --profile web add "@memef1f1y/dsh-plugin-tts"
-
-# 或直接用 GitHub 源码
-dsh plugin --profile web add "github:1624318455/dsh-plugin-tts#main"
-
-# 或本地开发
-dsh plugin --profile web add "file:/path/to/dsh-plugin-tts"
-```
-
-重启 `dsh web` 后作为 profile bundle 自动加载，无需手动启用。dsh-market 界面里搜包名安装也行。
-
-> 换来源前先卸载已有的：三种方式注册的是同一个 loader 条目 id（`tts`），
-> 安装器遇到重复 id 会直接回滚，不会覆盖。
 
 ## 能做什么
 
@@ -289,6 +296,13 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@memef1f1y\dsh-p
 | [分块播放设计](https://github.com/1624318455/dsh-plugin-tts/blob/main/docs/adaptive-chunked-playback.md) | 长文无缝朗读怎么做的（仅源码仓库） |
 | [Host 契约](https://github.com/1624318455/dsh-plugin-tts/blob/main/docs/HOST-CONTRACT.md) | Host 侧路由契约，给要扩展接口的人（仅源码仓库） |
 | [更新日志](https://github.com/1624318455/dsh-plugin-tts/blob/main/CHANGELOG.md) | 各版本变更（仅源码仓库） |
+
+## 交流
+
+- [Discussions](https://github.com/1624318455/dsh-plugin-tts/discussions) ——
+  安装求助、音色包分享、使用心得。
+- [Issues](https://github.com/1624318455/dsh-plugin-tts/issues) —— 可复现的
+  bug。请附上诊断 JSON（设置 → 语音 → 诊断）和 `dsh web` 控制台报错。
 
 ## License
 

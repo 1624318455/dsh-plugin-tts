@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    font-family: -apple-system, "SF Pro Display", "Helvetica Neue", "PingFang SC", Arial, sans-serif;
+    background:
+      radial-gradient(760px 620px at 84% 46%, rgba(37, 99, 235, 0.16), rgba(37, 99, 235, 0) 62%),
+      radial-gradient(520px 420px at 6% 100%, rgba(56, 189, 248, 0.13), rgba(56, 189, 248, 0) 65%),
+      linear-gradient(135deg, #FDFEFF 0%, #F4F7FD 100%);
+    position: relative;
+    color: #0B1220;
+  }
+  .grid {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(15, 23, 42, 0.07) 1px, transparent 1px);
+    background-size: 24px 24px;
+    mask-image: radial-gradient(760px 520px at 26% 48%, #000 0%, transparent 78%);
+    -webkit-mask-image: radial-gradient(760px 520px at 26% 48%, #000 0%, transparent 78%);
+  }
+  .left { position: absolute; left: 76px; top: 74px; width: 520px; }
+  .brand { display: flex; align-items: center; gap: 13px; }
+  .brand img { width: 40px; height: 40px; border-radius: 11px; }
+  .brand .name { font-size: 21px; font-weight: 650; letter-spacing: -0.2px; color: #0F172A; }
+  .brand .sub { font-size: 12.5px; color: #7A8699; margin-top: 2px; letter-spacing: 0.2px; }
+
+  h1 { margin-top: 38px; font-size: 47px; line-height: 1.1; letter-spacing: -1.6px; font-weight: 700; }
+  h1 .accent { color: #2563EB; }
+  p.lead {
+    margin-top: 20px; width: 470px;
+    font-size: 16.5px; line-height: 1.62; color: #4A5568; font-weight: 400;
+  }
+  .pills { display: flex; gap: 8px; margin-top: 24px; flex-wrap: wrap; width: 500px; }
+  .pill {
+    font-size: 12.5px; font-weight: 600; color: #1D4ED8;
+    background: rgba(37, 99, 235, 0.09);
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    padding: 6px 11px; border-radius: 999px; letter-spacing: 0.1px;
+  }
+  .pill.dim { color: #475569; background: rgba(15, 23, 42, 0.045); border-color: rgba(15, 23, 42, 0.10); }
+  .cmd {
+    display: inline-flex; align-items: center; gap: 9px;
+    margin-top: 26px; padding: 9px 14px 9px 13px;
+    background: #FFFFFF; border: 1px solid rgba(15, 23, 42, 0.10);
+    border-radius: 10px;
+    box-shadow: 0 2px 6px -2px rgba(15, 23, 42, 0.10);
+    font-family: "SF Mono", Menlo, monospace; font-size: 13px; color: #1E293B;
+  }
+  .cmd .dollar { color: #2563EB; font-weight: 700; }
+  .foot {
+    position: fixed; left: 78px; bottom: 44px;
+    font-size: 13px; color: #8A94A6; font-family: "SF Mono", Menlo, monospace; letter-spacing: 0.2px;
+  }
+  .shot {
+    position: absolute; left: 646px; top: 22px; width: 592px;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 26px 60px -18px rgba(15, 23, 42, 0.30), 0 6px 16px -6px rgba(15, 23, 42, 0.14);
+  }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="left">
+    <div class="brand">
+      <img src="../logo.png" />
+      <div>
+        <div class="name">dsh-plugin-tts</div>
+        <div class="sub">plugin for DeepSeek Harness</div>
+      </div>
+    </div>
+    <h1>Read every reply<br /><span class="accent">aloud</span>, in any voice.</h1>
+    <p class="lead">
+      Zero-config Edge TTS out of the box, four local voice-cloning
+      backends when you want your own, and gapless chunked playback
+      for long answers.
+    </p>
+    <div class="pills">
+      <span class="pill">6 backends</span>
+      <span class="pill">Edge TTS · free</span>
+      <span class="pill dim">Windows · macOS</span>
+      <span class="pill dim">MIT</span>
+    </div>
+    <div class="cmd"><span class="dollar">$</span> dsh plugin add @memef1f1y/dsh-plugin-tts</div>
+  </div>
+  <img class="shot" src="voice-panel.png" />
+  <div class="foot">github.com/1624318455/dsh-plugin-tts</div>
+</body>
+</html>

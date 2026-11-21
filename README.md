@@ -22,6 +22,13 @@
   <b>English</b> · <a href="README.zh.md">简体中文</a>
 </p>
 
+<p align="center">
+  <a href="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/assets/social-preview.png">
+    <img src="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/assets/social-preview.png"
+         alt="dsh-plugin-tts — the voice settings panel inside DSH (设置 → 插件 → 语音)" width="100%" />
+  </a>
+</p>
+
 ---
 
 A dual-sided plugin (Host + Web UI) that adds read-aloud to every assistant
@@ -30,6 +37,26 @@ into a fully local pipeline — your own RVC model, Index-TTS2 / CosyVoice /
 GPT-SoVITS reference-audio cloning — when you want a specific voice. Long
 replies stream with gapless chunked playback instead of waiting for the whole
 synthesis to finish.
+
+## Install
+
+```sh
+# npm package (recommended)
+dsh plugin --profile web add "@memef1f1y/dsh-plugin-tts"
+
+# or straight from GitHub
+dsh plugin --profile web add "github:1624318455/dsh-plugin-tts#main"
+
+# or from a local checkout
+dsh plugin --profile web add "file:/path/to/dsh-plugin-tts"
+```
+
+Restart `dsh web`; the plugin loads automatically as a profile bundle. The
+dsh-market UI works too — search for the package name.
+
+> Uninstall any existing copy before switching source. All three methods
+> register the same loader entry id (`tts`), and the installer rolls back on a
+> duplicate instead of overwriting.
 
 ## Six backends, one settings panel
 
@@ -58,26 +85,6 @@ without an index file.
 [RVC](docs/RVC-GUIDE.md) · [Index-TTS2](docs/INDEX-TTS2-GUIDE.md) ·
 [CosyVoice](docs/COSYVOICE-GUIDE.md) · [GPT-SoVITS](docs/GPT-SOVITS-GUIDE.md) ·
 [Cloud](docs/CLOUD-GUIDE.md)
-
-## Install
-
-```sh
-# npm package (recommended)
-dsh plugin --profile web add "@memef1f1y/dsh-plugin-tts"
-
-# or straight from GitHub
-dsh plugin --profile web add "github:1624318455/dsh-plugin-tts#main"
-
-# or from a local checkout
-dsh plugin --profile web add "file:/path/to/dsh-plugin-tts"
-```
-
-Restart `dsh web`; the plugin loads automatically as a profile bundle. The
-dsh-market UI works too — search for the package name.
-
-> Uninstall any existing copy before switching source. All three methods
-> register the same loader entry id (`tts`), and the installer rolls back on a
-> duplicate instead of overwriting.
 
 ## What you get
 
@@ -358,6 +365,14 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@memef1f1y\dsh-p
 | [Chunked playback design](https://github.com/1624318455/dsh-plugin-tts/blob/main/docs/adaptive-chunked-playback.md) | How gapless long reads work (source repo only) |
 | [Host contract](https://github.com/1624318455/dsh-plugin-tts/blob/main/docs/HOST-CONTRACT.md) | The Host-side route contract, for anyone extending the API (source repo only) |
 | [Changelog](https://github.com/1624318455/dsh-plugin-tts/blob/main/CHANGELOG.md) | Release notes (source repo only) |
+
+## Community
+
+- [Discussions](https://github.com/1624318455/dsh-plugin-tts/discussions) —
+  setup help, voice packs, show and tell.
+- [Issues](https://github.com/1624318455/dsh-plugin-tts/issues) — reproducible
+  bugs. Attach the diagnostic JSON (设置 → 语音 → 诊断) and the `dsh web`
+  console lines.
 
 ## License
 
