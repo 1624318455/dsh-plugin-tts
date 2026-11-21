@@ -98,6 +98,9 @@ without an index file.
   "朗读选中" chip that reads just that selection.
 - A **mini player** on the message's action row: pause / resume, plus 1x /
   1.25x / 1.5x speed. Chunked long reads show a live "chunk x/y" counter.
+- **Highlight & follow** (opt-in, experimental): while a reply is being read,
+  the spoken paragraph gets a soft highlight and the conversation scrolls to
+  keep it in view. Scroll yourself and follow stops; a floating bar resumes it.
 - **Download audio** — MP3 for Edge and Cloud reads, WAV for the local
   backends (GPT-SoVITS follows its configured output format). Reuses the
   in-session cache, so a message you just heard downloads instantly.
