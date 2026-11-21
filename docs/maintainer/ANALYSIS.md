@@ -189,7 +189,7 @@
 - 运行：`smoke 68 · live 18 · patch 4 · i18n 6 · client-load 43` 全绿。
 - **范围边界**：任务完成播报二期——dsh-jobs 无本插件可观察的会话事件通道（已核查
   dsh-jobs 无 `SessionEventMap` 增补），需后续事件接线。
-- 文档：README/zh 功能 #11 + 边界行为 + 设置持久化；`docs/acceptance-checklist.md` §2.5。
+- 文档：README/zh 功能 #11 + 边界行为 + 设置持久化；`docs/maintainer/acceptance-checklist.md` §2.5。
 
 ### A2. VAD 语音打断开关（用户决定：不做）
 

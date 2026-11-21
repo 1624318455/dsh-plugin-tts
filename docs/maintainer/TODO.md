@@ -7,7 +7,7 @@
 - [x] 诊断：diag log JSON 导出 + triage（calibration / cache / model / jobs）+ per-provider triage + chunk forensics（host build tag / job summaries / early-done，2026-09-25）。
 - [x] 发布：npm `@memef1f1y/dsh-plugin-tts`，v0.6.1 chunk-order、v0.6.2 loader-name、v0.6.3 scroll-follow v2（2026-09-25~26）。
 - [x] scroll-follow v2：stepwise signal + latch-off + highlight + spans；`ttsFollow` 提至 apply scope + ratio fallback 修复（HEAD `149fb9d`，v0.6.4，2026-09-26，已 push，`origin/main` 同步，工作区干净）。
-- [ ] 待 Mac 端：`docs/scroll-follow-v2.md` 在 UTF-8 下读出乱码（疑似 GBK 存档），需确认源编码并转 UTF-8；`TODO.md` 此前停留在 08-17，本次已补齐。
+- [ ] 待 Mac 端：`docs/maintainer/scroll-follow-v2.md` 在 UTF-8 下读出乱码（疑似 GBK 存档），需确认源编码并转 UTF-8；`TODO.md` 此前停留在 08-17，本次已补齐。
 
 > 交接注意：`dsh-plugin-TTS/` 外层（`edge-tts-worker.cjs` 旧独立 worker、`README.md` 旧版、6 个 `rvc-*.log`、`.npm-cache/`）不在 git 内，Mac 端只需 clone `plugin/` 本体（`https://github.com/1624318455/dsh-plugin-tts.git`，`main@149fb9d`）；外层文件无需带走，log 已被 `plugin/.gitignore` 的 `*.log` 排除。
 
@@ -38,6 +38,6 @@
 - [ ] 校准文件（calibration.json）多机同步/备份。
 - [ ] 多个音色包仓库并存（设置里保存多个仓库地址）。
 - [ ] 试听 A/B（UI 内对比两个音色包输出）。
-- [ ] 便携运行时 Linux 实测（macOS 用 `docs/macos-test-prompt.md` 同款流程）。
+- [ ] 便携运行时 Linux 实测（macOS 用 `docs/maintainer/macos-test-prompt.md` 同款流程）。
 - [x] ~~Edge TTS 一键诊断~~（设置面板「诊断」，已上线）。
 - [x] ~~便携运行时跨平台脚本泛化~~（`tools/package-runtime.py --platform`，代码已交付，待实测）。
