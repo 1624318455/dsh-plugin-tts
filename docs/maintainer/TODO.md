@@ -1,5 +1,7 @@
 # TODO（待办）
 
+> 改仓库展示（横幅 / About / Social preview / npm 页面同步）看 [`REPO-PRESENTATION.md`](REPO-PRESENTATION.md)，别重新摸索一遍——Social preview 没有 API，只有网页上传。
+
 ## 2026-09-27 Mac 交接前进度（已 push，工作区干净）
 
 - [x] 五提供者指南：Edge / Index-TTS2 / CosyVoice / Cloud TTS / RVC per-provider guides + agent handoff header（`docs/`，2026-09-22）。
