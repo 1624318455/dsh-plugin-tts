@@ -63,7 +63,8 @@
     "test:privacy": "node tests/privacy-guard.mjs",
     "test:slots": "node tests/bundle-slot.mjs",
     "test:audio": "node tests/audio-release.mjs",
-    "test:all": "node tests/smoke.mjs && node tests/rvc-server-live.mjs && node tests/package-runtime-patch.mjs && node tests/i18n-keys.mjs && node tests/client-load.mjs && node tests/archive-guard.mjs && node tests/gpt-sovits-contract.mjs && node tests/e2e-gpt-sovits.mjs && node tests/pack-guard.mjs && node tests/privacy-guard.mjs && node tests/bundle-slot.mjs && node tests/audio-release.mjs"
+    "test:all": "node tests/smoke.mjs && node tests/rvc-server-live.mjs && node tests/package-runtime-patch.mjs && node tests/i18n-keys.mjs && node tests/client-load.mjs && node tests/archive-guard.mjs && node tests/gpt-sovits-contract.mjs && node tests/gsv-library.mjs && node tests/e2e-gpt-sovits.mjs && node tests/pack-guard.mjs && node tests/privacy-guard.mjs && node tests/bundle-slot.mjs && node tests/audio-release.mjs",
+    "test:lib": "node tests/gsv-library.mjs"
   },
   "repository": {
     "type": "git",

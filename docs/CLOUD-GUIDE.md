@@ -167,7 +167,7 @@ Cloud TTS 的同步接口对单包大小有硬上限，长回复会被自动切�
 
 - **provider id**：`google-cloud-tts`（`/speak` 的 `provider` 字段就填这个）。
 - **无需本地服务**：没有 `baseUrl`， disparity 只在云端；网络需能到达谷歌端点。
-- **Key 存放**：当前用户主目录下的 Host 配置文件（`tts-rvc` 目录下的 `settings.json`，`cloud.apiKey` 字段），
+- **Key 存放**：当前用户主目录下的 Host 配置文件（`dsh-plugin-tts/config/` 下的 `settings.json`，`cloud.apiKey` 字段），
   只写不回显；面板经 `GET /dsh-tts-api/cloud-config` 只返回“是否已存 + 尾部提示”，
   经 `POST /dsh-tts-api/cloud-config-save` 写入，`POST /dsh-tts-api/cloud-test` 实测合成一句。
 - **合成调用**（经插件 Host 中转，前端不直连谷歌端点）：

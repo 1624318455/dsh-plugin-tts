@@ -367,9 +367,9 @@ check('provider dropdown offers gpt-sovits',
 check('no openai-compatible provider id remains', !/openai-compatible/.test(clientSrc));
 check('no API key state or field remains in the gsv panel',
   !/shared\.gsv\.apiKey\b/.test(clientSrc) && !/gsv\.key\b/.test(clientSrc));
-check('gsv panel reads native fields',
-  /t\("gsv\.field\.refAudio"\)/.test(clientSrc) && /t\("gsv\.field\.promptText"\)/.test(clientSrc) &&
-  /GSV_SPLIT_METHODS/.test(clientSrc));
+check('gsv panel exposes the voice library instead of a raw path field',
+  /t\("gsv\.voice\.label"\)/.test(clientSrc) && /t\("gsv\.field\.promptText"\)/.test(clientSrc) &&
+  /GSV_SPLIT_METHODS/.test(clientSrc) && !/t\("gsv\.field\.refAudio"\)/.test(clientSrc));
 check('speak sends the native config as custom',
   /useProvider === "gpt-sovits"[\s\S]{0,300}payload\.custom = Object\.assign\(\{\}, shared\.gsv\)/.test(clientSrc));
 check('host error codes are the gsv family',

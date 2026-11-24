@@ -3,7 +3,6 @@
 // Edge TTS synthesis over the network, the RVC chain against a mock local
 // RVC inference server, plus the voice-pack registry (mock static server).
 //   node tests/smoke.mjs
-import * as plugin from '../lib/index.mjs';
 import { createServer } from 'node:http';
 import net from 'node:net';
 import { execFileSync } from 'node:child_process';
@@ -13,6 +12,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startMockRegistry } from './mock-registry.mjs';
+
+// Isolate Host state BEFORE the plugin module resolves its home dir: this suite
+// round-trips rvc-config, and running it against the real ~/.dsh would rewrite
+// the developer's own settings (it used to).
+process.env.DSH_TTS_HOME = mkdtempSync(path.join(os.tmpdir(), 'dsh-smoke-home-'));
+const plugin = await import('../lib/index.mjs');
 
 const routes = [];
 const fakeEventListeners = new Map(); // name -> [fn] captured via ctx.on

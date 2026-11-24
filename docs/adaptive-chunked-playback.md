@@ -45,7 +45,7 @@ Edge 合成整段底噪? 不 —— 改成：
 2. 本机 RVC 转换，测出 `ratio = 转换耗时 / 音频秒数`（含每块 Edge 合成耗时，
    与真实分块流水线口径一致，偏保守）；
 3. 按分档表决定 `chunkSec`（每块音频秒数）与 `prewarm`（先转换几块再开播）；
-4. 结果按配置指纹持久化到 `~/.dsh/tts-rvc/calibration.json`：
+4. 结果按配置指纹持久化到 `~/.dsh/dsh-plugin-tts/data/calibration.json`：
    - **7 天有效**，dsh 重启后直接复用，连那一次 ~7s 探测都省掉；
    - 同时记录 `device`（RVC 服务 `/health` 上报的 GPU 名）；换显卡/切 CPU 时
      自动重新探测，不会拿旧的 GPU 数据给 CPU 用；
@@ -158,14 +158,14 @@ Host 内部：
   torch cu128 升级（RTX 50 系提速，官方 CDN 慢时用国内镜像）；本机实测转换正常。
 
 > 已完成：
-> - `calibration.json` 落盘（`~/.dsh/tts-rvc/`，7 天有效 + 设备指纹，跨会话复用探测结果）；
+> - `calibration.json` 落盘（`~/.dsh/dsh-plugin-tts/data/`，7 天有效 + 设备指纹，跨会话复用探测结果）；
 > - **紧凑索引生成工具**（设置面板「索引路径」旁「压缩」按钮）：408MB 原索引
 >   子采样重建为**与源同度量**的精确 flat 索引（RVC 训练默认 L2，pipeline 的
 >   `square(1/score)` 加权即按 L2 设计），2k→5.9MB（-98.5%）、10k→29.3MB（-92.5%），
 >   RVC 管线零改动兼容，实测转换正常；音色包分发不再受索引体积阻碍；
 > - **音色包注册表 + 下载 UI**：清单格式（schema 2：模型 + indexes 变体数组 + sha256 +
 >   版权/作者/版本，url 支持相对路径），Host 代理清单与下载（规避 CORS）、sha256 逐一校验后
->   安装到 `~/.dsh/tts-rvc/packs/<id>/`，自动填入模型/索引并应用底噪/f0/index_rate 默认值；
+>   安装到 `~/.dsh/dsh-plugin-tts/data/packs/<id>/`，自动填入模型/索引并应用底噪/f0/index_rate 默认值；
 >   失败自动清理残留；mock 仓库 `tests/mock-registry.mjs` 供本地测试；私有音色仓库
 >   `github.com/1624318455/rvc-for-tts`（azusa-test 模型 + 2k/10k/20k 紧凑索引）；
 > - **便携运行时打包 v1**：`tools/package-runtime.py`（--skip-torch 零下载即可用；
@@ -181,7 +181,7 @@ converting everything before playing (long silent wait), the plugin now:
 
 1. **Probes** the local machine once (convert a ~3.6s clip, measure
    `ratio = convert_time / audio_seconds`); results persist to
-   `~/.dsh/tts-rvc/calibration.json` (7-day validity, GPU-name fingerprint,
+   `~/.dsh/dsh-plugin-tts/data/calibration.json` (7-day validity, GPU-name fingerprint,
    re-probes on device change), so the probe is paid only once per config;
 2. Picks **chunk size (6–20s) and prewarm count (2–4)** from a ratio tier table;
 3. Splits the text into sentence-aligned chunks, converts the prewarm chunks,
