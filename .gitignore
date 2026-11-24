@@ -19,3 +19,6 @@ tools/ui-preview.html
 tests/live-*.png
 *.credentials.*
 credentials.yaml
+
+# local agent workbuddy scratch (evidence shots, memory notes, patch drafts)
+.workbuddy/
