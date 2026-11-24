@@ -93,12 +93,12 @@ check('synth cache is cache/synth', T.synthDir() === path.join(HOME, 'cache', 's
 group('B. settings round-trip (voice library)');
 const saved = T.saveHostGsvSettings({
   baseUrl: 'http://127.0.0.1:9881/',
-  refsDir: 'D:/GPT-SoVITS/refs',
+  refsDir: 'D:/voices',
   activeVoiceId: 'vabc',
-  recentDirs: ['D:/GPT-SoVITS/refs', 'D:/refs', 'D:/a', 'D:/b', 'D:/c', 'D:/d'],
+  recentDirs: ['D:/voices', 'D:/refs', 'D:/a', 'D:/b', 'D:/c', 'D:/d'],
   voices: [
-    { name: '旁白', path: 'D:/GPT-SoVITS/refs/narrator.wav', promptText: '这是参考答案。', promptLang: 'zh' },
-    { path: 'D:/GPT-SoVITS/refs/hero.wav' },
+    { name: '旁白', path: 'D:/voices/narrator.wav', promptText: '这是参考答案。', promptLang: 'zh' },
+    { path: 'D:/voices/hero.wav' },
     { name: 'no-path' },
     null
   ]
@@ -111,7 +111,7 @@ check('missing name falls back to the file basename', saved.voices[1].name === '
 check('transcript + language survive', saved.voices[1].promptText === '' && saved.voices[0].promptLang === 'zh');
 
 const reloaded = T.loadHostGsvSettings();
-check('reload returns the same library', reloaded.voices.length === 2 && reloaded.refsDir === 'D:/GPT-SoVITS/refs', JSON.stringify(reloaded).slice(0, 120));
+check('reload returns the same library', reloaded.voices.length === 2 && reloaded.refsDir === 'D:/voices', JSON.stringify(reloaded).slice(0, 120));
 check('reload keeps activeVoiceId', reloaded.activeVoiceId === 'vabc', reloaded.activeVoiceId);
 check('settings.json lives under config/', existsSync(path.join(HOME, 'config', 'settings.json')));
 
@@ -156,7 +156,7 @@ check('upload route answers 200 with an absolute path', upRes.head.code === 200 
 check('upload route rejects an empty payload', (await hit(upRoute, '/dsh-tts-api/gsv-refs-upload', { filename: 'x.wav' })).head.code === 400);
 
 const cfgGet = (await hit(route('/dsh-tts-api/gsv-config'), '/dsh-tts-api/gsv-config')).json();
-check('gsv-config exposes the library', cfgGet.gsv.voices.length === 2 && cfgGet.gsv.refsDir === 'D:/GPT-SoVITS/refs', JSON.stringify(cfgGet).slice(0, 160));
+check('gsv-config exposes the library', cfgGet.gsv.voices.length === 2 && cfgGet.gsv.refsDir === 'D:/voices', JSON.stringify(cfgGet).slice(0, 160));
 check('gsv-config exposes the managed refs dir default', cfgGet.refsDirDefault === T.gsvRefsDir(), cfgGet.refsDirDefault);
 
 const cfgPost = await hit(route('/dsh-tts-api/gsv-config-save'), '/dsh-tts-api/gsv-config-save', {
