@@ -4,6 +4,12 @@
      publish workflow 会自动抽取对应版本小节作为 GitHub Release 说明（extract step）。
      格式约定：每个版本一个 `## vX.Y.Z — YYYY-MM-DD` 小节，新版本在上；小节之间空一行。 -->
 
+## v0.8.1 — 2026-11-25
+
+### 修复
+- **本地引擎的合成音频全部改落 `cache/synth/`**：0.8.0 只挪了 RVC 与 GPT-SoVITS 两条链路，Edge / Piper / Index-TTS2 / CosyVoice / Google Cloud 仍写在系统临时目录且永不清理。一台开发机上实测堆了 63 个孤儿 wav（含 28 个 RVC、35 个 Index-TTS2、2 个 GPT-SoVITS，全是测试用的 1 秒静音）。现在所有提供者统一写 `~/.dsh/dsh-plugin-tts/cache/synth/`，2 小时过期、上限 200 个，写入时顺带清理；Edge 的工作进程改为从父进程拿输出目录（`DSH_TTS_OUT_DIR`），不再自己拼临时路径。
+- **补测试防止回退**：`tests/gsv-library.mjs` 新增源码级断言——除工作进程的兜底分支外，Host 侧不许再出现 `os.tmpdir()` 的合成写入，且所有提供者都必须落在 `synthDir()` 下。
+
 ## v0.8.0 — 2026-11-25
 
 ### 新功能

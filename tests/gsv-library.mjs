@@ -237,6 +237,20 @@ T.pruneSynthCache();
 check('expired synth wav is deleted', !existsSync(staleFile));
 check('fresh synth wav is kept', existsSync(freshFile));
 
+// Every provider that writes synthesized audio must land in cache/synth, not in
+// os.tmpdir() — that leak produced one orphan file per read (and per test run)
+// for edge / piper / index / cosy / cloud / gsv / rvc alike.
+{
+  const hostSrc = readFileSync(new URL('../lib/index.mjs', import.meta.url), 'utf8');
+  const tmpWrites = hostSrc.split('\n').filter((l) => /os\.tmpdir\(\)/.test(l) && !/^\s*\/\//.test(l));
+  check('no synth provider writes to os.tmpdir()', tmpWrites.length === 1 &&
+    /process\.env\.DSH_TTS_OUT_DIR \|\| os\.tmpdir\(\)/.test(tmpWrites[0]), tmpWrites.join(' | '));
+  check('the Edge worker receives the cache dir from the parent',
+    /DSH_TTS_OUT_DIR: synthDir\(\)/.test(hostSrc));
+  const synthWrites = hostSrc.match(/path\.join\(synthDir\(\), `dsh-tts-/g) || [];
+  check('all synth providers write under cache/synth', synthWrites.length >= 6, synthWrites.length);
+}
+
 // ---------------------------------------------------------------------------
 group('G. legacy layout migration');
 // A tree shaped like 0.7.5 (flat files next to packs/) must be normalized:
