@@ -1133,6 +1133,26 @@ if (!failed) {
     `panel=${panelOk} routes=${routesOk} poll=${pollOk} status=${statusOk}`);
 }
 
+// ---- long-text paragraph directory (locate only, never seek) ---------------
+{
+  const start = clientSrc.indexOf("const ttsLocateChunk = idx => {");
+  const end = start >= 0 ? clientSrc.indexOf("\n        };", start) : -1;
+  const body = start >= 0 && end > start ? clientSrc.slice(start, end) : "";
+  // The locate path must stay read-only: no playback/queue mutation, no
+  // synthesis call. That is what guarantees it can never drop a word.
+  const ro = !!body && !/readingIndex\s*=|chunkProgress\s*=|playSeq\s*=|fetchNextChunk|playChunks\(|stopSpeaking\(/.test(body);
+  const spansOk = /const ttsChunkText = \(idx, total\) =>/.test(clientSrc)
+    && /const sp = shared\.chunkSpans;/.test(clientSrc)
+    && /const ttsChunkItems = \(\) =>/.test(clientSrc);
+  const uiOk = clientSrc.includes('className: "dsh-tts-reading-chunks"')
+    && clientSrc.includes('className: "dsh-tts-chunk-toggle"')
+    && clientSrc.includes('t("overlay.chunks")')
+    && clientSrc.includes('t("overlay.chunkNote")')
+    && /const \[chunkListOpen, setChunkListOpen\] = react\.useState\(false\)/.test(clientSrc);
+  check('paragraph directory locates text from exact spans without touching playback',
+    ro && spansOk && uiOk, `readonly=${ro} spans=${spansOk} ui=${uiOk}`);
+}
+
 const failedCount = results.filter(r => !r.ok).length;
 console.log(`\n${results.length - failedCount}/${results.length} client-load checks passed`);
 process.exit(failedCount === 0 ? 0 : 1);
