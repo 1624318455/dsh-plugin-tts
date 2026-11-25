@@ -1170,7 +1170,7 @@ if (speakRoute && audioRoute) {
       uv.head.code === 502 && uvd.i18n && uvd.i18n.code === 'host.cosyNeedsServer', uv.body.slice(0, 200));
     const badSpeak = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
       text: '你好。', voice: '', provider: 'cosyvoice',
-      custom: { baseUrl: 'http://127.0.0.1:1', voice: '', speed: 1.0 }
+      custom: { baseUrl: 'http://127.0.0.1:1', voice: 'demo.wav', promptText: '测试' }
     })), mockRes());
     const bsd = JSON.parse(badSpeak.body);
     check('speak cosyvoice unreachable returns localized error',
@@ -1278,7 +1278,7 @@ if (speakRoute && audioRoute) {
   {
     const badSpeak = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
       text: '你好。', voice: 'zh-CN-XiaoxuanNeural', provider: 'gpt-sovits',
-      custom: { baseUrl: 'http://127.0.0.1:1', refAudio: 'D:/ref.wav' }
+      custom: { baseUrl: 'http://127.0.0.1:1', refAudio: 'D:/ref.wav', promptText: '测试' }
     })), mockRes());
     const d = JSON.parse(badSpeak.body);
     check('speak gpt-sovits unreachable returns localized error',
@@ -1294,7 +1294,7 @@ if (speakRoute && audioRoute) {
       noRef.body.slice(0, 160));
     const badJson = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
       text: '你好。', voice: 'zh-CN-XiaoxuanNeural', provider: 'gpt-sovits',
-      custom: { baseUrl: 'http://127.0.0.1:1', refAudio: 'D:/ref.wav', extraBody: '{oops' }
+      custom: { baseUrl: 'http://127.0.0.1:1', refAudio: 'D:/ref.wav', promptText: '测试', extraBody: '{oops' }
     })), mockRes());
     const jd = JSON.parse(badJson.body);
     check('speak gpt-sovits rejects malformed extraBody before any network call',
@@ -1341,7 +1341,7 @@ if (speakRoute && audioRoute) {
     const longCosy = '这是第一段，用于验证失败块跳过不断流。秋天的风吹过湖面，带来阵阵凉意。'.repeat(8);
     const rc = await call(speakRoute, mockReq('/dsh-tts-api/speak', JSON.stringify({
       text: longCosy, voice: '', provider: 'cosyvoice',
-      custom: { baseUrl: 'http://127.0.0.1:1', voice: '' }
+      custom: { baseUrl: 'http://127.0.0.1:1', voice: 'demo.wav', promptText: '测试' }
     })), mockRes());
     const pc = JSON.parse(rc.body);
     // prewarm path: first chunk fails hard (connect refused, no retry burn)

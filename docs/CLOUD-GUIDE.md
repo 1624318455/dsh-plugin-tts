@@ -73,7 +73,7 @@ Cloud TTS（Google Cloud Text-to-Speech）是谷歌的在线合成服务：把�
 <a name="设置面板配置"></a>
 ## 设置面板配置
 
-打开 **设置 → 插件 → 语音**：
+打开 **语音设置页（设置 → 语音）**：
 
 - **TTS提供者** 选「**Cloud TTS**」；
 - **Cloud 音色**：从中文组下拉选择（默认推荐波形档），或直接输入完整的 voice id
@@ -192,7 +192,7 @@ just network access to Google's endpoint.
 ### Quick start
 1. **Prepare**: a Google Cloud project with the Text-to-Speech API enabled, plus an API key.
    (Console → APIs & Services → enable the API → Credentials → Create API key.)
-2. **Configure**: 设置 → 插件 → 语音 → provider = Cloud TTS; pick a voice (or type a full voice id);
+2. **Configure**: 语音设置页（设置 → 语音） → provider = Cloud TTS; pick a voice (or type a full voice id);
    paste the key → Save (the input clears — the key lives in the local Host file only);
    click Test connection, then preview one sentence.
 3. **Read**: same entries as every provider (message button / auto-read toggle / selection chip).

@@ -102,6 +102,7 @@ function boot(slots) {
 // Slots service stub. `declared` lists slot names the fake shell declares.
 function makeSlots(declared, opts = {}) {
   const comps = new Map();
+  const specs = new Map();
   return {
     specDynamic(key) {
       return declared.includes(key) ? { name: key, kind: 'list' } : undefined;
@@ -115,8 +116,12 @@ function makeSlots(declared, opts = {}) {
       }
       comps.set(name, factory);
     },
-    register(spec, component) { return component; },
+    register(spec, component) {
+      specs.set(spec.name + ':' + (spec.id ?? spec.key ?? ''), spec);
+      return component;
+    },
     _factories: comps,
+    _specs: specs,
   };
 }
 
@@ -216,6 +221,41 @@ function componentFor(slots, slot) {
   } else {
     check('E legacy service: panel still renders (gate degrades open)', false, 'factory missing');
   }
+}
+
+// ---- scenario F: top-level settings page (new shells, no plugins tab) ----
+// dsh 0.2.2-rc.x has no `settings.plugins.tab`; the panel must land at the
+// first level of the Settings dialog, right after "Agent presets" (order 20).
+{
+  const slots = makeSlots(['settings.section', 'plugins.bundle.config']);
+  const { error } = boot(slots);
+  check('F new shell: apply() completes', !error, error && String(error.message));
+  const factory = slots._factories.get('settings.section');
+  check('F new shell: settings.section registration attempted', typeof factory === 'function');
+  if (typeof factory === 'function') {
+    const comp = factory();
+    const spec = slots._specs.get('settings.section:tts');
+    check('F new shell: section uses id "tts"', !!spec, 'id=' + (spec ? spec.id : 'missing'));
+    check('F new shell: section order 25 (after Agent presets, before market)',
+      !!spec && spec.order === 25, spec && 'order=' + spec.order);
+    check('F new shell: section label is localized', !!spec && typeof spec.label === 'function'
+      && spec.label() === '语音', spec && 'label=' + (typeof spec.label === 'function' ? spec.label() : spec.label));
+    let rendered = 'threw';
+    try { rendered = comp({ close() {} }); } catch (e) { rendered = 'threw:' + e.message; }
+    check('F new shell: section renders the voice panel',
+      !!rendered && typeof rendered === 'object' && rendered.$$node === true,
+      rendered === 'threw' ? 'render threw' : 'panel node rendered');
+  }
+}
+
+// ---- scenario G: standard shell keeps exactly one entry (no section) ----
+{
+  const slots = makeSlots(['settings.plugins.tab', 'settings.section']);
+  const { error } = boot(slots);
+  check('G standard shell: apply() completes', !error, error && String(error.message));
+  check('G standard shell: no duplicate top-level section registered',
+    !slots._factories.has('settings.section'),
+    slots._factories.has('settings.section') ? 'section registered as well as the tab' : 'tab only');
 }
 
 const failedCount = results.filter(r => !r.ok).length;

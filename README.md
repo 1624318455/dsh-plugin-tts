@@ -25,7 +25,7 @@
 <p align="center">
   <a href="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/assets/social-preview.png">
     <img src="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/assets/social-preview.png"
-         alt="dsh-plugin-tts — the voice settings panel inside DSH (设置 → 插件 → 语音)" width="100%" />
+         alt="dsh-plugin-tts — the voice settings panel inside DSH (Settings → Voice)" width="100%" />
   </a>
 </p>
 
@@ -60,7 +60,7 @@ dsh-market UI works too — search for the package name.
 
 ## Six backends, one settings panel
 
-Switch provider in 设置 → 插件 → 语音. Only the first row needs nothing installed.
+Switch provider in **Settings → Voice** (older dsh builds: Settings → Plugins → Voice). Only the first row needs nothing installed.
 
 | Backend | Synthesis runs | Prerequisite | Voice comes from |
 |---|---|---|---|
@@ -125,6 +125,12 @@ without an index file.
 - **Preview** any voice: type text, press the play button, failures show inline.
 - **Sound tuning**: rate / pitch / volume (0 = provider default), shared by
   Edge and Cloud.
+- **Model scan**: if you forgot where a local engine lives, add a folder and
+  scan. Identity comes from content (RVC pickle keys, `tts_infer.yaml`,
+  `indextts/` + checkpoints, CosyVoice model files, service-account JSON), not
+  from file names — so a renamed `.pth` is still found and a foreign one is not
+  misclaimed. Results carry their evidence and can be saved to a candidate
+  library.
 
 **Settings, language, safety**
 

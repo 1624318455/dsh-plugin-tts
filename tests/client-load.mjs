@@ -750,7 +750,7 @@ if (!failed) {
   const filterOk =
     /const searchHit = text =>/.test(clientSrc) &&
     /"dsh-tts-field" \+ \(searchHit\(label/.test(clientSrc) &&
-    /dsh-tts-hidden"\) \}/.test(clientSrc) &&
+    /dsh-tts-hidden"\)/.test(clientSrc) &&
     /\.dsh-tts-hidden\{display:none/.test(clientSrc) &&
     /\.dsh-tts-module-hidden\{display:none/.test(clientSrc);
   const i18nOk =
@@ -837,7 +837,7 @@ if (!failed) {
     'ol/li + numbered badge + 8px row gap');
 
   check('advanced params are a collapsible panel with one control per native /tts field',
-    /"details",\s*\{ className: "dsh-tts-advanced" \},\s*react\.createElement\("summary", null, t\("section\.advanced"\)\)/.test(src) &&
+    /"details",\s*\{ className: "dsh-tts-advanced" \},\s*react\.createElement\("summary", null, advSummary\(/.test(src) &&
     ['top_k', 'top_p', 'temperature', 'repetition_penalty', 'batch_size', 'seed', 'parallel_infer']
       .every(k => src.includes('"' + k + '"')) &&
     !src.includes('gsv.field.extra') && !src.includes('rows: 4'),
@@ -913,6 +913,224 @@ if (!failed) {
     !/自定义音色（RVC）|本地音色（Index-TTS2）|本地克隆（CosyVoice）|Cloud TTS（谷歌付费）|本地音色（GPT-SoVITS）/.test(src) &&
     !/Custom voice \(RVC\)|Local voice \(Index-TTS2\)|Local clone \(CosyVoice\)|Cloud TTS \(Google, paid\)|Local voice \(GPT-SoVITS\)/.test(src),
     'descriptions stay in provider.help.*, not in the label');
+}
+
+// ---- shell drop overlay: capture-phase consume + synthetic reset ----------
+// The shell's document-level overlay swallows drops and keeps its mask up
+// until its own depth resets. The zone must (1) take the drop before the
+// shell's bubble listener (capture + rect hit-test) and (2) send `dragend`
+// so the mask clears even though we stopped propagation.
+{
+  const captureOk = /document\.addEventListener\("drop", onDropCapture, true\)/.test(clientSrc)
+    && /getBoundingClientRect\(\)/.test(clientSrc);
+  const resetCount = (clientSrc.match(/window\.dispatchEvent\(new Event\("dragend"\)\)/g) || []).length;
+  check('DSH shell drop overlay: zone consumes the drop and clears the mask',
+    captureOk && resetCount >= 2,
+    `capture=${captureOk} resetSites=${resetCount}`);
+}
+
+// ---- directory picker: portal + non-shrinking rows ------------------------
+// Inside the settings dialog the sticky sub-nav owns a higher stacking context,
+// and a column flex list shrinks every row to a sliver (text clipped to dots).
+// The picker must portal to <body> and keep items at their natural height.
+{
+  const cssOk = /\.dsh-tts-disc-picker-item\{flex:none;min-height:30px;/.test(clientSrc)
+    && /\.dsh-tts-disc-picker\{position:fixed;inset:0;z-index:2147483000;/.test(clientSrc)
+    && /\.dsh-tts-disc-picker-drives\{/.test(clientSrc)
+    && /\.dsh-tts-disc-picker-input\{/.test(clientSrc);
+  const portalOk = /reactDom\.createPortal\(layer, document\.body\)/.test(clientSrc);
+  check('directory picker: rows keep their height and the layer escapes the dialog stacking context',
+    cssOk && portalOk, `css=${cssOk} portal=${portalOk}`);
+}
+
+// ---- scan results: installs separated, long weight lists folded -----------
+{
+  const ok = /disc\.section\.installs/.test(clientSrc)
+    && /disc\.section\.weights/.test(clientSrc)
+    && /weightGroups/.test(clientSrc)
+    && /arr\.length <= 2/.test(clientSrc)
+    && /disc\.groupMore/.test(clientSrc);
+  check('scan results split installs from weight files and fold lists longer than two',
+    ok, `sections=${ok}`);
+}
+
+// ---- discovery: every mutating action reports back ------------------------
+{
+  const ok = /disc\.toast\.saved/.test(clientSrc)
+    && /const toastOk =/.test(clientSrc)
+    && /disc\.libraryWhat/.test(clientSrc)
+    && /id: "dsh-tts-sec-disc-library"/.test(clientSrc)
+    && /disc\.toast\.verifyOk/.test(clientSrc)
+    && /shared\.provider = cand\.provider/.test(clientSrc)
+    && /shared\.applyProvider/.test(clientSrc)
+    && /disc\.toast\.switchedModel/.test(clientSrc);
+  check('model-scan actions toast + the candidate library explains itself and anchors', ok, `feedback=${ok}`);
+}
+
+// ---- GSV voice library: health badges + record actions --------------------
+{
+  const healthOk = /const gsvVoiceHealth = v =>/.test(clientSrc)
+    && /missingText: !String\(\(v && v\.promptText\) \|\| ""\)\.trim\(\)/.test(clientSrc)
+    && /missingFile: !!\(v && v\.exists === false\)/.test(clientSrc)
+    && /gsv\.voice\.health\.missingFile/.test(clientSrc)
+    && /gsv\.voice\.health\.missingText/.test(clientSrc);
+  const actionsOk = /gsv\.voice\.relocate/.test(clientSrc)
+    && /const updateGsvVoiceById =/.test(clientSrc)
+    && /const deleteGsvVoiceById =/.test(clientSrc)
+    && /gsv\.voice\.filter\.missingText/.test(clientSrc)
+    && /gsv\.voice\.filter\.missingFile/.test(clientSrc);
+  // The library must not assume any specific speaker/voice names: the only
+  // inputs are the stored records (name/path/promptText/promptLang/exists).
+  const genericOk = !/azusa|hayami/i.test(clientSrc);
+  // The reference dropdown and the folder picker must not duplicate each other:
+  // the picker only picks folders, the dropdown lists that folder's audio.
+  const splitOk = /const gsvDirVoices = \(\) =>/.test(clientSrc)
+    && /const full = joinVoiceDirPath\(dir, f\.name\)/.test(clientSrc)
+    && !/t\("dir\.picker\.files"\)/.test(clientSrc)
+    && !/const pickGsvVoiceFile =/.test(clientSrc);
+  const searchOk = /const \[gsvVoiceQuery, setGsvVoiceQuery\] = react\.useState\(""\)/.test(clientSrc)
+    && clientSrc.includes('t("gsv.voice.search")')
+    && /gsvDirVoices\(\)\.length > 12/.test(clientSrc)
+    && /menuHeader: gsvDirVoices\(\)\.length > 12/.test(clientSrc)
+    && /props\.menuHeader/.test(clientSrc)
+    && /className: "dsh-tts-dd-header"/.test(clientSrc);
+  check('voice picker is folder-only; the reference dropdown lists that folder',
+    splitOk && searchOk, `split=${splitOk} search=${searchOk}`);
+
+  check('voice library shows health badges + record actions with no hardcoded voice names',
+    healthOk && actionsOk && genericOk, `health=${healthOk} actions=${actionsOk} generic=${genericOk}`);
+}
+
+// ---- weight picker: fold long epoch lists, search, startup weights -------
+{
+  const foldOk = /const WEIGHT_PREVIEW = 3;/.test(clientSrc)
+    && /\["__act", t\("gsv\.models\.showLess"\)/.test(clientSrc)
+    && /const toggleGsvWeightFold = key =>/.test(clientSrc)
+    && /onAction: key => toggleGsvWeightFold\(key\)/.test(clientSrc)
+    && /const gsvWeightDate = ms =>/.test(clientSrc);
+  const searchOk = clientSrc.includes('t("gsv.models.search")')
+    && clientSrc.includes('t("gsv.models.searchClear")')
+    && /const \[gsvWeightQuery, setGsvWeightQuery\] = react\.useState\(""\)/.test(clientSrc);
+  const currentOk = clientSrc.includes('t("gsv.models.currentLabel")')
+    && clientSrc.includes('t("gsv.models.currentUnknown")')
+    && /current: d\.current \|\| null/.test(clientSrc);
+  // The fold key is the derived speaker stem, never a literal name.
+  const genericOk = /const key = fieldKey \+ "\|" \+ speaker;/.test(clientSrc);
+  check('weight picker folds long lists, searches, and shows startup weights',
+    foldOk && searchOk && currentOk && genericOk,
+    `fold=${foldOk} search=${searchOk} current=${currentOk} generic=${genericOk}`);
+}
+
+// ---- directory picker: middle-ellipsis paths, crumbs, counts, recents ----
+{
+  const shortOk = /const shortPath = \(value, emptyText\) =>/.test(clientSrc)
+    && /shortPath\(shared\.index\.voicesDir/.test(clientSrc)
+    && /shortPath\(shared\.cosy\.voicesDir/.test(clientSrc)
+    && /shortPath\(shared\.gsv\.refsDir/.test(clientSrc)
+    && /shortPath\(shared\.gsv\.modelDir/.test(clientSrc);
+  const crumbOk = clientSrc.includes('className: "dsh-tts-disc-picker-crumbs"')
+    && /c\.path/.test(clientSrc)
+    && /const joinVoiceDirPath = \(base, name\) =>/.test(clientSrc);
+  const countOk = clientSrc.includes('t("dir.picker.audioCount", { n })')
+    && /dirAudio: d\.dirAudio \|\| \{\}/.test(clientSrc);
+  const recentOk = clientSrc.includes('className: "dsh-tts-disc-recent"')
+    && /const recent = p\.kind === "index"/.test(clientSrc);
+  // Single click already opens a folder, so a real double click must not
+  // descend two levels.
+  const dblOk = /const voiceFolderNavAt = react\.useRef\(0\);/.test(clientSrc)
+    && /now - voiceFolderNavAt\.current < 300/.test(clientSrc)
+    && /onDoubleClick: \(\) => navVoiceFolder\(full\)/.test(clientSrc);
+  check('directory picker: middle-ellipsis, breadcrumbs, audio counts, recents, safe double-click',
+    shortOk && crumbOk && countOk && recentOk && dblOk,
+    `short=${shortOk} crumbs=${crumbOk} counts=${countOk} recent=${recentOk} dbl=${dblOk}`);
+}
+
+// ---- advanced sections: changed-count in the title + per-section reset ------
+{
+  const helpersOk = /const advSame = \(a, b\) =>/.test(clientSrc)
+    && /const advChangedCount = entries =>/.test(clientSrc)
+    && /const advSummary = \(count, fallback\) =>/.test(clientSrc)
+    && /const advResetRow = \(count, onReset\) =>/.test(clientSrc);
+  // Every provider describes its own advanced fields; the summary/reset code
+  // only consumes that list.
+  const wiredOk = /advSummary\(advChangedCount\(rvcAdvEntries\(\)\)/.test(clientSrc)
+    && /advResetRow\(advChangedCount\(rvcAdvEntries\(\)\)/.test(clientSrc)
+    && /advSummary\(advChangedCount\(indexAdvEntries\(\)\)/.test(clientSrc)
+    && /advResetRow\(advChangedCount\(indexAdvEntries\(\)\)/.test(clientSrc)
+    && /advSummary\(advChangedCount\(gsvAdvEntries\(\)\)/.test(clientSrc)
+    && /advResetRow\(advChangedCount\(gsvAdvEntries\(\)\), resetGsvAdv\)/.test(clientSrc);
+  // GSV keeps hand-written extraBody keys on reset: only known native keys go.
+  const gsvOk = /const GSV_ADV_NATIVE = \{/.test(clientSrc)
+    && /for \(const k of Object\.keys\(GSV_ADV_NATIVE\)\) delete o\[k\];/.test(clientSrc)
+    && /Object\.keys\(o\)\.length \? JSON\.stringify\(o\) : ""/.test(clientSrc);
+  const i18nOk = clientSrc.includes('"adv.changed"') && clientSrc.includes('"adv.reset"');
+  check('advanced sections report changed fields and reset only their own keys',
+    helpersOk && wiredOk && gsvOk && i18nOk,
+    `helpers=${helpersOk} wired=${wiredOk} gsv=${gsvOk} i18n=${i18nOk}`);
+}
+
+// ---- auto-save indicator -----------------------------------------------------
+{
+  const stampOk = /let lastSavedAt = 0;/.test(clientSrc)
+    && /store\.setItem\(SETTINGS_KEY, JSON\.stringify\(data\)\);\s*lastSavedAt = Date\.now\(\);/.test(clientSrc);
+  const uiOk = /const savedAtText = lastSavedAt/.test(clientSrc)
+    && /className: "dsh-tts-saved"/.test(clientSrc)
+    && /previewBar,\s*saveIndicator,/.test(clientSrc);
+  const scopeOk = /let lastSavedScope = "";/.test(clientSrc)
+    && /function saveSettings\(scope\)/.test(clientSrc)
+    && /const saveScopeText = \(\) =>/.test(clientSrc)
+    && /saveSettings\("gsv"\)/.test(clientSrc)
+    && /saveSettings\("preprocess"\)/.test(clientSrc)
+    && /saveSettings\("display"\)/.test(clientSrc);
+  const i18nOk = clientSrc.includes('"save.savedAt"')
+    && clientSrc.includes('"save.savedWhat"')
+    && clientSrc.includes('"save.tip"')
+    && clientSrc.includes('"save.scope.gsv"')
+    && /t\("save\.savedWhat", \{ scope, time \}\)/.test(clientSrc);
+  check('sticky bar reports the last automatic save with a timestamp and scope',
+    stampOk && uiOk && scopeOk && i18nOk, `stamp=${stampOk} ui=${uiOk} scope=${scopeOk} i18n=${i18nOk}`);
+}
+
+// ---- actionable error boxes + toast copy --------------------------------
+{
+  const boxOk = /const errorBox = \(message, opts\) =>/.test(clientSrc)
+    && /dsh-tts-errbox-clamp/.test(clientSrc)
+    && /const errorNextStep = message =>/.test(clientSrc)
+    && /const jumpToDiagnose = \(\) =>/.test(clientSrc);
+  const wiredOk = /indexVoices\.error\s*\?\s*errorBox\(/.test(clientSrc)
+    && /cosyVoices\.error\s*\?\s*errorBox\(/.test(clientSrc)
+    && /gsvDirList\.error\s*\?\s*errorBox\(/.test(clientSrc)
+    && /gsvModels\.error\s*\?\s*errorBox\(/.test(clientSrc)
+    && /cloudUsage\.error\s*\?\s*errorBox\(/.test(clientSrc);
+  const copyOk = /function copyToClipboard\(text\)/.test(clientSrc)
+    && /setCopied\(copyToClipboard\(toast\.text\)\)/.test(clientSrc);
+  const i18nOk = ["err.copy", "err.copied", "err.expand", "err.collapse", "err.retry", "err.jump", "err.diagnose"]
+    .every(k => clientSrc.includes('"' + k + '"'));
+  check('errors clamp to two lines with copy / retry / jump / diagnostics actions',
+    boxOk && wiredOk && copyOk && i18nOk,
+    `box=${boxOk} wired=${wiredOk} copy=${copyOk} i18n=${i18nOk}`);
+}
+
+// ---- local service launcher -------------------------------------------------
+{
+  const panelOk = /const servicePanel = providerId =>/.test(clientSrc)
+    && /servicePanel\("rvc"\)/.test(clientSrc)
+    && /servicePanel\("index-tts2"\)/.test(clientSrc)
+    && /servicePanel\("cosyvoice"\)/.test(clientSrc)
+    && /servicePanel\("gpt-sovits"\)/.test(clientSrc);
+  const routesOk = clientSrc.includes('"/dsh-tts-api/services"')
+    && clientSrc.includes('"/dsh-tts-api/service-save"')
+    && /"\/dsh-tts-api\/service-" \+ step/.test(clientSrc);
+  const pollOk = /setInterval\(\(\) => \{ refreshServices\(\); \}, 6000\)/.test(clientSrc)
+    && /return \(\) => clearInterval\(id\);/.test(clientSrc);
+  const statusOk = /"data-st": running \|\| \(cfg\.portOpen && cfg\.port\) \? "ok" : \(cfg\.command \? "warn" : ""\)/.test(clientSrc)
+    && /t\("svc\.external", \{ port: cfg\.port \}\)/.test(clientSrc)
+    && /t\("svc\.startFail"\)/.test(clientSrc)
+    && /t\("svc\.stopFail"\)/.test(clientSrc)
+    && /t\("svc\.restartFail"\)/.test(clientSrc);
+  check('local service launcher: config form, start/stop/restart, status polling',
+    panelOk && routesOk && pollOk && statusOk,
+    `panel=${panelOk} routes=${routesOk} poll=${pollOk} status=${statusOk}`);
 }
 
 const failedCount = results.filter(r => !r.ok).length;

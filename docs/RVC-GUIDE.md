@@ -121,7 +121,7 @@ Edge TTS 朗读（原声）→ 本机 RVC 推理服务（rvc-server.py）→ 转
 <a name="设置面板-rvc-配置"></a>
 ## 设置面板 RVC 配置
 
-打开 **设置 → 插件 → 语音**：
+打开 **语音设置页（设置 → 语音）**：
 
 - **TTS提供者** 选「**RVC**」；
 - **服务地址**：保持默认 `http://127.0.0.1:4892`（刚才那个服务的地址）；
@@ -350,7 +350,7 @@ converted wav → playback`, all on the user's own GPU/CPU.
      <你的便携包目录>/start-rvc-server.sh
      # or: <你的工作目录>/venv/bin/python <你的工作目录>/rvc-server.py --port 4892
      ```
-3. **Configure**: 设置 → 插件 → 语音 → TTS提供者 = RVC；keep 服务地址 default;
+3. **Configure**: 语音设置页（设置 → 语音） → TTS提供者 = RVC；keep 服务地址 default;
    fill 模型路径 (browse or paste); index optional (empty = index-free).
 
 ### Key capabilities

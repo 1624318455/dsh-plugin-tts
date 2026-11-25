@@ -10,7 +10,7 @@
 // 以及 http://127.0.0.1:<port> 这类本地服务示例。
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -67,11 +67,16 @@ const DOC_EXAMPLES = [/D:[\\/]GPT-SoVITS[\\/]refs[\\/][A-Za-z0-9._-]+\.wav/];
 const isAllowed = line =>
   PUBLIC_CONSTANTS.some(re => re.test(line)) || DOC_EXAMPLES.some(re => re.test(line));
 
-const textFiles = tracked.filter(f => f !== SELF && TEXT_EXT.test(f));
+const textFiles = tracked.filter(f => f !== SELF && TEXT_EXT.test(f) && existsSync(path.join(root, f)));
 for (const [re, label] of RULES) {
   const hits = [];
   for (const f of textFiles) {
-    const lines = readFileSync(path.join(root, f), 'utf8').split(/\r?\n/);
+    let lines;
+    try {
+      lines = readFileSync(path.join(root, f), 'utf8').split(/\r?\n/);
+    } catch (e) {
+      continue; // staged-but-deleted in the worktree (git add pending)
+    }
     lines.forEach((line, i) => {
       if (isAllowed(line)) return;
       re.lastIndex = 0;

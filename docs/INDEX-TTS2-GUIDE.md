@@ -72,11 +72,13 @@ Index-TTS2 是本地运行的文本转语音服务：输入文本 + 一段参考
 <a name="设置面板配置"></a>
 ## 设置面板配置
 
-打开 **设置 → 插件 → 语音**：
+打开 **语音设置页（设置 → 语音）**：
 
 - **TTS提供者** 选「**IndexTTS-2**」；
 - **服务地址**：一般保持默认（本地 Index-TTS2 服务的地址）；
-- **参考音色**：点「**刷新音色**」拉取服务端的参考音频列表，然后选中一段；
+- **音色目录**（可选）：点选目录选择器后由插件直接扫描这个文件夹，不再依赖服务端的音色列表；
+  默认约定为 `<Index-TTS2 安装目录>/api/ckyp`，目录不存在时可在选择器里直接新建；
+- **参考音色**：点「**刷新音色**」拉取参考音频列表，然后选中一段；
 - 点面板底部「试听测试」输入一句话试听，确认是想要的声音。
 
 ---
@@ -84,12 +86,33 @@ Index-TTS2 是本地运行的文本转语音服务：输入文本 + 一段参考
 <a name="参考音频与上传"></a>
 ## 参考音频与上传
 
-- **选择**：下拉列表来自服务端当前可用的参考音频；新增音频后点「刷新音色」同步；
+- **选择**：下拉列表默认来自服务端当前可用的参考音频；新增音频后点「刷新音色」同步；
 - **上传**：面板提供上传入口，支持常见的语音容器格式（如 wav / mp3 / flac / m4a / ogg）；
-  上传后自动存入服务端的参考音频区并可直接选用；
+  未填写「音色目录」时存入服务端的参考音频区，填写后直接存入该目录；
 - **直接填写**：也支持直接粘贴服务端已有的参考音频文件名；
 - **挑选建议**：优先用单人、安静、无背景音乐、无混响的人声片段；过短（1-2 秒）容易不稳定，
   过长（数分钟）会增加加载负担，中等长度最稳。
+
+### 统一音色目录（推荐）
+
+为了让所有人的结构一致，Index-TTS2 统一使用：
+
+```text
+<Index-TTS2 安装目录>/api/ckyp
+```
+
+- 在设置页点「**音色目录**」打开目录选择器，选到这台机器上的目标文件夹即可；插件会直接扫描该目录生成下拉菜单，
+  **不要求服务端提供 `/api/v1/voices`**（官方源码没有这个接口）；
+- 选择器支持切换盘符、进入子目录、新建文件夹；目录不存在时也可以直接用「新建文件夹」创建；
+- 选过的路径会保留成「最近使用过的路径」快捷按钮，方便在两个音色库之间切换；
+- 选择器顶部有可点击的**面包屑**（`E: › AI › 阿梓`），弹层里也直接显示「最近使用过的路径」；
+- 文件夹行会显示 `📁 名字 · N 个音频`，一眼能看出哪个目录有可用音色；双击文件夹进入（单击也可以）；
+- 设置行里的路径显示为**中间省略**（保留盘符 + 末级目录），完整路径看 tooltip；
+- 选择器里的「在资源管理器里打开」会直接在系统文件管理器中定位当前目录，方便手动放音频；
+- 该目录同时是上传目标；
+- 合成时如果服务在本机，插件会把选中的文件名转成**绝对路径**发给服务端；
+  本地 `api.py` 支持绝对路径，因此不需要把音频再复制到服务自己的目录；
+- 服务在另一台机器时，插件只传文件名，此时仍以服务端自己的音色目录为准。
 
 ---
 
@@ -108,6 +131,7 @@ Index-TTS2 是本地运行的文本转语音服务：输入文本 + 一段参考
 | 设置项 | 作用 | 建议 |
 |---|---|---|
 | 服务地址 | 本地 Index-TTS2 服务的地址 | 一般保持默认 |
+| 音色目录 | 插件直接扫描的本机音色文件夹 | 用选择器选 `<安装目录>/api/ckyp`；留空则用服务端列表 |
 | 参考音色 | 决定朗读是谁的声音 | 用「刷新音色」同步列表后选择 |
 | 朗读前清洗文本 | 去掉 Markdown / 链接 / HTML 等符号再合成 | 阅读类场景建议开启；读源码时关闭 |
 | 情感控制 | `跟随参考音频` / `情感参考音频` / `情感向量` / `情感文本描述` | 默认跟随参考音频；有明确情绪需求再切换 |
@@ -161,9 +185,9 @@ Index-TTS2 全程本地合成，音频与文本不上传。只使用你有权使
   `GET /health`（存活）、`GET /api/v1/voices` → `{ voices: [] }`（参考音频列表）、
   `POST /api/v1/tts/tasks`（合成，body 含 `text` / `prompt_audio` 及清洗与采样参数，返回 wav 字节）。
 - **经插件 Host 中转的调用**（前端不直连本地服务）：
-  音色列表 `GET /dsh-tts-api/index-voices?baseUrl=<服务地址>`；
+  音色列表 `GET /dsh-tts-api/index-voices?baseUrl=<服务地址>&dir=<可选：本机音色目录>`；
   上传参考音频 `POST /dsh-tts-api/index-upload`；
-  服务地址持久化 `GET /dsh-tts-api/index-config` / `POST /dsh-tts-api/index-config-save`；
+  服务地址持久化 `GET /dsh-tts-api/index-config` / `POST /dsh-tts-api/index-config-save`（字段 `index.baseUrl` / `index.voicesDir`）；
   合成 `POST /dsh-tts-api/speak` body `{ text, provider: "index-tts2", custom: { baseUrl, voice } }`
   → 短文本 `{ url }`，长文本 `{ jobId, chunks, total }`（后续块 `GET /dsh-tts-api/rvc-next?job=<jobId>`）。
 - **诊断验证**：`POST /dsh-tts-api/diagnose` body `{ indexBaseUrl }` → 看 `checks` 里
@@ -182,7 +206,7 @@ synthesizes directly into that voice, with no Edge TTS base voice needed — all
 1. **Prepare**: a local Index-TTS2 service bundle and at least one reference clip (clean speech works best).
 2. **Start the service** (keep the window open): run the bundle's API launcher, wait until it reports ready
    on its loopback port.
-3. **Configure**: 设置 → 插件 → 语音 → provider = local Index-TTS2; keep the service URL default;
+3. **Configure**: 语音设置页（设置 → 语音） → provider = local Index-TTS2; keep the service URL default;
    click Refresh voices, pick a reference clip, and preview one sentence.
 
 ### Key capabilities

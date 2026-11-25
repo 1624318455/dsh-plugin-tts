@@ -75,11 +75,13 @@ CosyVoice 是本地运行的零样本语音克隆：给它一段提示音频（�
 <a name="设置面板配置"></a>
 ## 设置面板配置
 
-打开 **设置 → 插件 → 语音**：
+打开 **语音设置页（设置 → 语音）**：
 
 - **TTS提供者** 选「**CosyVoice2.0**」；
 - **服务地址**：一般保持默认（本地 CosyVoice 服务的地址）；
-- **提示音频**：点「**刷新音色**」拉取服务端的提示音频列表，然后选中一段；
+- **提示音频目录**（可选）：点选目录选择器后由插件直接扫描这个文件夹，不再依赖服务端的提示音频列表；
+  默认约定为 `<CosyVoice 安装目录>/prompts`，目录不存在时可在选择器里直接新建；
+- **提示音频**：点「**刷新音色**」拉取提示音频列表，然后选中一段；
 - **提示音频文字稿**：填写所选提示音频里说的内容（见下一节）；
 - 点面板底部「试听测试」输入一句话试听，确认是想要的声音。
 
@@ -101,6 +103,29 @@ CosyVoice 是本地运行的零样本语音克隆：给它一段提示音频（�
    - 不确定的地方宁可换一段内容明确的提示音频，也不要留空蒙混。
 3. **直接填写**：也支持直接粘贴服务端已有的提示音频文件名；上传入口支持常见语音容器格式。
 
+### 统一提示音频目录（推荐）
+
+为了让所有人的结构一致，CosyVoice 统一使用：
+
+```text
+<CosyVoice 安装目录>/prompts
+```
+
+- 在设置页点「**提示音频目录**」打开目录选择器，选到这台机器上的目标文件夹即可；插件会直接扫描该目录生成下拉菜单，
+  **不要求服务端提供 `/voices`**（官方 CosyVoice 源码没有这个接口）；
+- 选择器支持切换盘符、进入子目录、新建文件夹；目录不存在时也可以直接用「新建文件夹」创建；
+- 选过的路径会保留成「最近使用过的路径」快捷按钮，方便在两个提示音频库之间切换；
+- 选择器顶部有可点击的**面包屑**（`E: › AI › 阿梓`），弹层里也直接显示「最近使用过的路径」；
+- 文件夹行会显示 `📁 名字 · N 个音频`，一眼能看出哪个目录有可用提示音频；双击文件夹进入（单击也可以）；
+- 设置行里的路径显示为**中间省略**（保留盘符 + 末级目录），完整路径看 tooltip；
+- 选择器里的「在资源管理器里打开」会直接在系统文件管理器中定位当前目录，方便手动放音频；
+- 该目录同时是上传目标；
+- 如果服务是本项目的 `cosy-server.py`，建议启动时加 `--prompts-dir <同一个目录>`，
+  这样插件和服务读取的是同一份文件；
+- 合成时如果服务在本机，插件会把选中的文件名转成**绝对路径**发给服务端；
+  `cosy-server.py` 会原样使用该路径，因此不必把音频复制两份；
+- 服务在另一台机器时，插件只传文件名，此时仍以服务端自己的 `prompts` 目录为准。
+
 ---
 
 <a name="长文本分块播放"></a>
@@ -117,6 +142,7 @@ CosyVoice 是本地运行的零样本语音克隆：给它一段提示音频（�
 | 设置项 | 作用 | 建议 |
 |---|---|---|
 | 服务地址 | 本地 CosyVoice 服务的地址 | 一般保持默认 |
+| 提示音频目录 | 插件直接扫描的本机提示音频文件夹 | 用选择器选 `<安装目录>/prompts`；留空则用服务端列表 |
 | 提示音频 | 决定朗读是谁的声音 | 用「刷新音色」同步列表后选择 |
 | 提示音频文字稿 | 提示音频的内容全文 | 必须按顺序写全；多语全写 |
 | 语速 | 合成语速 | `1.0` = 正常；`0.5` 慢速 ~ `2.0` 快速 |
@@ -165,9 +191,9 @@ CosyVoice 全程本地合成，音频与文本不上传。只使用你有权使�
   `POST /upload`（上传提示音频）、`POST /tts`（合成，body 含 `text` / `prompt` / `prompt_text` / `speed` / `seed`，
   返回 `{ audio_base64 }`）。
 - **经插件 Host 中转的调用**（前端不直连本地服务）：
-  提示音频列表 `GET /dsh-tts-api/cosy-voices?baseUrl=<服务地址>`；
+  提示音频列表 `GET /dsh-tts-api/cosy-voices?baseUrl=<服务地址>&dir=<可选：本机提示音频目录>`；
   上传提示音频 `POST /dsh-tts-api/cosy-upload`；
-  服务地址持久化 `GET /dsh-tts-api/cosy-config` / `POST /dsh-tts-api/cosy-config-save`；
+  服务地址持久化 `GET /dsh-tts-api/cosy-config` / `POST /dsh-tts-api/cosy-config-save`（字段 `cosy.baseUrl` / `cosy.voicesDir`）；
   合成 `POST /dsh-tts-api/speak` body `{ text, provider: "cosyvoice", custom: { baseUrl, voice, promptText, speed, seed } }`
   → 短文本 `{ url }`，长文本 `{ jobId, chunks, total }`（后续块 `GET /dsh-tts-api/rvc-next?job=<jobId>`）。
 - **文字稿必填校验**：`promptText` 必须与所选提示音频的内容按序全文一致；多语提示音频缺任一段都会复读，
@@ -189,7 +215,7 @@ and any new text is read in that voice — all on your own machine, no Edge TTS 
    and its transcript.
 2. **Start the service** (keep the window open): run the bundle's launcher, wait until it reports ready
    on its loopback port.
-3. **Configure**: 设置 → 插件 → 语音 → provider = local CosyVoice; keep the service URL default;
+3. **Configure**: 语音设置页（设置 → 语音） → provider = local CosyVoice; keep the service URL default;
    click Refresh voices, pick a prompt clip, fill its **full transcript in order**, and preview one sentence.
 
 ### The transcript rule (most important)

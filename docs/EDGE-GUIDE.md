@@ -51,7 +51,7 @@ Edge TTS 是微软提供的免费在线合成端点：把要朗读的文本发�
 <a name="设置面板配置"></a>
 ## 设置面板配置
 
-打开 **设置 → 插件 → 语音**：
+打开 **语音设置页（设置 → 语音）**：
 
 - **TTS提供者** 选「**Edge TTS**」（默认即此项）；
 - **朗读音色**：从下拉列表选一个喜欢的声音（中文 / 繁体 / 英文 / 日韩法等分组）；
@@ -146,7 +146,7 @@ just network access to the online endpoint.
 
 ### Quick start
 1. **Prepare**: network access to the online endpoint. Nothing to install.
-2. **Configure**: 设置 → 插件 → 语音 → provider = Edge TTS; pick a voice; rate/pitch/volume `0` = default.
+2. **Configure**: 语音设置页（设置 → 语音） → provider = Edge TTS; pick a voice; rate/pitch/volume `0` = default.
 3. **Read**: the speaker button under a message reads it; the composer toggle auto-reads new replies;
    selecting text shows a "read selection" chip.
 

@@ -25,7 +25,7 @@
 <p align="center">
   <a href="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/assets/social-preview.png">
     <img src="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/assets/social-preview.png"
-         alt="dsh-plugin-tts —— DSH 里的语音设置面板（设置 → 插件 → 语音）" width="100%" />
+         alt="dsh-plugin-tts —— DSH 里的语音设置面板（设置 → 语音）" width="100%" />
   </a>
 </p>
 
@@ -56,7 +56,7 @@ dsh plugin --profile web add "file:/path/to/dsh-plugin-tts"
 
 ## 六种音色后端，一个设置面板
 
-在 设置 → 插件 → 语音 里切换。只有第一行不需要装任何东西。
+在 **设置 → 语音**（新版 dsh；老版本：设置 → 插件 → 语音）里切换。只有第一行不需要装任何东西。
 
 | 后端 | 合成在哪 | 前置条件 | 音色来源 |
 |---|---|---|---|
@@ -106,6 +106,10 @@ RVC 面板填这些：服务地址（默认 `http://127.0.0.1:4892`）、原声�
   （仓库地址填 `https://raw.githubusercontent.com/1624318455/rvc-for-tts/main`）。
 - **试听**任意音色：输入文本点播放，播放中显示旋转 loading，失败红字内联提示。
 - **声音调节**：语速 / 音调 / 音量（0 = 提供者默认），Edge 与 Cloud 共用。
+- **模型扫描**：忘了本地引擎装在哪，就加一个目录扫一下。身份来自内容
+  （RVC 的 pickle 键、`tts_infer.yaml`、`indextts/` + checkpoints、
+  CosyVoice 模型文件、service-account JSON），不看文件名与目录名——改过名的
+  `.pth` 照样认得出，别家的 `.pth` 也不会被误认。每条结果带证据链，可存进候选库。
 
 **设置、语言与安全**
 
