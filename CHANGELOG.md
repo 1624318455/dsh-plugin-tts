@@ -10,7 +10,7 @@
 - **本地引擎的合成音频全部改落 `cache/synth/`**：0.8.0 只挪了 RVC 与 GPT-SoVITS 两条链路，Edge / Piper / Index-TTS2 / CosyVoice / Google Cloud 仍写在系统临时目录且永不清理。一台开发机上实测堆了 63 个孤儿 wav（含 28 个 RVC、35 个 Index-TTS2、2 个 GPT-SoVITS，全是测试用的 1 秒静音）。现在所有提供者统一写 `~/.dsh/dsh-plugin-tts/cache/synth/`，2 小时过期、上限 200 个，写入时顺带清理；Edge 的工作进程改为从父进程拿输出目录（`DSH_TTS_OUT_DIR`），不再自己拼临时路径。
 - **补测试防止回退**：`tests/gsv-library.mjs` 新增源码级断言——除工作进程的兜底分支外，Host 侧不许再出现 `os.tmpdir()` 的合成写入，且所有提供者都必须落在 `synthDir()` 下。
 
-## 未发布
+## v0.9.0 — 2026-11-26
 
 ### 新功能
 - **新版 dsh 的设置入口**：`dsh 0.2.2-rc.x` 的设置弹窗里已经没有「插件」标签页，只挂标签页会让语音面板无处可寻。现在检测不到 `settings.plugins.tab` 时，自动把语音设置注册为设置一级导航「**语音**」，排在「Agent 预设」下面（order 25，插件市场 order 40 之前）；声明了该标签页的老版本仍走「设置 → 插件 → 语音」，两种形态只出现一处，不会重复。
