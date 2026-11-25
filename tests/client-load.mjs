@@ -1199,6 +1199,23 @@ if (!failed) {
     mediaOk, `media=${mediaOk}`);
 }
 
+// ---- scanned installs can start the engine; synth cache is visible ---------
+{
+  const startOk = clientSrc.includes('"/dsh-tts-api/service-suggest"')
+    && /const suggestStartService = async cand =>/.test(clientSrc)
+    && /svc\.confirmStart/.test(clientSrc)
+    && /SERVICE_LOCAL\[c\.provider\]/.test(clientSrc)
+    && /service-save/.test(clientSrc) && /service-start/.test(clientSrc);
+  const cacheOk = clientSrc.includes('"/dsh-tts-api/cache-info"')
+    && clientSrc.includes('"/dsh-tts-api/cache-clear"')
+    && /t\("settings\.cacheLine", \{ files: cacheInfo\.files, size: fmtBytes\(cacheInfo\.bytes\) \}\)/.test(clientSrc)
+    && /t\("settings\.cacheClear"\)/.test(clientSrc);
+  const i18nOk = ["svc.startService", "svc.confirmStart", "settings.cacheLine", "settings.cacheClear"]
+    .every(k => clientSrc.includes('"' + k + '"'));
+  check('scan results can suggest+start a service; synth cache can be inspected and cleared',
+    startOk && cacheOk && i18nOk, `start=${startOk} cache=${cacheOk} i18n=${i18nOk}`);
+}
+
 const failedCount = results.filter(r => !r.ok).length;
 console.log(`\n${results.length - failedCount}/${results.length} client-load checks passed`);
 process.exit(failedCount === 0 ? 0 : 1);

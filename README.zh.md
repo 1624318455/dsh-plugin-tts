@@ -282,7 +282,8 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@memef1f1y\dsh-p
 
 ## 已知限制
 
-- 音频缓存仅进程内（文件在 OS 临时目录，由系统清理），完全重启后每段文本第一次朗读会重新合成。
+- 音频复用缓存仅进程内；合成文件本身落在插件数据目录（默认 `~/.dsh/dsh-plugin-tts/cache/synth/`，可用 `DSH_TTS_HOME` 改位置，
+  2 小时 / 200 个自动淘汰，设置页可查看占用并一键清理），所以完全重启后每段文本第一次朗读仍会重新合成。
   设置本身跨重启保留（见上文）。
 - 中英文**布局**适配（英文文本更长，可能换行或溢出）需在装好插件的真实 dsh 界面里人工确认。
   本插件没有独立 HTML，UI 由 dsh web 宿主注入 slot 渲染，

@@ -398,6 +398,48 @@ function readBody(req) {
   check('service-start reports a failed command with its log',
     status(failedStart) === 400 && !failedBody.ok && Array.isArray(failedBody.log) && failedBody.log.length > 0,
     failedStart.body.toString().slice(0, 300));
+
+  // --- scanned install -> suggested start command --------------------------
+  const suggest = byPath('/dsh-tts-api/service-suggest');
+  const pyDir = path.join(root, 'scanned-gsv');
+  mkdirSync(path.join(pyDir, 'runtime'), { recursive: true });
+  writeFileSync(path.join(pyDir, 'api_v2.py'), 'print(1)');
+  writeFileSync(path.join(pyDir, 'runtime', process.platform === 'win32' ? 'python.exe' : 'python'), 'x');
+  const pySug = await call(suggest, mockReq('/dsh-tts-api/service-suggest', JSON.stringify({ dir: pyDir, provider: 'gpt-sovits' })));
+  const pyBody = json(pySug);
+  check('service-suggest builds a python command for a scanned install',
+    status(pySug) === 200 && pyBody.ok && pyBody.source === 'python' &&
+    pyBody.command.indexOf('api_v2.py') >= 0 && pyBody.command.indexOf('-p 9880') >= 0 &&
+    pyBody.cwd === pyDir && pyBody.port === 9880,
+    pySug.body.toString().slice(0, 300));
+
+  const batDir = path.join(root, 'scanned-cosy');
+  mkdirSync(batDir, { recursive: true });
+  const batName = process.platform === 'win32' ? '启动cosy服务.bat' : 'start-cosy.sh';
+  writeFileSync(path.join(batDir, batName), 'echo hi');
+  const batSug = json(await call(suggest, mockReq('/dsh-tts-api/service-suggest', JSON.stringify({ dir: batDir, provider: 'cosyvoice' }))));
+  check('service-suggest prefers a shipped launcher script',
+    batSug.ok && batSug.source === 'launcher' && batSug.command.indexOf(batName) >= 0,
+    JSON.stringify(batSug));
+
+  const emptyDir = path.join(root, 'scanned-empty');
+  mkdirSync(emptyDir, { recursive: true });
+  const noSug = await call(suggest, mockReq('/dsh-tts-api/service-suggest', JSON.stringify({ dir: emptyDir, provider: 'rvc' })));
+  check('service-suggest reports an empty install with a 400', status(noSug) === 400, noSug.body.toString().slice(0, 200));
+
+  // --- synth cache info + clear -------------------------------------------
+  const cacheInfo = byPath('/dsh-tts-api/cache-info');
+  const cacheClear = byPath('/dsh-tts-api/cache-clear');
+  const cacheDir = path.join(process.env.DSH_TTS_HOME, 'cache', 'synth');
+  mkdirSync(cacheDir, { recursive: true });
+  writeFileSync(path.join(cacheDir, 'test-1.wav'), Buffer.alloc(2048));
+  writeFileSync(path.join(cacheDir, 'test-2.mp3'), Buffer.alloc(1024));
+  const info = json(await call(cacheInfo, mockReq('/dsh-tts-api/cache-info')));
+  check('cache-info reports synth files and bytes',
+    info.ok && info.files >= 2 && info.bytes >= 3072 && info.dir === cacheDir, JSON.stringify(info));
+  const cleared = json(await call(cacheClear, mockReq('/dsh-tts-api/cache-clear')));
+  check('cache-clear removes synthesized audio and reports the result',
+    cleared.ok && cleared.cleared.files >= 2 && cleared.after.files === 0, JSON.stringify(cleared));
 }
 
 

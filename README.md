@@ -352,9 +352,10 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@memef1f1y\dsh-p
 
 ## Known limits
 
-- Audio cache is in-session only (files live in the OS temp dir and are cleaned
-  by the OS), so a full restart re-synthesizes the first read of each text.
-  Settings themselves persist across restarts (see above).
+- Audio reuse is in-session only; the synthesized files themselves live under the
+  plugin data folder (default `<DSH_TTS_HOME>/cache/synth/`, 2 h / 200-file auto-prune,
+  clearable from settings), so a full restart re-synthesizes the first read of each
+  text. Settings themselves persist across restarts (see above).
 - zh/en **layout** fitting (English runs longer and may wrap or overflow) has to
   be eyeballed in a real dsh UI with the plugin loaded. The plugin ships no
   standalone HTML — its UI is slot-injected by the dsh web host — so
