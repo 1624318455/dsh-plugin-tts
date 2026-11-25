@@ -1216,6 +1216,20 @@ if (!failed) {
     startOk && cacheOk && i18nOk, `start=${startOk} cache=${cacheOk} i18n=${i18nOk}`);
 }
 
+// ---- GSV apply UX: explain the wait, report when live, fresh preview ------
+{
+  const hintOk = ["gsv.models.whyApply", "gsv.models.applyWait", "gsv.models.waitApply", "gsv.models.applied"]
+    .every(k => clientSrc.includes('"' + k + '"'));
+  const previewOk = clientSrc.includes("fresh: true")
+    && clientSrc.includes("payload.fresh = true")
+    && clientSrc.includes('"gsv.models.waitApply"');
+  const statusOk = clientSrc.includes("gsvApplySec")
+    && clientSrc.includes("applied: {")
+    && clientSrc.includes("gsv.models.applied");
+  check('GSV weight apply explains the VRAM wait, shows elapsed/applied state, and previews fresh',
+    hintOk && previewOk && statusOk, `hint=${hintOk} preview=${previewOk} status=${statusOk}`);
+}
+
 const failedCount = results.filter(r => !r.ok).length;
 console.log(`\n${results.length - failedCount}/${results.length} client-load checks passed`);
 process.exit(failedCount === 0 ? 0 : 1);

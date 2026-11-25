@@ -413,6 +413,16 @@ function readBody(req) {
     pyBody.cwd === pyDir && pyBody.port === 9880,
     pySug.body.toString().slice(0, 300));
 
+  const envDir = path.join(root, 'scanned-env');
+  mkdirSync(path.join(envDir, 'env'), { recursive: true });
+  writeFileSync(path.join(envDir, 'api.py'), 'print(1)');
+  writeFileSync(path.join(envDir, 'env', process.platform === 'win32' ? 'python.exe' : 'python'), 'x');
+  const envSug = json(await call(suggest, mockReq('/dsh-tts-api/service-suggest', JSON.stringify({ dir: envDir, provider: 'index-tts2' }))));
+  check('service-suggest finds a bundled env/ python and the api.py entry',
+    envSug.ok && envSug.source === 'python' &&
+    envSug.command.indexOf(path.join('env', process.platform === 'win32' ? 'python.exe' : 'python')) >= 0 &&
+    envSug.command.indexOf('api.py') >= 0, JSON.stringify(envSug));
+
   const batDir = path.join(root, 'scanned-cosy');
   mkdirSync(batDir, { recursive: true });
   const batName = process.platform === 'win32' ? '启动cosy服务.bat' : 'start-cosy.sh';
@@ -515,6 +525,12 @@ function readBody(req) {
       res.end('{"message":"success"}');
       return;
     }
+    if (req.url === '/tts') {
+      await readBody(req);
+      res.writeHead(200, { 'Content-Type': 'audio/wav' });
+      res.end(wav);
+      return;
+    }
     res.writeHead(404).end('{}');
   });
   const applyRoute = byPath('/dsh-tts-api/gsv-set-weights');
@@ -530,6 +546,34 @@ function readBody(req) {
   check('gsv-config persists the applied weight paths',
     cfg.gsv.gptWeights === path.join(modelRoot, 'GPT_weights_v4', 'speaker-e15.ckpt') &&
     cfg.gsv.sovitsWeights === path.join(modelRoot, 'SoVITS_weights_v4', 'speaker_e2.pth'), JSON.stringify(cfg.gsv));
+
+  // A preview/read after applying weights must not reuse audio synthesized by
+  // the previous pair. The apply route drops the short-text URL cache; a
+  // `fresh` preview also bypasses it so any just-edited field is audible.
+  const gsvRef = path.join(root, 'gsv-ref.wav');
+  writeFileSync(gsvRef, 'x');
+  const speakGsv = (fresh) => call(byPath('/dsh-tts-api/speak'), mockReq('/dsh-tts-api/speak', JSON.stringify({
+    text: '权重缓存回归测试。',
+    provider: 'gpt-sovits',
+    fresh: !!fresh,
+    custom: { baseUrl: 'http://127.0.0.1:' + port, refAudio: gsvRef, promptText: '你好', promptLang: 'zh' }
+  })));
+  const first = json(await speakGsv(false));
+  check('gsv speak succeeds against the fake service', !!first.url, JSON.stringify(first));
+  const again = json(await speakGsv(false));
+  check('gsv speak reuses the cached URL for identical settings',
+    again.cached === true && again.url === first.url, JSON.stringify({ first: first.url, again }));
+  await call(applyRoute, mockReq('/dsh-tts-api/gsv-set-weights', JSON.stringify({
+    baseUrl: 'http://127.0.0.1:' + port,
+    gpt: path.join(modelRoot, 'GPT_weights_v4', 'speaker-e15.ckpt'),
+    sovits: path.join(modelRoot, 'SoVITS_weights_v4', 'speaker_e2.pth')
+  })));
+  const afterApply = json(await speakGsv(false));
+  check('applying weights invalidates cached GSV audio',
+    !!afterApply.url && afterApply.url !== first.url && !afterApply.cached, JSON.stringify(afterApply));
+  const freshPreview = json(await speakGsv(true));
+  check('fresh previews bypass the short-text cache',
+    !!freshPreview.url && freshPreview.url !== afterApply.url && !freshPreview.cached, JSON.stringify(freshPreview));
 
   // Voice health: the Host stamps `exists` on every library read so the UI
   // can show a "file missing" badge without probing each path itself.
