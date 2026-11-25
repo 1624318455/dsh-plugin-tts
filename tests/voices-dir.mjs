@@ -215,6 +215,16 @@ writeFileSync(path.join(cosyDir, 'p1.wav'), wav);
   check('fs-open rejects a relative dir', status(relOpen) === 400, relOpen.body.toString().slice(0, 160));
   const missOpen = await call(fsOpen, mockReq('/dsh-tts-api/fs-open', JSON.stringify({ dir: path.join(base, 'nope') })));
   check('fs-open rejects a missing dir', status(missOpen) === 400, missOpen.body.toString().slice(0, 160));
+
+  // Data-folder route: only the read side is exercised here (the open action
+  // would spawn a file manager on the test machine).
+  const dataDirRoute = byPath('/dsh-tts-api/data-dir');
+  const dataDirRes = await call(dataDirRoute, mockReq('/dsh-tts-api/data-dir'));
+  const dataDirBody = json(dataDirRes);
+  check('data-dir returns the plugin home folder',
+    status(dataDirRes) === 200 && dataDirBody.dir === process.env.DSH_TTS_HOME && existsSync(dataDirBody.dir),
+    dataDirRes.body.toString().slice(0, 200));
+  check('open-data-dir route registered', !!byPath('/dsh-tts-api/open-data-dir'));
 }
 
 // --- config + list (Cosy) -------------------------------------------------

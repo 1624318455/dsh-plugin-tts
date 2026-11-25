@@ -1164,6 +1164,41 @@ if (!failed) {
     `readonly=${ro} spans=${spansOk} ui=${uiOk} visible=${visibleOk}`);
 }
 
+// ---- small UX items: reset confirm, data folder, diag retry, preview memory
+{
+  const resetOk = /const \[resetArmed, setResetArmed\] = react\.useState\(false\)/.test(clientSrc)
+    && /const onResetClick = \(\) =>/.test(clientSrc)
+    && /settings\.resetConfirm/.test(clientSrc)
+    && /settings\.resetWarn/.test(clientSrc)
+    && /resetArmed \? t\("settings\.resetConfirm"\) : t\("settings\.reset"\)/.test(clientSrc);
+  const dataOk = clientSrc.includes('"/dsh-tts-api/data-dir"')
+    && clientSrc.includes('"/dsh-tts-api/open-data-dir"')
+    && clientSrc.includes('t("settings.openDataDir")')
+    && /settings\.dataDirFail/.test(clientSrc);
+  const retryOk = /const retryDiagCheck = async id =>/.test(clientSrc)
+    && /className: "dsh-tts-diag-retry"/.test(clientSrc)
+    && /t\("diag\.retry"\)/.test(clientSrc)
+    && /checks: prev && prev\.checks \? prev\.checks : null/.test(clientSrc);
+  const previewOk = /const PREVIEW_TEXT_KEY = "dsh-tts-preview-text";/.test(clientSrc)
+    && /localStorage\.getItem\(PREVIEW_TEXT_KEY\)/.test(clientSrc)
+    && /localStorage\.setItem\(PREVIEW_TEXT_KEY, String\(v\)\)/.test(clientSrc);
+  check('small UX: two-step reset, data folder, per-check retry, remembered preview text',
+    resetOk && dataOk && retryOk && previewOk,
+    `reset=${resetOk} data=${dataOk} retry=${retryOk} preview=${previewOk}`);
+}
+
+// ---- narrow screens ---------------------------------------------------------
+{
+  const mediaOk = /@media \(max-width:760px\)\{/.test(clientSrc)
+    && /\.dsh-tts-rvc-row\{flex-direction:column;align-items:stretch/.test(clientSrc)
+    && /\.dsh-tts-disc-picker-card\{width:100%;max-width:none;height:100%;max-height:100%/.test(clientSrc)
+    && /\.dsh-tts-recent,\.dsh-tts-weights-actions,\.dsh-tts-weights-search,\.dsh-tts-weights-current,\.dsh-tts-svc-actions/.test(clientSrc)
+    && /@media \(max-width:480px\)\{/.test(clientSrc)
+    && /\.dsh-tts-reading-overlay\{top:auto;bottom:84px/.test(clientSrc);
+  check('narrow screens stack labels, go full-screen in the picker, and move the reading bar',
+    mediaOk, `media=${mediaOk}`);
+}
+
 const failedCount = results.filter(r => !r.ok).length;
 console.log(`\n${results.length - failedCount}/${results.length} client-load checks passed`);
 process.exit(failedCount === 0 ? 0 : 1);
