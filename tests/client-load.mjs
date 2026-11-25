@@ -1144,13 +1144,24 @@ if (!failed) {
   const spansOk = /const ttsChunkText = \(idx, total\) =>/.test(clientSrc)
     && /const sp = shared\.chunkSpans;/.test(clientSrc)
     && /const ttsChunkItems = \(\) =>/.test(clientSrc);
+  // Visible feedback: a dedicated class (distinct from the subtle follow
+  // highlight) plus a document-wide fallback and shorter needles for rendered
+  // markdown that differs from the spoken plain text.
+  const visibleOk = /\.dsh-tts-located\{background:rgba\(77,107,254,\.16\) !important/.test(clientSrc)
+    && /add\("dsh-tts-located"\)/.test(clientSrc)
+    && /querySelectorAll\("p,li,blockquote,pre,td,div,section"\)/.test(clientSrc)
+    && /for \(const n of \[20, 12, 8\]\)/.test(clientSrc)
+    && /let bestLen = Infinity;/.test(clientSrc)
+    && /dsh-tts-\(located\|sentence-active\|sentence-prev\)/.test(clientSrc)
+    && /if \(el\.querySelector && el\.querySelector\("\.dsh-tts-reading-overlay, \.dsh-tts-toast"\)\) return false;/.test(clientSrc);
   const uiOk = clientSrc.includes('className: "dsh-tts-reading-chunks"')
     && clientSrc.includes('className: "dsh-tts-chunk-toggle"')
     && clientSrc.includes('t("overlay.chunks")')
     && clientSrc.includes('t("overlay.chunkNote")')
     && /const \[chunkListOpen, setChunkListOpen\] = react\.useState\(false\)/.test(clientSrc);
   check('paragraph directory locates text from exact spans without touching playback',
-    ro && spansOk && uiOk, `readonly=${ro} spans=${spansOk} ui=${uiOk}`);
+    ro && spansOk && uiOk && visibleOk,
+    `readonly=${ro} spans=${spansOk} ui=${uiOk} visible=${visibleOk}`);
 }
 
 const failedCount = results.filter(r => !r.ok).length;
