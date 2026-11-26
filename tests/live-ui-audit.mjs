@@ -124,14 +124,14 @@ const sheet = await page.evaluate(() => {
 console.log('--- stylesheet ---');
 console.log(JSON.stringify(sheet, null, 2));
 
-// ---- 2. open the panel: Settings > 内置插件 > 语音 ----
+// ---- 2. open the panel: Settings > 内置插件 > dsh-plugin-tts ----
 // The panel is registered on the settings.plugins.tab slot, so the shell puts
 // it under its own "Voice" tab rather than the plugin inventory list.
 await page.getByText('设置', { exact: true }).first().click();
 await page.waitForTimeout(350);
 await page.getByText('内置插件', { exact: true }).last().click();
 await page.waitForTimeout(550);
-await page.getByText('语音', { exact: true }).first().click();
+await page.getByText('dsh-plugin-tts', { exact: true }).first().click();
 await page.waitForFunction(() => document.querySelectorAll('.dsh-tts-module').length > 0, { timeout: 20000 });
 await page.waitForTimeout(600);
 

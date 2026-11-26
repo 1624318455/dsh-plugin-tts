@@ -239,7 +239,7 @@ function componentFor(slots, slot) {
     check('F new shell: section order 25 (after Agent presets, before market)',
       !!spec && spec.order === 25, spec && 'order=' + spec.order);
     check('F new shell: section label is localized', !!spec && typeof spec.label === 'function'
-      && spec.label() === '语音', spec && 'label=' + (typeof spec.label === 'function' ? spec.label() : spec.label));
+      && spec.label() === 'dsh-plugin-tts', spec && 'label=' + (typeof spec.label === 'function' ? spec.label() : spec.label));
     let rendered = 'threw';
     try { rendered = comp({ close() {} }); } catch (e) { rendered = 'threw:' + e.message; }
     check('F new shell: section renders the voice panel',
