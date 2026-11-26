@@ -7,6 +7,7 @@
 //
 //   node tests/voices-dir.mjs
 import { createServer } from 'node:http';
+import { connect as netConnect } from 'node:net';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -255,6 +256,15 @@ function readBody(req) {
     req.on('end', () => resolve(b));
   });
 }
+function portOpen(port) {
+  return new Promise((resolve) => {
+    const done = ok => { try { socket.destroy(); } catch (e) {} resolve(ok); };
+    const socket = netConnect({ host: '127.0.0.1', port });
+    socket.setTimeout(700, () => done(false));
+    socket.once('connect', () => done(true));
+    socket.once('error', () => done(false));
+  });
+}
 
 {
   let seen = null;
@@ -385,6 +395,25 @@ function readBody(req) {
   const afterStop = json(await call(list, mockReq('/dsh-tts-api/services')));
   check('services list shows the process as stopped',
     afterStop.services['gpt-sovits'].running === false, JSON.stringify(afterStop.services['gpt-sovits']));
+
+  // Stop must also release the configured port, not just the launcher shell.
+  const freePort = await new Promise((resolve) => {
+    const s = createServer();
+    s.listen(0, '127.0.0.1', () => {
+      const p = s.address().port;
+      s.close(() => resolve(p));
+    });
+  });
+  const listenCmd = `"${process.execPath}" -e "require('node:net').createServer().listen(${freePort},'127.0.0.1')"`;
+  await call(save, mockReq('/dsh-tts-api/service-save', JSON.stringify({
+    provider: 'index-tts2', command: listenCmd, cwd: root, port: freePort
+  })));
+  await call(start, mockReq('/dsh-tts-api/service-start', JSON.stringify({ provider: 'index-tts2' })));
+  await new Promise((r) => setTimeout(r, 1200));
+  check('service-start opens the configured port', await portOpen(freePort), `port=${freePort}`);
+  await call(stop, mockReq('/dsh-tts-api/service-stop', JSON.stringify({ provider: 'index-tts2' })));
+  await new Promise((r) => setTimeout(r, 1200));
+  check('service-stop closes the configured port', !(await portOpen(freePort)), `port=${freePort}`);
 
   const unknownStart = await call(start, mockReq('/dsh-tts-api/service-start', JSON.stringify({ provider: 'nope' })));
   check('service-start rejects an unknown provider', status(unknownStart) === 400);
