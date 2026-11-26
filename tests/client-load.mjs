@@ -1192,7 +1192,7 @@ if (!failed) {
   const mediaOk = /@media \(max-width:760px\)\{/.test(clientSrc)
     && /\.dsh-tts-rvc-row\{flex-direction:column;align-items:stretch/.test(clientSrc)
     && /\.dsh-tts-disc-picker-card\{width:100%;max-width:none;height:100%;max-height:100%/.test(clientSrc)
-    && /\.dsh-tts-recent,\.dsh-tts-weights-actions,\.dsh-tts-weights-search,\.dsh-tts-weights-current,\.dsh-tts-svc-actions/.test(clientSrc)
+    && /\.dsh-tts-recent,\.dsh-tts-weights-actions,\.dsh-tts-weights-search,\.dsh-tts-weights-current,\.dsh-tts-note,\.dsh-tts-field-note,\.dsh-tts-svc-actions/.test(clientSrc)
     && /@media \(max-width:480px\)\{/.test(clientSrc)
     && /\.dsh-tts-reading-overlay\{top:auto;bottom:84px/.test(clientSrc);
   check('narrow screens stack labels, go full-screen in the picker, and move the reading bar',
@@ -1228,6 +1228,19 @@ if (!failed) {
     && clientSrc.includes("gsv.models.applied");
   check('GSV weight apply explains the VRAM wait, shows elapsed/applied state, and previews fresh',
     hintOk && previewOk && statusOk, `hint=${hintOk} preview=${previewOk} status=${statusOk}`);
+}
+
+// ---- provider dots update on actions instead of waiting for a remount ------
+{
+  const syncOk = clientSrc.includes("const markProviderStatus = (key, state) =>")
+    && /onServiceStarted: provider => markProviderStatus/.test(clientSrc)
+    && /markProviderStatus\("gsv", "ok"\)/.test(clientSrc)
+    && /markProviderStatus\(providerStatusKey\(providerId\), action === "stop" \? "fail" : "ok"\)/.test(clientSrc);
+  const noteOk = clientSrc.includes("dsh-tts-field-note")
+    && /\.dsh-tts-field-note\{margin-left:120px\}/.test(clientSrc)
+    && /\.dsh-tts-note,\.dsh-tts-field-note/.test(clientSrc);
+  check('service start / GSV probe update the provider dot immediately; field notes align',
+    syncOk && noteOk, `sync=${syncOk} note=${noteOk}`);
 }
 
 // ---- directory picker copy path, opaque sticky nav, logo icon -------------
