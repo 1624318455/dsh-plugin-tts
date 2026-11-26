@@ -25,7 +25,7 @@
 <p align="center">
   <a href="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/assets/social-preview.png">
     <img src="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/assets/social-preview.png"
-         alt="dsh-plugin-tts — the voice settings panel inside DSH (Settings → Voice)" width="100%" />
+         alt="dsh-plugin-tts — the voice settings panel inside DSH (Settings → dsh-plugin-tts)" width="100%" />
   </a>
 </p>
 
@@ -60,7 +60,7 @@ dsh-market UI works too — search for the package name.
 
 ## Six backends, one settings panel
 
-Switch provider in **Settings → Voice** (older dsh builds: Settings → Plugins → Voice). Only the first row needs nothing installed.
+Switch provider in **Settings → dsh-plugin-tts** (older dsh builds: Settings → Plugins → dsh-plugin-tts). Only the first row needs nothing installed.
 
 | Backend | Synthesis runs | Prerequisite | Voice comes from |
 |---|---|---|---|
@@ -247,7 +247,7 @@ Host file).
 - **No sound** — check system volume, the browser autoplay policy (interact with
   the page once), and the `[tts]` errors in the `dsh web` console.
 
-**Everything else** — run 设置 → 语音 → 诊断 (one-click diagnostics). If a
+**Everything else** — run 设置 → dsh-plugin-tts → 诊断 (one-click diagnostics). If a
 problem persists, export the diagnostic JSON and attach it to an issue; it
 contains the build id, provider settings, per-check results and the recent
 error log, which is usually enough to locate the cause without a round trip.
@@ -381,7 +381,7 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@memef1f1y\dsh-p
 - [Discussions](https://github.com/1624318455/dsh-plugin-tts/discussions) —
   setup help, voice packs, show and tell.
 - [Issues](https://github.com/1624318455/dsh-plugin-tts/issues) — reproducible
-  bugs. Attach the diagnostic JSON (设置 → 语音 → 诊断) and the `dsh web`
+  bugs. Attach the diagnostic JSON (设置 → dsh-plugin-tts → 诊断) and the `dsh web`
   console lines.
 
 ## License

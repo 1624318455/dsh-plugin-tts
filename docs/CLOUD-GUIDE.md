@@ -73,7 +73,7 @@ Cloud TTS（Google Cloud Text-to-Speech）是谷歌的在线合成服务：把�
 <a name="设置面板配置"></a>
 ## 设置面板配置
 
-打开 **语音设置页（设置 → 语音）**：
+打开 **语音设置页（设置 → dsh-plugin-tts）**：
 
 - **TTS提供者** 选「**Cloud TTS**」；
 - **Cloud 音色**：从中文组下拉选择（默认推荐波形档），或直接输入完整的 voice id
@@ -82,7 +82,7 @@ Cloud TTS（Google Cloud Text-to-Speech）是谷歌的在线合成服务：把�
   不回显、不进浏览器存储；
 - **Project ID（可选）**：当前版本仅做记录，不填也能用；
 - 点「**测试连接**」：成功会合成一句测试语音（其字符会计入本月用量）；
-- 点面板底部「试听测试」输入一句话试听，确认音色与语速。
+- 在顶部 sticky 栏的试听输入框里输入一句话试听，确认音色与语速。
 
 ---
 
@@ -192,7 +192,7 @@ just network access to Google's endpoint.
 ### Quick start
 1. **Prepare**: a Google Cloud project with the Text-to-Speech API enabled, plus an API key.
    (Console → APIs & Services → enable the API → Credentials → Create API key.)
-2. **Configure**: 语音设置页（设置 → 语音） → provider = Cloud TTS; pick a voice (or type a full voice id);
+2. **Configure**: 语音设置页（设置 → dsh-plugin-tts） → provider = Cloud TTS; pick a voice (or type a full voice id);
    paste the key → Save (the input clears — the key lives in the local Host file only);
    click Test connection, then preview one sentence.
 3. **Read**: same entries as every provider (message button / auto-read toggle / selection chip).

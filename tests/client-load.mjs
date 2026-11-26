@@ -720,7 +720,7 @@ if (!failed) {
     clientSrc.includes('"dsh-tts-sec-follow"') &&
     clientSrc.includes('"dsh-tts-sec-notify"') &&
     clientSrc.includes('"dsh-tts-sec-prep"') &&
-    clientSrc.includes('"dsh-tts-sec-preview"') &&
+    clientSrc.includes('"dsh-tts-sec-data"') &&
     /scrollIntoView\(\{ behavior: "smooth", block: "start" \}\)/.test(clientSrc);
   const dotOk =
     clientSrc.includes('const StatusDot = props =>') &&
@@ -1075,7 +1075,7 @@ if (!failed) {
     && /store\.setItem\(SETTINGS_KEY, JSON\.stringify\(data\)\);\s*lastSavedAt = Date\.now\(\);/.test(clientSrc);
   const uiOk = /const savedAtText = lastSavedAt/.test(clientSrc)
     && /className: "dsh-tts-saved"/.test(clientSrc)
-    && /previewBar,\s*saveIndicator,/.test(clientSrc);
+    && /previewBar,[\s\S]{0,900}saveIndicator,/.test(clientSrc);
   const scopeOk = /let lastSavedScope = "";/.test(clientSrc)
     && /function saveSettings\(scope\)/.test(clientSrc)
     && /const saveScopeText = \(\) =>/.test(clientSrc)
@@ -1228,6 +1228,24 @@ if (!failed) {
     && clientSrc.includes("gsv.models.applied");
   check('GSV weight apply explains the VRAM wait, shows elapsed/applied state, and previews fresh',
     hintOk && previewOk && statusOk, `hint=${hintOk} preview=${previewOk} status=${statusOk}`);
+}
+
+// ---- directory picker copy path, opaque sticky nav, logo icon -------------
+{
+  const copyOk = clientSrc.includes('"dir.picker.copy"')
+    && clientSrc.includes("const copyVoiceDir = () =>")
+    && /onClick: copyVoiceDir/.test(clientSrc);
+  const stickyOk = /\.dsh-tts-sticky\{[^}]*background:var\(--dsw-alias-bg-layer-1/.test(clientSrc)
+    && !/\.dsh-tts-sticky\{[^}]*backdrop-filter/.test(clientSrc);
+  const previewOk = clientSrc.includes('"dsh-tts-preview-input dsh-tts-preview-bar-input"')
+    && !clientSrc.includes("dsh-tts-sec-preview")
+    && !clientSrc.includes('"preview.title"');
+  const iconOk = clientSrc.includes('settings.section.icon')
+    && clientSrc.includes("data:image/png;base64,")
+    && /id: "tts",\s*order: 25/.test(clientSrc);
+  check('picker copies the current path, sticky nav is opaque, preview moved to the bar, logo icon registered',
+    copyOk && stickyOk && previewOk && iconOk,
+    `copy=${copyOk} sticky=${stickyOk} preview=${previewOk} icon=${iconOk}`);
 }
 
 const failedCount = results.filter(r => !r.ok).length;

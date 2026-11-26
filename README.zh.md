@@ -25,7 +25,7 @@
 <p align="center">
   <a href="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/assets/social-preview.png">
     <img src="https://raw.githubusercontent.com/1624318455/dsh-plugin-tts/main/assets/social-preview.png"
-         alt="dsh-plugin-tts —— DSH 里的语音设置面板（设置 → 语音）" width="100%" />
+         alt="dsh-plugin-tts —— DSH 里的语音设置面板（设置 → dsh-plugin-tts）" width="100%" />
   </a>
 </p>
 
@@ -56,7 +56,7 @@ dsh plugin --profile web add "file:/path/to/dsh-plugin-tts"
 
 ## 六种音色后端，一个设置面板
 
-在 **设置 → 语音**（新版 dsh；老版本：设置 → 插件 → 语音）里切换。只有第一行不需要装任何东西。
+在 **设置 → dsh-plugin-tts**（新版 dsh；老版本：设置 → 插件 → dsh-plugin-tts）里切换。只有第一行不需要装任何东西。
 
 | 后端 | 合成在哪 | 前置条件 | 音色来源 |
 |---|---|---|---|
@@ -197,7 +197,7 @@ Cloud TTS 另有 8 个 cmn-CN 音色（默认 `cmn-CN-Wavenet-A`），也可手�
 - **无声音**——确认系统音量、浏览器自动播放策略（先与页面交互一次）、
   以及 `dsh web` 控制台里 `[tts]` 前缀的错误。
 
-**其他一切**——设置 → 语音 → **诊断**（一键跑完所有后端）。仍然复现就导出诊断 JSON 附在 issue 里：
+**其他一切**——设置 → dsh-plugin-tts → **诊断**（一键跑完所有后端）。仍然复现就导出诊断 JSON 附在 issue 里：
 里面有构建号、provider 设置、逐项检查结果和最近错误日志，通常一轮就能定位，不用来回问。
 
 → [RVC 疑难排查](docs/RVC-GUIDE.md#rvc-疑难排查) · 各后端指南都有自己的排查节。
@@ -309,7 +309,7 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@memef1f1y\dsh-p
 - [Discussions](https://github.com/1624318455/dsh-plugin-tts/discussions) ——
   安装求助、音色包分享、使用心得。
 - [Issues](https://github.com/1624318455/dsh-plugin-tts/issues) —— 可复现的
-  bug。请附上诊断 JSON（设置 → 语音 → 诊断）和 `dsh web` 控制台报错。
+  bug。请附上诊断 JSON（设置 → dsh-plugin-tts → 诊断）和 `dsh web` 控制台报错。
 
 ## License
 

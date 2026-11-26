@@ -51,12 +51,12 @@ Edge TTS 是微软提供的免费在线合成端点：把要朗读的文本发�
 <a name="设置面板配置"></a>
 ## 设置面板配置
 
-打开 **语音设置页（设置 → 语音）**：
+打开 **语音设置页（设置 → dsh-plugin-tts）**：
 
 - **TTS提供者** 选「**Edge TTS**」（默认即此项）；
 - **朗读音色**：从下拉列表选一个喜欢的声音（中文 / 繁体 / 英文 / 日韩法等分组）；
 - **声音调节**：语速 / 音调 / 音量，`0` 表示默认，直接作用于本次合成；
-- **试听测试**：在面板底部输入一句话点 ▶，马上听效果。
+- **试听**：在顶部 sticky 栏的输入框里输入一句话点「试听」，马上听效果。
 
 日常朗读入口与所有提供者共用：
 
@@ -146,7 +146,7 @@ just network access to the online endpoint.
 
 ### Quick start
 1. **Prepare**: network access to the online endpoint. Nothing to install.
-2. **Configure**: 语音设置页（设置 → 语音） → provider = Edge TTS; pick a voice; rate/pitch/volume `0` = default.
+2. **Configure**: 语音设置页（设置 → dsh-plugin-tts） → provider = Edge TTS; pick a voice; rate/pitch/volume `0` = default.
 3. **Read**: the speaker button under a message reads it; the composer toggle auto-reads new replies;
    selecting text shows a "read selection" chip.
 

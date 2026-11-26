@@ -72,14 +72,14 @@ Index-TTS2 是本地运行的文本转语音服务：输入文本 + 一段参考
 <a name="设置面板配置"></a>
 ## 设置面板配置
 
-打开 **语音设置页（设置 → 语音）**：
+打开 **语音设置页（设置 → dsh-plugin-tts）**：
 
 - **TTS提供者** 选「**IndexTTS-2**」；
 - **服务地址**：一般保持默认（本地 Index-TTS2 服务的地址）；
 - **音色目录**（可选）：点选目录选择器后由插件直接扫描这个文件夹，不再依赖服务端的音色列表；
   默认约定为 `<Index-TTS2 安装目录>/api/ckyp`，目录不存在时可在选择器里直接新建；
 - **参考音色**：点「**刷新音色**」拉取参考音频列表，然后选中一段；
-- 点面板底部「试听测试」输入一句话试听，确认是想要的声音。
+- 在顶部 sticky 栏的试听输入框里输入一句话试听，确认是想要的声音。
 
 ---
 
@@ -206,7 +206,7 @@ synthesizes directly into that voice, with no Edge TTS base voice needed — all
 1. **Prepare**: a local Index-TTS2 service bundle and at least one reference clip (clean speech works best).
 2. **Start the service** (keep the window open): run the bundle's API launcher, wait until it reports ready
    on its loopback port.
-3. **Configure**: 语音设置页（设置 → 语音） → provider = local Index-TTS2; keep the service URL default;
+3. **Configure**: 语音设置页（设置 → dsh-plugin-tts） → provider = local Index-TTS2; keep the service URL default;
    click Refresh voices, pick a reference clip, and preview one sentence.
 
 ### Key capabilities

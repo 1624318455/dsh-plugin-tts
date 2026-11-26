@@ -75,7 +75,7 @@ CosyVoice 是本地运行的零样本语音克隆：给它一段提示音频（�
 <a name="设置面板配置"></a>
 ## 设置面板配置
 
-打开 **语音设置页（设置 → 语音）**：
+打开 **语音设置页（设置 → dsh-plugin-tts）**：
 
 - **TTS提供者** 选「**CosyVoice2.0**」；
 - **服务地址**：一般保持默认（本地 CosyVoice 服务的地址）；
@@ -83,7 +83,7 @@ CosyVoice 是本地运行的零样本语音克隆：给它一段提示音频（�
   默认约定为 `<CosyVoice 安装目录>/prompts`，目录不存在时可在选择器里直接新建；
 - **提示音频**：点「**刷新音色**」拉取提示音频列表，然后选中一段；
 - **提示音频文字稿**：填写所选提示音频里说的内容（见下一节）；
-- 点面板底部「试听测试」输入一句话试听，确认是想要的声音。
+- 在顶部 sticky 栏的试听输入框里输入一句话试听，确认是想要的声音。
 
 ---
 
@@ -215,7 +215,7 @@ and any new text is read in that voice — all on your own machine, no Edge TTS 
    and its transcript.
 2. **Start the service** (keep the window open): run the bundle's launcher, wait until it reports ready
    on its loopback port.
-3. **Configure**: 语音设置页（设置 → 语音） → provider = local CosyVoice; keep the service URL default;
+3. **Configure**: 语音设置页（设置 → dsh-plugin-tts） → provider = local CosyVoice; keep the service URL default;
    click Refresh voices, pick a prompt clip, fill its **full transcript in order**, and preview one sentence.
 
 ### The transcript rule (most important)
