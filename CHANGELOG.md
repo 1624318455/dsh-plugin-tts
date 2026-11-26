@@ -4,7 +4,7 @@
      publish workflow 会自动抽取对应版本小节作为 GitHub Release 说明（extract step）。
      格式约定：每个版本一个 `## vX.Y.Z — YYYY-MM-DD` 小节，新版本在上；小节之间空一行。 -->
 
-## 未发布
+## v0.10.0 — 2026-11-26
 
 ### 新功能
 - **扫描结果可直接启动本地引擎**：模型扫描的安装类候选（RVC / Index-TTS2 / CosyVoice / GPT-SoVITS）新增「启动服务」。插件只根据扫描到的目录里**实际存在的**启动脚本或入口生成命令（Windows `.bat` / `.cmd`，macOS/Linux `.sh`；没有脚本时回退 `api_v2.py` / `api.py` / `cosy-server.py` / `rvc-server.py`，优先整合包自带 runtime），先展示完整命令让用户确认，确认后才保存并启动；扫描阶段不执行任何文件。启动后可在对应引擎的「本机服务启动」里停止/重启。
