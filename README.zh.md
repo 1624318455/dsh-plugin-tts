@@ -5,8 +5,8 @@
 <h1 align="center">dsh-plugin-tts</h1>
 
 <p align="center">
-  给 DeepSeek Harness 的回复加朗读——开箱即用微软 Edge TTS，<br />
-  想要自己的音色时再接本机克隆。
+  给 DeepSeek Harness 的每条回复加朗读——<b>7 种 TTS 后端，一个设置面板</b>。<br />
+  先用免费的 Edge 开箱即用，想要谁的音色再在本机克隆。
 </p>
 
 <p align="center">
@@ -32,9 +32,13 @@
 ---
 
 一个 Host + Web UI 双侧插件，给 DSH web 界面里的每条 AI 回复加朗读。默认走
-Edge TTS，**零配置**就能用；想要特定音色时，再接本机链路——RVC 自己训练的模型、
-Index-TTS2 / CosyVoice / GPT-SoVITS 的参考音频克隆。长回复**自适应分块渐进播放**，
-不必等整段合成完才出声。
+Edge TTS，**零配置**就能用；想要特定音色时，可以一路走到纯本地：RVC 自训模型、
+Index-TTS2 / Breeze TTS 2 / CosyVoice / GPT-SoVITS 的参考音频克隆、只用文字描述
+设计音色，或者接 Google Cloud 付费音色——全部收在同一个设置面板里。长回复
+**自适应分块渐进播放**，不必等整段合成完才出声。
+
+不管选哪个后端，体验是同一套：朗读按钮、自动朗读、选区朗读、分块流式播放、下载、
+诊断、模型扫描都不变；换引擎只改设置里的「提供者」，使用习惯不用重新学。
 
 ## 安装
 
@@ -54,7 +58,7 @@ dsh plugin --profile web add "file:/path/to/dsh-plugin-tts"
 > 换来源前先卸载已有的：三种方式注册的是同一个 loader 条目 id（`tts`），
 > 安装器遇到重复 id 会直接回滚，不会覆盖。
 
-## 六种音色后端，一个设置面板
+## 七种音色后端，一个设置面板
 
 在 **设置 → dsh-plugin-tts**（新版 dsh；老版本：设置 → 插件 → dsh-plugin-tts）里切换。只有第一行不需要装任何东西。
 
@@ -64,19 +68,36 @@ dsh plugin --profile web add "file:/path/to/dsh-plugin-tts"
 | **Google Cloud TTS** | 谷歌，在线，按量付费 | 自备 API Key | 8 个 cmn-CN 音色，也可手输任意 voice id |
 | **RVC** | 本机 | RVC 便携运行时 + `rvc-server.py`（4892） | 你自己训练的模型（`.pth`） |
 | **Index-TTS2** | 本机 | 本机 `index-tts2` API 服务（7880） | 一段参考音频 |
+| **Breeze TTS 2** | 本机 | 本机 `breeze_infer.api`（7860） | 参考音频 + 文字稿，或一段声音描述 |
 | **CosyVoice 2.0** | 本机 | 本机 `cosy-server.py`（7890） | 提示音频 + 对应文字稿 |
 | **GPT-SoVITS** | 本机 | 本机 `api_v2.py`（9880） | 一段参考音频 |
 
 本地后端各自需要自己的服务包跑起来，Edge 与 Cloud 不需要。端口是默认值，面板里可改。
-**不需要显卡**——CPU 就能跑，Apple Silicon 的 MPS 或 NVIDIA GPU 只是更快。
+RVC / Index-TTS2 / CosyVoice / GPT-SoVITS **CPU 就能跑**，Apple Silicon 的 MPS 或
+NVIDIA GPU 只是更快；**Breeze TTS 2 例外**，需要 NVIDIA CUDA 显卡（建议约 12 GB 显存，
+`--fast-all` 需 24 GB）。
+
+**不知道选哪个？**
+
+| 你的需求 | 选 |
+|---|---|
+| 现在就想听，不想装东西 | **Edge TTS** |
+| 已经训好了自己的模型 | **RVC** |
+| 手头有一段音频，想克隆它（只要音频） | **Index-TTS2** |
+| 音频 + 精确文字稿，追求最像 | **Breeze TTS 2** 或 **GPT-SoVITS** |
+| 不提供音频，只用文字描述设计音色 | **Breeze TTS 2** |
+| 中英双语、有 NVIDIA 显卡（官方低延迟流式；12 GB 卡上仍偏慢） | **Breeze TTS 2** |
+| 跨语言克隆（如日语参考读中文） | **Index-TTS2**（实测口音最干净；Breeze 也能读但会带参考口音） |
+| 付费云端音色 / 不想本机装 | **Google Cloud TTS** |
 
 RVC 面板填这些：服务地址（默认 `http://127.0.0.1:4892`）、原声来源、模型 `.pth`、
 可选 `.index`，以及一个折叠的高级参数面板（说话人 ID、f0 方法、变调、索引权重、
 输出采样率、响度混合、辅音保护、滤波半径、F0 曲线文件）。免索引模式不填 `.index` 也能用。
 
 → 各后端指南：[Edge](docs/EDGE-GUIDE.md) · [RVC](docs/RVC-GUIDE.md) ·
-[Index-TTS2](docs/INDEX-TTS2-GUIDE.md) · [CosyVoice](docs/COSYVOICE-GUIDE.md) ·
-[GPT-SoVITS](docs/GPT-SOVITS-GUIDE.md) · [Cloud](docs/CLOUD-GUIDE.md)
+[Index-TTS2](docs/INDEX-TTS2-GUIDE.md) · [Breeze TTS 2](docs/BREEZE-GUIDE.md) ·
+[CosyVoice](docs/COSYVOICE-GUIDE.md) · [GPT-SoVITS](docs/GPT-SOVITS-GUIDE.md) ·
+[Cloud](docs/CLOUD-GUIDE.md)
 
 ## 能做什么
 
@@ -104,12 +125,17 @@ RVC 面板填这些：服务地址（默认 `http://127.0.0.1:4892`）、原声�
 - **音色包一键安装**：填仓库地址 →「获取列表」→「下载并启用」，不用手工搬文件。
   公开示例：[rvc-for-tts](https://github.com/1624318455/rvc-for-tts)
   （仓库地址填 `https://raw.githubusercontent.com/1624318455/rvc-for-tts/main`）。
+- **成对音色库**：需要「音频 + 文字稿」的引擎（Breeze、CosyVoice）在音频下拉里直接显示
+  `缺文本` / 语言标签；选中即同时填入两者，修改文字稿会自动存回。
+- **声音设计**（Breeze）：不给参考音频，只用一段文字描述生成音色。
 - **试听**任意音色：输入文本点播放，播放中显示旋转 loading，失败红字内联提示。
 - **声音调节**：语速 / 音调 / 音量（0 = 提供者默认），Edge 与 Cloud 共用。
 - **模型扫描**：忘了本地引擎装在哪，就加一个目录扫一下。身份来自内容
-  （RVC 的 pickle 键、`tts_infer.yaml`、`indextts/` + checkpoints、
-  CosyVoice 模型文件、service-account JSON），不看文件名与目录名——改过名的
+  （RVC 的 pickle 键、`tts_infer.yaml`、`indextts/` + checkpoints、CosyVoice
+  模型文件、Breeze 检查点结构、service-account JSON），不看文件名与目录名——改过名的
   `.pth` 照样认得出，别家的 `.pth` 也不会被误认。每条结果带证据链，可存进候选库。
+- **本机服务启动**（可选，5 个本地引擎通用）：保存启动命令 / 工作目录 / 端口，
+  直接在面板里启动、停止、重启；扫描结果可以帮忙生成命令。
 
 **设置、语言与安全**
 
@@ -120,8 +146,8 @@ RVC 面板填这些：服务地址（默认 `http://127.0.0.1:4892`）、原声�
   审批结果只在空闲时播报。固定走 Edge TTS、用自己的提醒音色、按审批 id 去重。
 - **干净朗读**：朗读前清洗消息 Markdown（代码块、表格、链接、引用、任务列表），
   可选开关保留逐字朗读原始符号（适合读源码）。
-- **默认安静**：Edge 模式下整个 RVC 区块收在「需要克隆音色？」一行入口后面，
-  普通朗读零配置零感知。
+- **默认安静**：只渲染当前选中后端的配置区，Edge 日常朗读依旧零配置，
+  其它引擎的准备工作不会挡在前面。
 
 ## Edge TTS 音色（经实测）
 
@@ -147,6 +173,8 @@ Cloud TTS 另有 8 个 cmn-CN 音色（默认 `cmn-CN-Wavenet-A`），也可手�
 - Node.js ≥ 22（worker 使用原生 `WebSocket`）
 - Edge 与 Cloud 之外不需要任何东西。本地后端各自需要自己的服务包先跑起来，
   见上表与各后端指南。
+- **Breeze TTS 2** 另外需要 NVIDIA CUDA 显卡（建议约 12 GB 显存，`--fast-all` 需 24 GB）；
+  其余本地引擎 CPU 即可。
 
 ## 行为说明
 
@@ -173,17 +201,19 @@ Cloud TTS 另有 8 个 cmn-CN 音色（默认 `cmn-CN-Wavenet-A`），也可手�
 
 分两层，是刻意的：
 
-- **Host 文件** `~/.dsh/tts-rvc/settings.json`——
-  `{ version: 1, rvc: …, index: …, cosy: …, cloud: … }`。服务类配置：RVC 服务地址 / 模型 /
-  索引路径、Index-TTS2 与 CosyVoice 服务地址、Cloud API Key（+ 可选 Project ID）。
-  多浏览器共享，清浏览器数据与无痕模式都不丢。经 `GET /dsh-tts-api/rvc-config` +
-  `POST /dsh-tts-api/rvc-config-save`（以及对应的 `index-config`、`cosy-config`、
-  `cloud-config`）读写。老 `localStorage` 值一次性上迁，之后以文件为准。
+- **Host 文件** `~/.dsh/dsh-plugin-tts/config/settings.json`（旧位置 `~/.dsh/tts-rvc/settings.json` 会一次性迁移）——
+  `{ version: 1, rvc: …, index: …, cosy: …, breeze: …, gsv: …, cloud: …, voicePairs: […] }`。
+  服务类配置：各引擎服务地址、RVC 模型 / 索引路径、Breeze 模型目录与参考音频目录、
+  Cloud API Key（+ 可选 Project ID），以及共用的**成对音色库**（参考音频路径 + 文字稿，
+  Breeze / CosyVoice 共用）。多浏览器共享，清浏览器数据与无痕模式都不丢。
+  经 `GET/POST /dsh-tts-api/*-config(-save)` 与 `/dsh-tts-api/voice-pairs*` 读写。
+  老 `localStorage` 值一次性上迁，之后以文件为准。
 - **localStorage** `dsh-tts-settings`——只存 UI 偏好：音色、自动朗读开关、提供者、
   声音调节、原始 Markdown 开关、审批提醒与其余 RVC 偏好。**不存**服务地址 / 模型 / 索引。
 - `dsh-tts-lang` 存界面语言。
 
-「恢复默认设置」一键复位并清除两层（Host 文件为 best-effort）。
+「恢复默认设置」会复位两层配置（Host 文件为 best-effort）；已保存的成对音色库与
+已下载的音色包会保留。
 
 ## 疑难排查
 
@@ -206,8 +236,8 @@ Cloud TTS 另有 8 个 cmn-CN 音色（默认 `cmn-CN-Wavenet-A`），也可手�
 
 **体积大吗？**
 - 只用 Edge TTS：插件本体很小（MB 级），不需要下载任何服务或模型。
-- 体积只在你主动选自定义音色时才出现。RVC 便携包自包含离线 Python 运行时、
-  推理依赖与预训练模型：
+- 体积只在你主动选自定义音色时才出现。每个本地引擎都是单独下载；RVC 便携包是一个例子，
+  自包含离线 Python 运行时、推理依赖与预训练模型：
 
   | 平台 | 压缩包 | 解压后 |
   |---|---:|---:|
@@ -216,20 +246,22 @@ Cloud TTS 另有 8 个 cmn-CN 音色（默认 `cmn-CN-Wavenet-A`），也可手�
   | Windows（保留 NVIDIA GPU 加速） | ~6 GB | ~7 GB |
 
   对比一下：完整版 RVC WebUI 是 7.8 GB，这里只带朗读真正用到的那部分。
-- Index-TTS2 / CosyVoice / GPT-SoVITS 同样是本地包，体积随版本变，见各自指南的准备节。
+- Index-TTS2 / Breeze TTS 2 / CosyVoice / GPT-SoVITS 同样是本地包，体积随版本变，
+  见各自指南的准备节。Breeze TTS 2 是最重的一个：约 7.7 GB 权重 + CUDA 版 PyTorch 运行时。
+- 不管选哪个后端，插件本体始终是 MB 级——模型永远是单独按需下载。
 
 **好装吗？**
 - 插件本身一条命令（见上）。
 - 自定义音色：下载对应平台的便携包 → 解压 → 运行启动脚本（mac 双击 `.command`，
   Windows 双击 `.bat`）→ 把 `.pth` 放进 `assets/weights` → 面板里选它。
-  Index-TTS2 / CosyVoice / GPT-SoVITS 是同样的三步：备包 → 保持服务运行 → 面板填参考音频。
+  Index-TTS2 / Breeze TTS 2 / CosyVoice / GPT-SoVITS 是同样的三步：备包 → 保持服务运行 → 面板填参考音频。
 - 无需编译，无需手动装 Python / ffmpeg。注意 **mac 首次启动会慢几十秒**
   （macOS 首次扫描解压出的运行库），之后只要几秒。
 
 **需要付费 API 或本地模型吗？**
 - Edge TTS：免费、无 API Key、无模型。
-- RVC / Index-TTS2 / CosyVoice / GPT-SoVITS：完全本地推理、免费，但各自需要服务包先跑起来。
-  GPT-SoVITS 尤其**不需要**任何 OpenAI / 第三方 API Key。
+- RVC / Index-TTS2 / Breeze TTS 2 / CosyVoice / GPT-SoVITS：完全本地推理、免费，但各自需要服务包先跑起来。
+  GPT-SoVITS 尤其**不需要**任何 OpenAI / 第三方 API Key；Breeze TTS 2 需要 NVIDIA 显卡，其余 CPU 即可。
 - Google Cloud TTS：按量付费、需自备 Key。中文标准音色每月前 400 万字符免费，
   Wavenet / Neural2 / Chirp 每月前 100 万（本地计数，官方以 Google Cloud Billing 为准），
   详见 [Cloud 指南](docs/CLOUD-GUIDE.md)。
@@ -240,8 +272,9 @@ Cloud TTS 另有 8 个 cmn-CN 音色（默认 `cmn-CN-Wavenet-A`），也可手�
   可随时安装 / 停用 / 卸载，不影响 DSH 与其它插件。
 
 **其他**
-- **需要显卡吗？** 不需要，CPU 能跑。Apple Silicon 的 MPS 或 NVIDIA GPU（Windows，需 CUDA 版 torch）更快。
-- **隐私？** RVC / Index-TTS2 / CosyVoice / GPT-SoVITS 完全本地转换，音频不出机器；
+- **需要显卡吗？** 只有 Breeze TTS 2 需要（NVIDIA CUDA，建议约 12 GB 显存）。RVC / Index-TTS2 /
+  CosyVoice / GPT-SoVITS 都能用 CPU；Apple Silicon 的 MPS 或 NVIDIA GPU 只是更快。
+- **隐私？** RVC / Index-TTS2 / Breeze TTS 2 / CosyVoice / GPT-SoVITS 完全本地转换，音频不出机器；
   Edge TTS 与 Cloud TTS 会把要朗读的文本发到各自在线端点合成。
 - **只支持 Apple Silicon？** macOS 版目前是 arm64（M1–M5）；Intel Mac 需另行提供 x86_64 版。
 
@@ -249,7 +282,7 @@ Cloud TTS 另有 8 个 cmn-CN 音色（默认 `cmn-CN-Wavenet-A`），也可手�
 
 | 层 | 位置 | 职责 |
 |---|---|---|
-| Host | `lib/index.mjs` | 注册 webServer 路由：`/dsh-tts-api/speak`（全链路合成 / 分块队列）、`/dsh-tts-audio/<id>`（音频字节）、`/dsh-tts-api/rvc-next`（取下一块 / 取消）、`/dsh-tts-api/rvc-files` + `/rvc-compact-index` + `/rvc-packs*`（RVC 代理 / 音色包）、`/dsh-tts-api/index-*` 与 `/dsh-tts-api/cosy-*`（本地服务代理 + 配置）、`/dsh-tts-api/cloud-*`（Cloud Key / 用量 / 连通测试）、`/dsh-tts-api/gsv-*`（GPT-SoVITS 配置 / 试听）、`/dsh-tts-api/notify`（审批提醒队列）、`/dsh-tts-api/diagnose`（一键诊断）。Edge worker 用 `node -e` 跑，零依赖。 |
+| Host | `lib/index.mjs` | 注册 webServer 路由：`/dsh-tts-api/speak`（全链路合成 / 分块队列）、`/dsh-tts-audio/<id>`（音频字节）、`/dsh-tts-api/rvc-next`（取下一块 / 取消）、`/dsh-tts-api/rvc-files` + `/rvc-compact-index` + `/rvc-packs*`（RVC 代理 / 音色包）、`/dsh-tts-api/index-*`、`/dsh-tts-api/cosy-*` 与 `/dsh-tts-api/breeze-*`（本地服务代理 + 配置）、`/dsh-tts-api/voice-pairs*`（音频 + 文字稿成对音色库）、`/dsh-tts-api/cloud-*`（Cloud Key / 用量 / 连通测试）、`/dsh-tts-api/gsv-*`（GPT-SoVITS 配置 / 试听）、`/dsh-tts-api/service-*`（本机引擎启动）、`/dsh-tts-api/discovery*`（模型扫描）、`/dsh-tts-api/notify`（审批提醒队列）、`/dsh-tts-api/diagnose`（一键诊断）。Edge worker 用 `node -e` 跑，零依赖。 |
 | Client | `lib/client.js` | `shell.overlay` 里的 Web Audio 分块播放器（采样级拼接，`<audio>` 降级）+ UI（朗读按钮 / 自动朗读开关 / 设置面板），通过 `fetch` 调 Host 路由。 |
 
 Edge worker 的协议镜像 [node-edge-tts@1.2.10](https://github.com/SchneeHertz/node-edge-tts)：
@@ -268,7 +301,7 @@ npm run test:privacy    # 隐私守卫（本机用户名 / 绝对路径 / 真机
 ```
 
 测试只能在源码仓库里跑。npm 发布包按 `package.json` 的 `files` 白名单裁剪：
-`lib/`、`rvc-server.py`、`cordis.patch.yml`、`docs/` 下 7 份用户指南、两个 README 与许可证。
+`lib/`、`rvc-server.py`、`cordis.patch.yml`、`docs/` 下使用手册 + 7 份后端指南、两个 README 与许可证。
 设计稿、UI 审计记录、验收清单、`docs/maintainer/` 下的维护者文档都留在源码仓库，
 `test:pack` 守着这条边界。GPT-SoVITS 直连本机 `api_v2.py`——**没有网关进程、
 没有 Python 适配层、没有 API Key**。
@@ -285,6 +318,8 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@memef1f1y\dsh-p
 - 音频复用缓存仅进程内；合成文件本身落在插件数据目录（默认 `~/.dsh/dsh-plugin-tts/cache/synth/`，可用 `DSH_TTS_HOME` 改位置，
   2 小时 / 200 个自动淘汰，设置页可查看占用并一键清理），所以完全重启后每段文本第一次朗读仍会重新合成。
   设置本身跨重启保留（见上文）。
+- **Breeze TTS 2** 在 12 GB 消费级显卡上 eager 推理慢于实时，长文本即使分块也可能落后于播放；
+  24 GB 显卡开 `--fast-all` 才是快路径。
 - 中英文**布局**适配（英文文本更长，可能换行或溢出）需在装好插件的真实 dsh 界面里人工确认。
   本插件没有独立 HTML，UI 由 dsh web 宿主注入 slot 渲染，
   所以 `tests/client-load.mjs` 只断言内存渲染，不涉及真实 DOM/CSS。
@@ -296,6 +331,7 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@memef1f1y\dsh-p
 | [使用手册](docs/USER-GUIDE.md) | 第一次用：做什么 / 怎么做 / 怎么算成功 |
 | [RVC 指南](docs/RVC-GUIDE.md) | 自定义音色、分块播放、紧凑索引、音色包、便携运行时 |
 | [Index-TTS2 指南](docs/INDEX-TTS2-GUIDE.md) | 本机参考音频音色 |
+| [Breeze TTS 2 指南](docs/BREEZE-GUIDE.md) | 本机参考克隆 / 声音设计、服务启动、跨语言说明 |
 | [CosyVoice 指南](docs/COSYVOICE-GUIDE.md) | 本机零样本提示克隆（CosyVoice-2.0-0.5B） |
 | [GPT-SoVITS 指南](docs/GPT-SOVITS-GUIDE.md) | 直连本机 `api_v2.py /tts`、参考克隆、字段契约 |
 | [Cloud 指南](docs/CLOUD-GUIDE.md) | 谷歌付费音色、API Key、用量与计费 |

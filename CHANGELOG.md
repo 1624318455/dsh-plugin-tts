@@ -4,6 +4,21 @@
      publish workflow 会自动抽取对应版本小节作为 GitHub Release 说明（extract step）。
      格式约定：每个版本一个 `## vX.Y.Z — YYYY-MM-DD` 小节，新版本在上；小节之间空一行。 -->
 
+## v0.11.0 — 2026-11-28
+
+### 新功能
+- **Breeze TTS 2 本地引擎**：新增第 7 个提供者 `breeze-tts2`（默认 `http://127.0.0.1:7860`），直连官方 `breeze_infer.api` 的 `/v1/audio/speech`。支持三种模式：参考音频 + 文字稿克隆、参考音频 + 声音描述（带指令的克隆）、仅声音描述做 voice design；面板自动显示当前模式。Host 负责读取参考音频并以 multipart 上传，把服务返回的无头 PCM（24 kHz s16le）包成标准 WAV 再交给播放器；长文本沿用统一的分块播放链路。
+- **Breeze 参考音频库**：设置页可选本机参考音频目录（扫描 / 上传 / 切换最近路径），服务地址与目录写入 Host 配置文件，文字稿、声音描述、CFG、种子留在浏览器。
+- **成对音色库（音频 + 文字稿）**：需要同时提供参考音频和文字稿的引擎（Breeze 克隆、CosyVoice 提示克隆）现在把配对直接做进音频下拉（GSV 形态）：每项显示 `缺文本` 或语言，选中即同时填入音频与文字稿，修改文字稿自动写回；文件多时可搜索文件名。条目存 Host 配置 `voicePairs`（绝对路径 + 文字稿），Breeze / CosyVoice 共用。新的 `tests/voice-pairs.mjs` 覆盖保存 / 去重 / 校验 / 删除与跨引擎接线。
+- **诊断与测试**：一键诊断新增 `breeze-server`（`/health` 在线 / 模型加载中）与 `breeze-ref`（参考音频目录）两项；新增 `tests/breeze-contract.mjs`（WAV 头、配置、路由与客户端接线断言）。文档新增 `docs/BREEZE-GUIDE.md`。
+- **文字稿输入框 2–3 行自适应**：原先多行 textarea 被统一输入框的 `height:32px` 压成一行。现在参考音频文字稿（Breeze / CosyVoice）与「声音描述」默认显示两行，输入变长时最多长到三行，之后内部滚动；根据行高、内边距和边框计算，不依赖固定 DOM 高度。
+- **Index-TTS2 高级参数补全**：把一直按默认值发送、但面板看不到的 6 个参数补进「高级参数」：Top-K、启用采样（do_sample）、Beam 数量、长度惩罚、重复惩罚、最大音频 token；重置与「已改动项」计数一并覆盖。
+- **Breeze 本机服务启动 + 模型扫描**：Breeze 复用统一的服务启动面板（命令 / 工作目录 / 端口，默认 7860），新增「模型目录」用于生成启动命令；模型扫描新增 Breeze 代码目录（`breeze_infer/api.py`）与检查点（`config.json` + `audio_tokenizer` + 权重）识别，扫描结果可一键填入模型目录并生成 `<python> -m breeze_infer.api "<模型目录>" --host 127.0.0.1 --port 7860`；端口扫描新增 7860 的 `/health` 探测。
+
+### 文档
+- **主 README 重新定位**：从「Edge + RVC」改为「7 种后端、一个设置面板」，新增「不知道选哪个？」选型表、成对音色库 / 声音设计 / 本机服务启动说明；修正 GPU 要求（仅 Breeze 需要 NVIDIA 显卡）、Host 配置真实路径与结构、Breeze 体积与性能限制、架构路由清单。
+- 使用手册补充 Breeze TTS 2 章节（6.5）并把「一段录音克隆」入口补全。
+
 ## v0.10.0 — 2026-11-26
 
 ### 新功能

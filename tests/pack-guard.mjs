@@ -74,6 +74,7 @@ const requiredDocs = [
   'COSYVOICE-GUIDE.md',
   'INDEX-TTS2-GUIDE.md',
   'GPT-SOVITS-GUIDE.md',
+  'BREEZE-GUIDE.md',
 ];
 for (const d of requiredDocs) check(`必须包含 docs/${d}`, has(`docs/${d}`));
 const extraDocs = packed

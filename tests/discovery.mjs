@@ -170,6 +170,38 @@ const pickleBytes = (keys) => Buffer.concat([
   check('CosyVoice install: pretrained_models/CosyVoice2-0.5B', !!cand && cand.confidence === 'high', cand && cand.evidence.join(' | '));
 }
 
+// ---- Breeze TTS 2 checkpoint + repo ----------------------------------------
+{
+  const dir = path.join(tmpRoot, 'breeze-tts-2');
+  mkdirSync(path.join(dir, 'audio_tokenizer'), { recursive: true });
+  writeFileSync(path.join(dir, 'config.json'), JSON.stringify({ codec_config: { _frame_rate: 12.5 } }));
+  writeFileSync(path.join(dir, 'audio_tokenizer', 'config.json'), '{}');
+  writeFileSync(path.join(dir, 'model-00001-of-00001.safetensors'), Buffer.from([0, 1, 2]));
+  const cand = T.detectBreezeCheckpoint(dir);
+  check('Breeze checkpoint: config + audio_tokenizer + weights',
+    !!cand && cand.confidence === 'high' && cand.meta.modelDir === dir,
+    cand && cand.evidence.join(' | '));
+  check('Breeze checkpoint is not offered as a launchable install', !!cand && cand.meta.canStart === false);
+  check('Breeze checkpoint carries the codec frame rate as evidence',
+    !!cand && cand.evidence.some((e) => e.includes('frame_rate=12.5')));
+  check('a bare config.json is not a Breeze checkpoint',
+    T.detectBreezeCheckpoint(path.join(tmpRoot, 'not-breeze')) === null);
+}
+
+{
+  const dir = path.join(tmpRoot, 'breeze-tts');
+  mkdirSync(path.join(dir, 'breeze_infer'), { recursive: true });
+  mkdirSync(path.join(dir, 'models'), { recursive: true });
+  writeFileSync(path.join(dir, 'breeze_infer', 'api.py'), '');
+  writeFileSync(path.join(dir, 'models', 'breeze.py'), '');
+  writeFileSync(path.join(dir, 'requirements.txt'), 'torch\n');
+  const cand = T.detectBreezeRepo(dir);
+  check('Breeze repo: breeze_infer/api.py + models/breeze.py',
+    !!cand && cand.confidence === 'high' && cand.kind === 'install',
+    cand && cand.evidence.join(' | '));
+  check('Breeze repo is launchable from discovery', !!cand && cand.meta.canStart === true);
+}
+
 // ---- Google service-account credential ------------------------------------
 {
   const file = path.join(tmpRoot, 'gcp.json');
@@ -246,6 +278,7 @@ const pickleBytes = (keys) => Buffer.concat([
   check('walk finds the GPT-SoVITS install', providers.has('gpt-sovits'));
   check('walk finds the Index-TTS2 install', providers.has('index-tts2'));
   check('walk finds the CosyVoice install', providers.has('cosyvoice'));
+  check('walk finds the Breeze checkpoint and repo', providers.has('breeze-tts-2'));
   check('walk finds the Cloud credential', providers.has('google-cloud-tts'));
   const persisted = T.loadDiscoveryStore();
   check('candidate library starts empty until saved', persisted.candidates.length === 0);

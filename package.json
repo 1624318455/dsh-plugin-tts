@@ -1,7 +1,21 @@
 {
   "name": "@memef1f1y/dsh-plugin-tts",
-  "description": "Edge TTS 语音大集成插件：消息朗读按钮、自动朗读开关、语音设置面板（Edge TTS / RVC / Index-TTS2 / CosyVoice / GPT-SoVITS / Google Cloud TTS）",
-  "version": "0.10.0",
+  "description": "DSH 消息朗读插件：7 种 TTS 后端（Edge / Google Cloud / RVC / Index-TTS2 / Breeze TTS 2 / CosyVoice / GPT-SoVITS），自动朗读、选区朗读、长文分块无缝播放、本机服务启动与模型扫描",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "tts",
+    "text-to-speech",
+    "edge-tts",
+    "rvc",
+    "index-tts2",
+    "breeze-tts2",
+    "cosyvoice",
+    "gpt-sovits",
+    "voice-clone",
+    "google-cloud-tts"
+  ],
+  "version": "0.11.0",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -26,6 +40,7 @@
     "docs/COSYVOICE-GUIDE.md",
     "docs/INDEX-TTS2-GUIDE.md",
     "docs/GPT-SOVITS-GUIDE.md",
+    "docs/BREEZE-GUIDE.md",
     "README.md",
     "README.zh.md",
     "LICENSE"
@@ -65,8 +80,10 @@
     "test:disc": "node tests/discovery.mjs",
     "test:slots": "node tests/bundle-slot.mjs",
     "test:audio": "node tests/audio-release.mjs",
-    "test:all": "node tests/smoke.mjs && node tests/rvc-server-live.mjs && node tests/package-runtime-patch.mjs && node tests/i18n-keys.mjs && node tests/client-load.mjs && node tests/archive-guard.mjs && node tests/gpt-sovits-contract.mjs && node tests/gsv-library.mjs && node tests/voices-dir.mjs && node tests/discovery.mjs && node tests/e2e-gpt-sovits.mjs && node tests/pack-guard.mjs && node tests/privacy-guard.mjs && node tests/bundle-slot.mjs && node tests/audio-release.mjs",
-    "test:lib": "node tests/gsv-library.mjs"
+    "test:all": "node tests/smoke.mjs && node tests/rvc-server-live.mjs && node tests/package-runtime-patch.mjs && node tests/i18n-keys.mjs && node tests/client-load.mjs && node tests/archive-guard.mjs && node tests/gpt-sovits-contract.mjs && node tests/breeze-contract.mjs && node tests/voice-pairs.mjs && node tests/gsv-library.mjs && node tests/voices-dir.mjs && node tests/discovery.mjs && node tests/e2e-gpt-sovits.mjs && node tests/pack-guard.mjs && node tests/privacy-guard.mjs && node tests/bundle-slot.mjs && node tests/audio-release.mjs",
+    "test:lib": "node tests/gsv-library.mjs",
+    "test:breeze": "node tests/breeze-contract.mjs",
+    "test:voice-pairs": "node tests/voice-pairs.mjs"
   },
   "repository": {
     "type": "git",

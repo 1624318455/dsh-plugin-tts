@@ -5,8 +5,8 @@
 <h1 align="center">dsh-plugin-tts</h1>
 
 <p align="center">
-  Read DeepSeek Harness replies aloud — Microsoft Edge TTS out of the box,<br />
-  your own cloned voice when you want one.
+  Read every DeepSeek Harness reply aloud — <b>7 TTS backends, one settings panel</b>.<br />
+  Start free with Edge; clone any voice locally when you want one.
 </p>
 
 <p align="center">
@@ -32,11 +32,17 @@
 ---
 
 A dual-sided plugin (Host + Web UI) that adds read-aloud to every assistant
-message in the DSH web UI. It works with **zero setup** on Edge TTS, and grows
-into a fully local pipeline — your own RVC model, Index-TTS2 / CosyVoice /
-GPT-SoVITS reference-audio cloning — when you want a specific voice. Long
-replies stream with gapless chunked playback instead of waiting for the whole
-synthesis to finish.
+message in the DSH web UI. It starts with **zero setup** on Edge TTS and scales
+all the way to a fully local voice stack: RVC models you trained, reference-audio
+cloning (Index-TTS2 / Breeze TTS 2 / CosyVoice / GPT-SoVITS), voice design from a
+text description, or paid Google Cloud voices — all behind one settings panel.
+Long replies stream with gapless chunked playback instead of waiting for the
+whole synthesis to finish.
+
+Whichever engine you pick, the experience is identical: the same read button,
+auto-read toggle, selection read, chunked streaming, download, diagnostics and
+model scan. Switching backends only changes where the voice comes from — not how
+reading works.
 
 ## Install
 
@@ -58,7 +64,7 @@ dsh-market UI works too — search for the package name.
 > register the same loader entry id (`tts`), and the installer rolls back on a
 > duplicate instead of overwriting.
 
-## Six backends, one settings panel
+## Seven backends, one settings panel
 
 Switch provider in **Settings → dsh-plugin-tts** (older dsh builds: Settings → Plugins → dsh-plugin-tts). Only the first row needs nothing installed.
 
@@ -68,12 +74,28 @@ Switch provider in **Settings → dsh-plugin-tts** (older dsh builds: Settings �
 | **Google Cloud TTS** | Google, online, pay-as-you-go | your API key | 8 cmn-CN voices, or any voice id |
 | **RVC** | your machine | RVC portable runtime + `rvc-server.py` (4892) | models you trained yourself (`.pth`) |
 | **Index-TTS2** | your machine | local `index-tts2` API service (7880) | a reference-audio clip |
+| **Breeze TTS 2** | your machine | local `breeze_infer.api` service (7860) | a reference clip + transcript, or a voice description |
 | **CosyVoice 2.0** | your machine | local `cosy-server.py` (7890) | a prompt clip + its transcript |
 | **GPT-SoVITS** | your machine | local `api_v2.py` (9880) | a reference clip |
 
 Each local backend needs its service package running; Edge and Cloud do not.
-Ports are the defaults and are editable in the panel. No GPU is required —
-CPU works, Apple Silicon MPS or an NVIDIA GPU just makes it faster.
+Ports are the defaults and are editable in the panel. CPU is enough for RVC,
+Index-TTS2, CosyVoice and GPT-SoVITS; **Breeze TTS 2 is the exception** — it
+needs an NVIDIA CUDA GPU (≈12 GB VRAM recommended, 24 GB for `--fast-all`).
+Apple Silicon MPS or an NVIDIA GPU just makes the CPU-capable engines faster.
+
+**Not sure which to pick?**
+
+| You want… | Pick |
+|---|---|
+| To hear something right now, no setup | **Edge TTS** |
+| A voice you already trained | **RVC** |
+| To clone a clip you have (audio only) | **Index-TTS2** |
+| The closest clone from a clip + its exact transcript | **Breeze TTS 2** or **GPT-SoVITS** |
+| To design a voice from a text description (no clip) | **Breeze TTS 2** |
+| Bilingual zh/en with an NVIDIA GPU (official low-latency streaming; still slow on 12 GB) | **Breeze TTS 2** |
+| Cross-lingual clone (e.g. Japanese clip → Chinese speech) | **Index-TTS2** (cleanest accent in our tests; Breeze works but keeps the reference accent) |
+| Paid cloud voices / no local install | **Google Cloud TTS** |
 
 The RVC panel takes a service URL (default `http://127.0.0.1:4892`), a source
 voice, a model `.pth` and an optional `.index`, plus a collapsed advanced panel
@@ -83,6 +105,7 @@ without an index file.
 
 → Per-backend guides: [Edge](docs/EDGE-GUIDE.md) ·
 [RVC](docs/RVC-GUIDE.md) · [Index-TTS2](docs/INDEX-TTS2-GUIDE.md) ·
+[Breeze TTS 2](docs/BREEZE-GUIDE.md) ·
 [CosyVoice](docs/COSYVOICE-GUIDE.md) · [GPT-SoVITS](docs/GPT-SOVITS-GUIDE.md) ·
 [Cloud](docs/CLOUD-GUIDE.md)
 
@@ -122,15 +145,23 @@ without an index file.
 - **One-click voice packs** from a registry URL — no manual file shuffling.
   Public example: [rvc-for-tts](https://github.com/1624318455/rvc-for-tts)
   (registry URL `https://raw.githubusercontent.com/1624318455/rvc-for-tts/main`).
+- **Paired voice library**: engines that need a clip *and* its transcript
+  (Breeze, CosyVoice) show `缺文本` / language tags right in the audio picker;
+  choosing one fills both, and transcript edits save back automatically.
+- **Voice design** (Breeze): generate a voice from a written description, with
+  no reference clip at all.
 - **Preview** any voice: type text, press the play button, failures show inline.
 - **Sound tuning**: rate / pitch / volume (0 = provider default), shared by
   Edge and Cloud.
 - **Model scan**: if you forgot where a local engine lives, add a folder and
   scan. Identity comes from content (RVC pickle keys, `tts_infer.yaml`,
-  `indextts/` + checkpoints, CosyVoice model files, service-account JSON), not
-  from file names — so a renamed `.pth` is still found and a foreign one is not
-  misclaimed. Results carry their evidence and can be saved to a candidate
-  library.
+  `indextts/` + checkpoints, CosyVoice model files, Breeze checkpoint layout,
+  service-account JSON), not from file names — so a renamed `.pth` is still
+  found and a foreign one is not misclaimed. Results carry their evidence and
+  can be saved to a candidate library.
+- **Local service launcher** (optional, all five local engines): save a start
+  command / working directory / port and start, stop or restart the engine from
+  the panel; scan results can generate the command for you.
 
 **Settings, language, safety**
 
@@ -147,8 +178,8 @@ without an index file.
 - **Clean reads**: message Markdown (code blocks, tables, links, quotes, task
   lists) is stripped before speaking, with an opt-in toggle to read the raw
   symbols verbatim when you want a source file read literally.
-- **Quiet by default**: with Edge selected, the entire RVC section stays hidden
-  behind a single "need a cloned voice?" entry, so casual reading is zero-config.
+- **Quiet by default**: only the selected backend's section is rendered, so casual
+  Edge reading stays zero-config and the other engines' setup never gets in the way.
 
 ## Edge TTS voices (live-verified)
 
@@ -176,6 +207,8 @@ typed in by hand.
 - Node.js ≥ 22 (the worker uses the native `WebSocket`)
 - Nothing else for Edge or Cloud. The local backends each need their own
   service package running — see the table above and the per-backend guides.
+- **Breeze TTS 2** additionally needs an NVIDIA CUDA GPU (≈12 GB VRAM
+  recommended; 24 GB for `--fast-all`). The other local engines run on CPU.
 
 ## Behaviour notes
 
@@ -215,21 +248,23 @@ typed in by hand.
 
 Two layers, on purpose:
 
-- **Host file** `~/.dsh/tts-rvc/settings.json` —
-  `{ version: 1, rvc: …, index: …, cosy: …, cloud: … }`. Service-class config:
-  RVC service URL / model / index paths, Index-TTS2 and CosyVoice service URLs,
-  Cloud API key (+ optional project ID). Shared across browsers, survives
-  clearing browser data and incognito. Read and written over
-  `GET /dsh-tts-api/rvc-config` + `POST /dsh-tts-api/rvc-config-save` (plus the
-  matching `index-config`, `cosy-config`, `cloud-config` routes). Legacy
-  `localStorage` values migrate up once, then the file wins.
+- **Host file** `~/.dsh/dsh-plugin-tts/config/settings.json` (the legacy
+  `~/.dsh/tts-rvc/settings.json` migrates once) —
+  `{ version: 1, rvc: …, index: …, cosy: …, breeze: …, gsv: …, cloud: …, voicePairs: […] }`.
+  Service-class config: service URLs, RVC model / index paths, Breeze model and
+  reference directories, Cloud API key (+ optional project ID), and the shared
+  **paired-voice library** (reference audio path + transcript, used by Breeze
+  and CosyVoice). Shared across browsers, survives clearing browser data and
+  incognito. Read and written over `GET/POST /dsh-tts-api/*-config(-save)` and
+  `/dsh-tts-api/voice-pairs*`. Legacy `localStorage` values migrate up once,
+  then the file wins.
 - **localStorage** `dsh-tts-settings` — UI preferences only: voice, auto-read
   toggle, provider, sound tuning, the raw-Markdown toggle, approval-alert and
-  remaining RVC prefs. Never the service URL / model / index.
+  remaining RVC prefs. Never the service URL / model / index / paired library.
 - `dsh-tts-lang` holds the interface language.
 
-"Reset to defaults" restores defaults and clears both layers (best-effort on the
-Host file).
+"Reset to defaults" restores settings in both layers (best-effort on the Host
+file); the saved paired-voice library and downloaded voice packs are kept.
 
 ## Troubleshooting
 
@@ -259,9 +294,9 @@ has its own section.
 
 **Is it big?**
 - Edge TTS only: the plugin itself is tiny (MB scale) — no service, no model.
-- Custom voices are where size comes from, and only if you opt in. The RVC
-  portable package bundles an offline Python runtime, inference deps and
-  pretrained models:
+- Custom voices are where size comes from, and only if you opt in. Each local
+  engine is a separate download; the RVC portable package is one example and
+  bundles an offline Python runtime, inference deps and pretrained models:
 
   | Platform | Archive | Extracted |
   |---|---:|---:|
@@ -271,25 +306,28 @@ has its own section.
 
   For comparison, the full RVC WebUI is 7.8 GB — we ship only what reading
   actually needs.
-- Index-TTS2 / CosyVoice / GPT-SoVITS are local bundles too; sizes vary by
-  release, see each guide's preparation section.
+- Index-TTS2 / Breeze TTS 2 / CosyVoice / GPT-SoVITS are local bundles too;
+  sizes vary by release, see each guide's preparation section. Breeze TTS 2 is
+  the heavyweight: ~7.7 GB of weights plus a CUDA PyTorch runtime.
+- The plugin itself stays MB-scale regardless of which backend you pick — the
+  models are always separate downloads you opt into.
 
 **Is installing painful?**
 - The plugin installs like any other (one command above).
 - For a custom voice: download the portable package for your platform → unzip →
   run the launcher (double-click `.command` on macOS, `.bat` on Windows) → drop
   your `.pth` into `assets/weights` → pick it in the panel. Index-TTS2 /
-  CosyVoice / GPT-SoVITS follow the same three beats: bundle → keep its service
-  running → point the panel at a reference clip.
+  Breeze TTS 2 / CosyVoice / GPT-SoVITS follow the same three beats: bundle →
+  keep its service running → point the panel at a reference clip.
 - No compiling, no manual Python or ffmpeg install. Note the **first macOS
   launch is slow** (tens of seconds) while macOS scans the extracted runtimes;
   later launches take a few seconds.
 
 **Do I need a paid API or a local model?**
 - Edge TTS: free, no API key, no model.
-- RVC / Index-TTS2 / CosyVoice / GPT-SoVITS: fully local and free, but each
-  needs its service package running. GPT-SoVITS needs **no** OpenAI or
-  third-party API key either.
+- RVC / Index-TTS2 / Breeze TTS 2 / CosyVoice / GPT-SoVITS: fully local and free,
+  but each needs its service package running. GPT-SoVITS needs **no** OpenAI or
+  third-party API key either. Breeze TTS 2 needs an NVIDIA GPU; the rest run on CPU.
 - Google Cloud TTS: pay-as-you-go with your own key. Chinese Standard voices are
   free for the first 4M chars/month, Wavenet / Neural2 / Chirp for the first 1M
   (local counters; Google Cloud Billing is authoritative). See the
@@ -303,11 +341,12 @@ has its own section.
   any time without affecting DSH or other plugins.
 
 **Other questions**
-- **GPU needed?** No, CPU works. Apple Silicon MPS or an NVIDIA GPU (Windows,
-  needs the CUDA torch build) makes it faster.
-- **Privacy?** RVC / Index-TTS2 / CosyVoice / GPT-SoVITS convert locally — audio
-  never leaves the machine. Edge TTS and Cloud TTS send the text to their
-  online endpoints for synthesis.
+- **GPU needed?** Only for Breeze TTS 2 (NVIDIA CUDA, ≈12 GB VRAM). RVC /
+  Index-TTS2 / CosyVoice / GPT-SoVITS run on CPU; Apple Silicon MPS or an NVIDIA
+  GPU (Windows, needs the CUDA torch build) just makes them faster.
+- **Privacy?** RVC / Index-TTS2 / Breeze TTS 2 / CosyVoice / GPT-SoVITS convert
+  locally — audio never leaves the machine. Edge TTS and Cloud TTS send the text
+  to their online endpoints for synthesis.
 - **Intel Macs?** The macOS build is arm64 (M1–M5); Intel would need a separate
   x86_64 build.
 
@@ -315,7 +354,7 @@ has its own section.
 
 | Layer | Location | Role |
 |---|---|---|
-| Host | `lib/index.mjs` | Registers the webServer routes: `/dsh-tts-api/speak` (synthesis / chunk queue, all providers), `/dsh-tts-audio/<id>` (audio bytes), `/dsh-tts-api/rvc-next` (next chunk / cancel), `/dsh-tts-api/rvc-files` + `/rvc-compact-index` + `/rvc-packs*` (RVC proxy / voice packs), `/dsh-tts-api/index-*` and `/dsh-tts-api/cosy-*` (local service proxy + config), `/dsh-tts-api/cloud-*` (Cloud key / usage / test), `/dsh-tts-api/gsv-*` (GPT-SoVITS config / test), `/dsh-tts-api/notify` (approval-alert queue), `/dsh-tts-api/diagnose` (one-click diagnostics). Runs the zero-dependency Edge worker via `node -e`. |
+| Host | `lib/index.mjs` | Registers the webServer routes: `/dsh-tts-api/speak` (synthesis / chunk queue, all providers), `/dsh-tts-audio/<id>` (audio bytes), `/dsh-tts-api/rvc-next` (next chunk / cancel), `/dsh-tts-api/rvc-files` + `/rvc-compact-index` + `/rvc-packs*` (RVC proxy / voice packs), `/dsh-tts-api/index-*`, `/dsh-tts-api/cosy-*` and `/dsh-tts-api/breeze-*` (local service proxy + config), `/dsh-tts-api/voice-pairs*` (paired audio + transcript library), `/dsh-tts-api/cloud-*` (Cloud key / usage / test), `/dsh-tts-api/gsv-*` (GPT-SoVITS config / test), `/dsh-tts-api/service-*` (local engine launcher), `/dsh-tts-api/discovery*` (model scan), `/dsh-tts-api/notify` (approval-alert queue), `/dsh-tts-api/diagnose` (one-click diagnostics). Runs the zero-dependency Edge worker via `node -e`. |
 | Client | `lib/client.js` | Web Audio chunk player (sample-accurate joins, `<audio>` fallback) in `shell.overlay`, plus the UI entries (read-aloud button / auto-read toggle / settings panel). Talks to the Host over `fetch`. |
 
 The Edge worker mirrors
@@ -336,7 +375,7 @@ npm run test:privacy    # guard against local usernames, absolute paths, GUI cap
 
 Tests run from the source repo only. The published package is trimmed by the
 `files` allowlist in `package.json`: `lib/`, `rvc-server.py`,
-`cordis.patch.yml`, the seven user-facing guides under `docs/`, the two READMEs
+`cordis.patch.yml`, the user guide and seven per-backend guides under `docs/`, the two READMEs
 and the license. Design notes, UI audit records, acceptance checklists and the
 maintainer docs under `docs/maintainer/` stay in the source repo; `test:pack`
 enforces that boundary. GPT-SoVITS talks straight to the local `api_v2.py` —
@@ -356,6 +395,9 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@memef1f1y\dsh-p
   plugin data folder (default `<DSH_TTS_HOME>/cache/synth/`, 2 h / 200-file auto-prune,
   clearable from settings), so a full restart re-synthesizes the first read of each
   text. Settings themselves persist across restarts (see above).
+- **Breeze TTS 2** eager inference on a 12 GB consumer GPU is slower than real
+  time; long reads may lag behind playback even with chunked streaming. A 24 GB
+  GPU with `--fast-all` is the fast path.
 - zh/en **layout** fitting (English runs longer and may wrap or overflow) has to
   be eyeballed in a real dsh UI with the plugin loaded. The plugin ships no
   standalone HTML — its UI is slot-injected by the dsh web host — so
@@ -368,6 +410,7 @@ Copy-Item lib/* $env:USERPROFILE\.dsh\profiles\web\node_modules\@memef1f1y\dsh-p
 | [User guide](docs/USER-GUIDE.md) | Step-by-step for first-time users: what / how / how to tell it worked |
 | [RVC guide](docs/RVC-GUIDE.md) | Custom voices, chunked playback, compact index, voice packs, portable runtime |
 | [Index-TTS2 guide](docs/INDEX-TTS2-GUIDE.md) | Local reference-audio voices |
+| [Breeze TTS 2 guide](docs/BREEZE-GUIDE.md) | Local reference cloning / voice design |
 | [CosyVoice guide](docs/COSYVOICE-GUIDE.md) | Local zero-shot prompt cloning (CosyVoice-2.0-0.5B) |
 | [GPT-SoVITS guide](docs/GPT-SOVITS-GUIDE.md) | Direct local `api_v2.py /tts`, reference cloning, payload contract |
 | [Cloud guide](docs/CLOUD-GUIDE.md) | Paid Google voices, API key, usage and billing |

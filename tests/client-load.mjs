@@ -725,7 +725,7 @@ if (!failed) {
   const dotOk =
     clientSrc.includes('const StatusDot = props =>') &&
     clientSrc.includes('const providerStatusFromChecks = checks =>') &&
-    (clientSrc.match(/createElement\(StatusDot, \{ state: providerStatus/g) || []).length === 6 &&
+    (clientSrc.match(/createElement\(StatusDot, \{ state: providerStatus/g) || []).length === 7 &&
     /\.dsh-tts-sticky\{[^}]*position:sticky/.test(clientSrc) &&
     /\.dsh-tts-dot\[data-st=ok\]\{background:var\(--dsw-alias-state-success-primary/.test(clientSrc);
   const probeOk =
@@ -1117,6 +1117,7 @@ if (!failed) {
     && /servicePanel\("rvc"\)/.test(clientSrc)
     && /servicePanel\("index-tts2"\)/.test(clientSrc)
     && /servicePanel\("cosyvoice"\)/.test(clientSrc)
+    && /servicePanel\("breeze-tts-2"\)/.test(clientSrc)
     && /servicePanel\("gpt-sovits"\)/.test(clientSrc);
   const routesOk = clientSrc.includes('"/dsh-tts-api/services"')
     && clientSrc.includes('"/dsh-tts-api/service-save"')
